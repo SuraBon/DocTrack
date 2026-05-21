@@ -11,6 +11,8 @@ import {
 import type { DeliveryMatchStatus, Parcel, ParcelSummary } from '@/types/parcel';
 import * as parcelService from '@/lib/parcelService';
 import { summarizeParcels } from '@/lib/parcelStatus';
+import { saveCreatedParcelHistory } from '@/lib/createdParcelHistory';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ParcelStoreValue {
   parcels: Parcel[];
@@ -55,6 +57,7 @@ interface ParcelStoreValue {
 const ParcelStoreContext = createContext<ParcelStoreValue | null>(null);
 
 export function ParcelStoreProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [parcels, setParcels] = useState<Parcel[]>([]);
   const [summary, setSummary] = useState<ParcelSummary | null>(null);
   const [loading, setLoading] = useState(false);
@@ -122,7 +125,18 @@ export function ParcelStoreProvider({ children }: { children: ReactNode }) {
           setError(message);
           return { trackingId: null, error: message };
         }
-        await loadParcels();
+        if (res.trackingID) {
+          saveCreatedParcelHistory({
+            trackingID: res.trackingID,
+            createdAt: new Date().toISOString(),
+            senderName,
+            senderBranch,
+            receiverName,
+            receiverBranch,
+            status: 'รอจัดส่ง',
+          });
+        }
+        if (user) await loadParcels();
         return { trackingId: res.trackingID ?? null };
       } catch (err) {
         const message = err instanceof Error ? err.message : 'เกิดข้อผิดพลาด';
@@ -130,7 +144,7 @@ export function ParcelStoreProvider({ children }: { children: ReactNode }) {
         return { trackingId: null, error: message };
       }
     },
-    [loadParcels],
+    [loadParcels, user],
   );
 
   const confirmReceipt = useCallback<ParcelStoreValue['confirmReceipt']>(

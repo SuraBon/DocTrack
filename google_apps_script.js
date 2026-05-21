@@ -2,7 +2,7 @@
 const API_KEY_PROPERTY = "API_KEY";
 const ADMIN_INITIAL_PIN_PROPERTY = "ADMIN_INITIAL_PIN";
 const DOC_TRACK_FOLDER_ID_PROPERTY = "DOC_TRACK_FOLDER_ID";
-const VALID_ROLES = ["USER", "MESSENGER", "ADMIN"];
+const VALID_ROLES = ["MESSENGER", "ADMIN"];
 // Fallback key (ใช้กรณีไม่อยากตั้ง Script Properties)
 // ตั้งค่านี้ให้ตรงกับ VITE_GAS_API_KEY แล้ว Deploy ใหม่
 // แนะนำ: อย่า commit ค่า key ลง git ถ้า repo เป็น public
@@ -490,9 +490,6 @@ function redactParcelForGuest(parcel) {
 function canReadParcelRow(payload, row) {
   const role = normalizeRole(payload.role);
   if (role === "ADMIN" || role === "MESSENGER") return true;
-  if (role === "USER") {
-    return String(row[13] || "").trim() === String(payload.employeeId || "").trim();
-  }
   return false;
 }
 
@@ -649,7 +646,6 @@ function normalizeRole(role) {
   const value = String(role || "").trim().toUpperCase();
   if (value === "ADMIN") return "ADMIN";
   if (value === "MESSENGER" || value === "MANAGER") return "MESSENGER";
-  if (value === "USER") return "USER";
   return "GUEST";
 }
 
@@ -664,7 +660,7 @@ function getUserRecord(employeeId) {
         employeeId: targetId,
         name: String(data[i][1] || "").trim(),
         branch: String(data[i][2] || "").trim(),
-        role: normalizeRole(data[i][3] || "USER"),
+        role: normalizeRole(data[i][3] || "GUEST"),
         pin: String(data[i][4] || "").trim(),
         createdAt: data[i][5]
       };
@@ -723,7 +719,7 @@ function doPost(e) {
     }
 
     // --- Token Signature Verification ---
-    const protectedActions = ['createParcel', 'confirmReceipt', 'startDelivery', 'releaseDelivery', 'getParcels', 'exportSummary', 'getUsers', 'updateUserRole', 'deleteParcel', 'editParcel', 'updateProfile'];
+    const protectedActions = ['confirmReceipt', 'startDelivery', 'releaseDelivery', 'getParcels', 'exportSummary', 'getUsers', 'updateUserRole', 'deleteParcel', 'editParcel', 'updateProfile'];
     if (payload.token) {
       const parts = String(payload.token).split('|');
       if (parts.length === 4) {
@@ -772,7 +768,10 @@ function doPost(e) {
         if (!locked) {
           return createJsonResponse({ success: false, error: "ระบบไม่ว่าง กรุณาลองใหม่อีกครั้ง (Lock timeout)" });
         }
+        const cachedResult = getCachedIdempotentResponse(action, payload);
+        if (cachedResult) return cachedResult;
         result = routeAction(action, payload);
+        storeIdempotentResponse(action, payload, result);
       } finally {
         if (locked) lock.releaseLock();
       }
@@ -816,12 +815,14 @@ function doGet() {
 }
 
 function handleCreateParcel(payload) {
-  if (!hasAnyRole(payload, ['ADMIN', 'USER', 'MESSENGER'])) {
+  if (!hasAnyRole(payload, ['ADMIN', 'MESSENGER', 'GUEST'])) {
     return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง" });
   }
 
   // Rate limit: ป้องกัน spam สร้างพัสดุ
-  const rl = checkWriteRateLimit(payload.employeeId, 'createParcel');
+  const clientId = sanitizeText(payload.clientId || "");
+  const actorId = payload.employeeId || (clientId ? "guest:" + clientId : "guest");
+  const rl = checkWriteRateLimit(actorId, 'createParcel');
   if (!rl.allowed) {
     return createJsonResponse({ success: false, error: "ส่งคำขอบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่" });
   }
@@ -889,7 +890,7 @@ function handleCreateParcel(payload) {
     finalPhotoUrl || "",
     "",
     "",
-    payload.employeeId || "",
+    payload.employeeId || (clientId ? "guest:" + clientId : "guest"),
     originLatitude,
     originLongitude
   ]);
@@ -1032,13 +1033,6 @@ function handleGetParcels(payload) {
     for (let i = data.length - 1; i >= 0; i--) {
       const row = data[i];
 
-      if (normalizeRole(payload.role) === 'USER') {
-        const creatorId = String(row[13] || "").trim();
-        if (creatorId !== String(payload.employeeId).trim()) {
-          continue;
-        }
-      }
-
       if (payload.status && payload.status !== "ทั้งหมด") {
         if (row[9] !== payload.status) {
           continue;
@@ -1121,12 +1115,10 @@ function handleGetParcel(payload) {
 }
 
 function handleExportSummary(payload) {
-  if (!hasAnyRole(payload, ['ADMIN', 'MESSENGER', 'USER'])) {
+  if (!hasAnyRole(payload, ['ADMIN', 'MESSENGER'])) {
     return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง" });
   }
   let total = 0, pending = 0, transit = 0, delivered = 0;
-  const isUserScoped = normalizeRole(payload.role) === "USER";
-  const employeeId = String(payload.employeeId || "").trim();
 
   // Build events map once for derived status calculation
   const eventsMap = getParcelEventsMap();
@@ -1135,9 +1127,6 @@ function handleExportSummary(payload) {
     const data = entry.sheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
-      if (isUserScoped && String(row[13] || "").trim() !== employeeId) {
-        continue;
-      }
       let status = String(row[9] || "");
       const trackingID = String(row[0] || "");
       total++;
@@ -1584,7 +1573,7 @@ function handleSearchParcels(payload) {
 
   const role = normalizeRole(payload.role);
   const isGuest = role === "GUEST";
-  if (!isGuest && !hasAnyRole(payload, ['ADMIN', 'MESSENGER', 'USER'])) {
+  if (!isGuest && !hasAnyRole(payload, ['ADMIN', 'MESSENGER'])) {
     return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง" });
   }
 
@@ -1708,6 +1697,44 @@ const LOGIN_LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
 // Write rate limit: max 30 creates per user per 10 minutes
 const MAX_WRITE_PER_WINDOW = 30;
 const WRITE_WINDOW_SECONDS = 600; // 10 minutes
+const IDEMPOTENT_ACTIONS = ["createParcel", "confirmReceipt", "startDelivery", "releaseDelivery"];
+const IDEMPOTENCY_TTL_SECONDS = 21600; // 6 hours
+
+function getIdempotencyCacheKey(action, payload) {
+  if (IDEMPOTENT_ACTIONS.indexOf(action) === -1) return "";
+  const rawKey = sanitizeText(payload.idempotencyKey || "");
+  if (!rawKey || rawKey.length > 180) return "";
+  const actor = normalizeEmployeeId(payload.employeeId || payload.clientId || "guest");
+  const digest = Utilities.base64EncodeWebSafe(
+    Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, action + "|" + actor + "|" + rawKey)
+  ).slice(0, 80);
+  return "idempotency_" + digest;
+}
+
+function getCachedIdempotentResponse(action, payload) {
+  const key = getIdempotencyCacheKey(action, payload);
+  if (!key) return null;
+  const cached = CacheService.getScriptCache().get(key);
+  if (!cached) return null;
+  try {
+    return createJsonResponse(JSON.parse(cached));
+  } catch {
+    return null;
+  }
+}
+
+function storeIdempotentResponse(action, payload, result) {
+  const key = getIdempotencyCacheKey(action, payload);
+  if (!key || !result || typeof result.getContent !== "function") return;
+  try {
+    const data = JSON.parse(result.getContent());
+    if (data && data.success === true) {
+      CacheService.getScriptCache().put(key, JSON.stringify(data), IDEMPOTENCY_TTL_SECONDS);
+    }
+  } catch {
+    // Idempotency cache failure should not block the operation.
+  }
+}
 
 function checkWriteRateLimit(employeeId, action) {
   const cache = CacheService.getScriptCache();
@@ -1783,7 +1810,10 @@ function handleLogin(payload) {
   for (let i = 1; i < data.length; i++) {
     if (normalizeEmployeeId(data[i][0]) === employeeId) {
       const storedPin = String(data[i][4] || "").trim();
-      const role = normalizeRole(data[i][3] || "USER");
+      const role = normalizeRole(data[i][3] || "GUEST");
+      if (role === "GUEST") {
+        return createJsonResponse({ success: false, error: "บัญชีนี้ไม่มีสิทธิ์เข้าสู่ระบบพนักงาน" });
+      }
       const name = String(data[i][1]).trim();
       const branch = String(data[i][2]).trim();
 
@@ -1811,7 +1841,7 @@ function handleLogin(payload) {
   }
 
   // User not found — do NOT auto-create; require registration via setupPin
-  return createJsonResponse({ success: false, error: "ไม่พบรหัสพนักงานนี้ในระบบ กรุณาสมัครสมาชิกก่อน" });
+  return createJsonResponse({ success: false, error: "ไม่พบรหัสพนักงานนี้ในระบบ กรุณาให้ Admin เพิ่มบัญชีก่อน" });
 }
 
 function handleSetupPin(payload) {
@@ -1839,7 +1869,10 @@ function handleSetupPin(payload) {
       if (branch) sheet.getRange(i + 1, 3).setValue(branch);
       sheet.getRange(i + 1, 5).setValue(encodePassword(pin));
       
-      const role = normalizeRole(data[i][3] || "USER");
+      const role = normalizeRole(data[i][3] || "GUEST");
+      if (role === "GUEST") {
+        return createJsonResponse({ success: false, error: "บัญชีนี้ไม่มีสิทธิ์ตั้งค่าการเข้าใช้งานพนักงาน" });
+      }
       const finalName = name || String(data[i][1]).trim();
       const finalBranch = branch || String(data[i][2]).trim();
 
@@ -1848,12 +1881,7 @@ function handleSetupPin(payload) {
     }
   }
 
-  // User not found — allow self-registration as a USER to reduce admin setup work.
-  const finalName = name || "Unknown";
-  const finalBranch = branch || "Unknown";
-  sheet.appendRow([employeeId, finalName, finalBranch, "USER", encodePassword(pin), formatThaiDateForSheet(new Date())]);
-  const token = generateToken(employeeId, "USER", getApiKey());
-  return createJsonResponse({ success: true, user: { employeeId, name: finalName, branch: finalBranch, role: "USER", token } });
+  return createJsonResponse({ success: false, error: "ไม่พบรหัสพนักงานนี้ในระบบ กรุณาให้ Admin เพิ่มบัญชีก่อน" });
 }
 
 function handleGetUsers(payload) {
@@ -1871,7 +1899,7 @@ function handleGetUsers(payload) {
       employeeId: String(row[0]),
       name: String(row[1]),
       branch: String(row[2]),
-      role: normalizeRole(row[3] || "USER"),
+      role: normalizeRole(row[3] || "GUEST"),
       hasPin: !!String(row[4]).trim(),
       createdAt: formatSheetDateValue(row[5])
     });
@@ -1987,7 +2015,7 @@ function handleEditParcel(payload) {
 
 function handleUpdateProfile(payload) {
   // Any authenticated user can update their own profile
-  if (!hasAnyRole(payload, ['ADMIN', 'MESSENGER', 'USER'])) {
+  if (!hasAnyRole(payload, ['ADMIN', 'MESSENGER'])) {
     return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง" });
   }
 
@@ -2045,7 +2073,7 @@ function handleUpdateProfile(payload) {
     // Return updated user info (without password)
     const updatedName   = newName   || String(data[i][1] || "").trim();
     const updatedBranch = newBranch || String(data[i][2] || "").trim();
-    const role          = normalizeRole(data[i][3] || "USER");
+    const role          = normalizeRole(data[i][3] || "GUEST");
     const token         = generateToken(employeeId, role, getApiKey());
 
     return createJsonResponse({

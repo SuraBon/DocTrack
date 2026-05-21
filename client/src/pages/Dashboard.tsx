@@ -39,7 +39,7 @@ const STATS = [
 ] as const;
 
 const STALE_DAYS = 2;
-const PREVIEW_ROLES: AppRole[] = ['USER', 'MESSENGER', 'ADMIN'];
+const PREVIEW_ROLES: AppRole[] = ['MESSENGER', 'ADMIN'];
 
 const StatsCard = ({
   label,
@@ -489,6 +489,11 @@ const MessengerDeliveryCard = ({
   const proof = getDeliveryProofSummary(parcel);
   const isDone = parcel['สถานะ'] === 'ส่งสำเร็จ';
   const isAssignedElsewhere = Boolean(assignment && !canConfirmDelivery && !isDone);
+  const actionLabel = canStartDelivery
+    ? (isStartingDelivery ? 'กำลังรับงาน' : 'รับงาน')
+    : canConfirmDelivery
+      ? 'ส่งสำเร็จ'
+      : '';
   return (
     <article className={`rounded-2xl border bg-white p-3 shadow-sm sm:p-4 ${isDone ? 'border-emerald-100' : 'border-primary/15'}`}>
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -500,38 +505,16 @@ const MessengerDeliveryCard = ({
           </div>
           <p className="mt-2 text-sm font-black leading-tight text-primary">ส่งให้ {parcel['ผู้รับ'] || '-'}</p>
         </div>
-        {!isDone && (
-          <ActionGroup compact>
-            {canStartDelivery && (
-              <DashboardActionButton
-                icon="local_shipping"
-                onClick={onStartDelivery}
-                loading={isStartingDelivery}
-                variant="blue"
-              >
-                {isStartingDelivery ? 'กำลังรับงาน' : 'รับงาน'}
-              </DashboardActionButton>
-            )}
-            {canReleaseDelivery && (
-              <DashboardActionButton
-                icon="undo"
-                onClick={onReleaseDelivery}
-                loading={isReleasingDelivery}
-                variant="warning"
-              >
-                {isReleasingDelivery ? 'กำลังปล่อย' : 'ปล่อยงาน'}
-              </DashboardActionButton>
-            )}
-            {canConfirmDelivery && (
-              <DashboardActionButton
-                icon="add_a_photo"
-                onClick={onConfirm}
-                variant="primary"
-              >
-                บันทึกผลการส่ง
-              </DashboardActionButton>
-            )}
-          </ActionGroup>
+        {!isDone && (canStartDelivery || canConfirmDelivery) && (
+          <DashboardActionButton
+            icon={canStartDelivery ? 'local_shipping' : 'task_alt'}
+            onClick={canStartDelivery ? onStartDelivery : onConfirm}
+            loading={canStartDelivery ? isStartingDelivery : false}
+            variant={canStartDelivery ? 'blue' : 'primary'}
+            compact
+          >
+            {actionLabel}
+          </DashboardActionButton>
         )}
       </div>
       {assignment && !isDone && (
@@ -551,8 +534,26 @@ const MessengerDeliveryCard = ({
           </p>
         </div>
       )}
-      <div className="mt-3">
-        <CardActions parcel={parcel} onOpen={onOpen} onConfirm={onConfirm} canConfirm={false} detailLabel="ดูรูป/ประวัติ" compactDetail />
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+        {canReleaseDelivery && (
+          <DashboardActionButton
+            icon="undo"
+            onClick={onReleaseDelivery}
+            loading={isReleasingDelivery}
+            variant="warning"
+            compact
+          >
+            {isReleasingDelivery ? 'กำลังปล่อย' : 'ปล่อยงาน'}
+          </DashboardActionButton>
+        )}
+        <DashboardActionButton
+          icon="history"
+          onClick={onOpen}
+          variant="ghost"
+          compact
+        >
+          ดูประวัติ
+        </DashboardActionButton>
       </div>
     </article>
   );
@@ -712,16 +713,16 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
   const isFetchingRef = useRef(false);
-  const isUserDashboard = role === 'USER';
+  const isUserDashboard = false;
   const canConfirmParcel = role === 'ADMIN' || role === 'MESSENGER';
   const currentEmployeeId = String(user?.employeeId || '').trim().toUpperCase();
   const stats = useMemo(() => {
     return STATS.map((stat) => ({
       ...stat,
-      label: isUserDashboard && stat.key === 'total' ? 'พัสดุของฉันทั้งหมด' : stat.label,
+      label: stat.label,
       count: summary?.[stat.key] ?? 0,
     }));
-  }, [isUserDashboard, summary]);
+  }, [summary]);
 
   // Single fetch function — loadParcels already recomputes summary internally
   // ✅ FIX: Use ref to avoid stale closure without adding loadParcels to deps
@@ -785,9 +786,21 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
     return f;
   }, [parcels, statusFilter, debouncedSearch, isMessengerDashboard]);
 
-  const messengerOpenParcels = useMemo(
-    () => filteredParcels.filter(parcel => parcel['สถานะ'] !== 'ส่งสำเร็จ').sort(sortMessengerWork),
+  const messengerWaitingParcels = useMemo(
+    () => filteredParcels
+      .filter(parcel => parcel['สถานะ'] === 'รอจัดส่ง' && !getActiveDeliveryAssignment(parcel))
+      .sort(sortMessengerWork),
     [filteredParcels],
+  );
+  const messengerMineParcels = useMemo(
+    () => filteredParcels
+      .filter(parcel => {
+        if (parcel['สถานะ'] === 'ส่งสำเร็จ') return false;
+        const assignment = getActiveDeliveryAssignment(parcel);
+        return Boolean(assignment?.assignedToId && assignment.assignedToId === currentEmployeeId);
+      })
+      .sort(sortMessengerWork),
+    [filteredParcels, currentEmployeeId],
   );
   const messengerDoneParcels = useMemo(
     () => filteredParcels.filter(parcel => parcel['สถานะ'] === 'ส่งสำเร็จ'),
@@ -983,7 +996,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
       )}
       {import.meta.env.DEV && (
         <div className="rounded-xl border border-dashed border-primary/20 bg-primary/[0.03] px-3 py-2 text-xs font-bold text-primary">
-          Preview role: {role} ใช้ `?previewRole=MESSENGER`, `USER`, หรือ `ADMIN` เพื่อทดสอบหน้าแต่ละ role
+          Preview role: {role} ใช้ `?previewRole=MESSENGER` หรือ `ADMIN` เพื่อทดสอบหน้าแต่ละ role
         </div>
       )}
 
@@ -1142,28 +1155,56 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
           <div className="space-y-5 p-3 sm:p-4">
             <div>
               <RoleSectionHeader
-                icon="local_shipping"
-                title="ต้องไปส่ง"
-                subtitle="งานกำลังจัดส่งมาก่อน ตามด้วยงานที่รอจัดส่งเก่าสุด"
-                count={messengerOpenParcels.length}
+                icon="inventory_2"
+                title="รอรับงาน"
+                subtitle="กดรับงานก่อนออกไปส่ง เพื่อกันงานซ้ำกับ Messenger คนอื่น"
+                count={messengerWaitingParcels.length}
                 tone="amber"
               />
-              {messengerOpenParcels.length ? (
+              {messengerWaitingParcels.length ? (
                 <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-                  {messengerOpenParcels.map(parcel => {
+                  {messengerWaitingParcels.map(parcel => (
+                    <MessengerDeliveryCard
+                      key={parcel.TrackingID}
+                      parcel={parcel}
+                      assignment={null}
+                      canStartDelivery={parcel['สถานะ'] === 'รอจัดส่ง'}
+                      canReleaseDelivery={false}
+                      canConfirmDelivery={false}
+                      onOpen={() => { setSelectedParcel(parcel); setIsTimelineOpen(true); }}
+                      onConfirm={() => openConfirmFlow(parcel.TrackingID)}
+                      onStartDelivery={() => handleStartDelivery(parcel)}
+                      onReleaseDelivery={() => handleReleaseDelivery(parcel)}
+                      isStartingDelivery={startingDeliveryId === parcel.TrackingID}
+                      isReleasingDelivery={releasingDeliveryId === parcel.TrackingID}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <EmptyState icon="task_alt" title="ไม่มีงานรอรับในตอนนี้" tone="emerald" />
+              )}
+            </div>
+
+            <div>
+              <RoleSectionHeader
+                icon="local_shipping"
+                title="งานของฉัน"
+                subtitle="งานที่คุณรับไว้แล้ว กดส่งสำเร็จเมื่อถึงปลายทาง"
+                count={messengerMineParcels.length}
+                tone="blue"
+              />
+              {messengerMineParcels.length ? (
+                <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                  {messengerMineParcels.map(parcel => {
                     const assignment = getActiveDeliveryAssignment(parcel);
-                    const isAssignedToMe = Boolean(assignment?.assignedToId && assignment.assignedToId === currentEmployeeId);
-                    const canStart = !assignment && parcel['สถานะ'] === 'รอจัดส่ง';
-                    const canRelease = Boolean(assignment && isAssignedToMe);
-                    const canConfirm = !assignment || isAssignedToMe;
                     return (
                       <MessengerDeliveryCard
                         key={parcel.TrackingID}
                         parcel={parcel}
                         assignment={assignment}
-                        canStartDelivery={canStart}
-                        canReleaseDelivery={canRelease}
-                        canConfirmDelivery={canConfirm}
+                        canStartDelivery={false}
+                        canReleaseDelivery={Boolean(assignment)}
+                        canConfirmDelivery
                         onOpen={() => { setSelectedParcel(parcel); setIsTimelineOpen(true); }}
                         onConfirm={() => openConfirmFlow(parcel.TrackingID)}
                         onStartDelivery={() => handleStartDelivery(parcel)}
@@ -1175,7 +1216,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
                   })}
                 </div>
               ) : (
-                <EmptyState icon="task_alt" title="ไม่มีงานค้างส่งในตอนนี้" tone="emerald" />
+                <EmptyState icon="local_shipping" title="ยังไม่มีงานที่คุณรับไว้" description="รับงานจากกลุ่มรอรับงานก่อนออกไปส่ง" />
               )}
             </div>
 

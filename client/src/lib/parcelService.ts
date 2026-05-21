@@ -21,6 +21,9 @@ import type {
 } from '@/types/parcel';
 import { applyDerivedStatus, applyDerivedStatuses } from './parcelStatus';
 import { normalizeRole, type AppRole } from './roles';
+import { getDeviceId } from './createdParcelHistory';
+import { getErrorMessage, isAuthErrorMessage } from './apiErrorHelper';
+import { createIdempotencyKey } from './idempotency';
 
 // ── Status normalizer ────────────────────────────────────────────────────────
 // Backend still stores old Thai status strings. Map them to the new display values.
@@ -175,13 +178,7 @@ async function callAPI<T>(
       continue;
     }
     if (dispatchAuthError && data && data['success'] === false) {
-      const errMsg = data['error'] as string | undefined;
-      if (
-        errMsg === "Authentication required (Missing Token)" ||
-        errMsg === "Invalid token signature" ||
-        errMsg === "Malformed token" ||
-        errMsg === "Token expired"
-      ) {
+      if (isAuthErrorMessage(data['error'])) {
         window.dispatchEvent(new Event('auth_error'));
       }
     }
@@ -208,7 +205,9 @@ export async function createParcel(
 ): Promise<CreateParcelResponse> {
   const payload: CreateParcelPayload = {
     action: 'createParcel',
-    senderName, senderBranch, receiverName, receiverBranch, docType, description, note, latitude, longitude, photoUrl, pin
+    senderName, senderBranch, receiverName, receiverBranch, docType, description, note, latitude, longitude, photoUrl, pin,
+    clientId: getDeviceId(),
+    idempotencyKey: createIdempotencyKey('createParcel'),
   };
   try {
     const res = await callAPI<Record<string, unknown>>(payload, {}, NO_RETRY);
@@ -218,7 +217,7 @@ export async function createParcel(
       error: res.error as string | undefined,
     };
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'เกิดข้อผิดพลาด';
+    const message = getErrorMessage(err);
     return { success: false, error: message };
   }
 }
@@ -241,7 +240,7 @@ export async function getParcels(status: string = 'ทั้งหมด', limit
     }
     return { success: false, parcels: [], error: res.error };
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'เกิดข้อผิดพลาด';
+    const message = getErrorMessage(err);
     return { success: false, parcels: [], error: message };
   }
 }
@@ -255,7 +254,7 @@ export async function getParcel(trackingID: string): Promise<GetParcelResponse> 
     }
     return { success: false, error: res.error };
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'เกิดข้อผิดพลาด';
+    const message = getErrorMessage(err);
     return { success: false, error: message };
   }
 }
@@ -288,11 +287,12 @@ export async function confirmReceipt(
     deliveryMatchStatus,
     deliveryMismatchReason,
     pin,
+    idempotencyKey: createIdempotencyKey('confirmReceipt'),
   };
   try {
     return await callAPI<ConfirmReceiptResponse>(payload, {}, NO_RETRY);
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'เกิดข้อผิดพลาด';
+    const message = getErrorMessage(err);
     return { success: false, error: message };
   }
 }
@@ -301,11 +301,12 @@ export async function startDelivery(trackingID: string): Promise<StartDeliveryRe
   const payload: StartDeliveryPayload = {
     action: 'startDelivery',
     trackingID,
+    idempotencyKey: createIdempotencyKey('startDelivery'),
   };
   try {
     return await callAPI<StartDeliveryResponse>(payload, {}, NO_RETRY);
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'เกิดข้อผิดพลาด';
+    const message = getErrorMessage(err);
     return { success: false, error: message };
   }
 }
@@ -314,11 +315,12 @@ export async function releaseDelivery(trackingID: string): Promise<ReleaseDelive
   const payload: ReleaseDeliveryPayload = {
     action: 'releaseDelivery',
     trackingID,
+    idempotencyKey: createIdempotencyKey('releaseDelivery'),
   };
   try {
     return await callAPI<ReleaseDeliveryResponse>(payload, {}, NO_RETRY);
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'เกิดข้อผิดพลาด';
+    const message = getErrorMessage(err);
     return { success: false, error: message };
   }
 }

@@ -2,10 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { getUsers, updateUserRole, UserRow } from '@/lib/parcelService';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
-import { SYSTEM_ROLES, type SystemRole } from '@/lib/roles';
-import { Search, RefreshCw, Users, ShieldCheck, Truck, User } from 'lucide-react';
+import { SYSTEM_ROLES, type AppRole, type SystemRole } from '@/lib/roles';
+import { Search, RefreshCw, Users, ShieldCheck, Truck, UserX } from 'lucide-react';
 
-const ROLE_CONFIG: Record<SystemRole, { label: string; color: string; bg: string; border: string; icon: React.ReactNode }> = {
+const ROLE_CONFIG: Record<AppRole, { label: string; color: string; bg: string; border: string; icon: React.ReactNode }> = {
   ADMIN: {
     label: 'Admin',
     color: 'text-rose-600',
@@ -20,12 +20,12 @@ const ROLE_CONFIG: Record<SystemRole, { label: string; color: string; bg: string
     border: 'border-blue-200',
     icon: <Truck className="h-3.5 w-3.5" />,
   },
-  USER: {
-    label: 'ผู้ส่งพัสดุ',
-    color: 'text-emerald-600',
-    bg: 'bg-emerald-50',
-    border: 'border-emerald-200',
-    icon: <User className="h-3.5 w-3.5" />,
+  GUEST: {
+    label: 'ไม่มีสิทธิ์พนักงาน',
+    color: 'text-slate-500',
+    bg: 'bg-slate-50',
+    border: 'border-slate-200',
+    icon: <UserX className="h-3.5 w-3.5" />,
   },
 };
 
@@ -34,13 +34,13 @@ function RoleDropdown({
   onChange,
   disabled,
 }: {
-  value: SystemRole;
+  value: AppRole;
   onChange: (role: string) => void;
   disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const cfg = ROLE_CONFIG[value] ?? ROLE_CONFIG.USER;
+  const cfg = ROLE_CONFIG[value] ?? ROLE_CONFIG.GUEST;
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -100,7 +100,7 @@ export default function UserManagement() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [roleFilter, setRoleFilter] = useState<'ALL' | SystemRole>('ALL');
+  const [roleFilter, setRoleFilter] = useState<'ALL' | AppRole>('ALL');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   useEffect(() => { fetchUsers(); }, []);
@@ -125,7 +125,7 @@ export default function UserManagement() {
     const res = await updateUserRole(employeeId, newRole);
     if (res.success) {
       toast.success('เปลี่ยนสิทธิ์ผู้ใช้สำเร็จ');
-      setUsers(prev => prev.map(u => u.employeeId === employeeId ? { ...u, role: newRole as SystemRole } : u));
+      setUsers(prev => prev.map(u => u.employeeId === employeeId ? { ...u, role: newRole as AppRole } : u));
     } else {
       toast.error(res.error || 'ไม่สามารถเปลี่ยนสิทธิ์ได้');
     }
@@ -147,7 +147,7 @@ export default function UserManagement() {
     total: users.length,
     admin: users.filter(u => u.role === 'ADMIN').length,
     messenger: users.filter(u => u.role === 'MESSENGER').length,
-    user: users.filter(u => u.role === 'USER').length,
+    guest: users.filter(u => u.role === 'GUEST').length,
   };
 
   return (
@@ -179,7 +179,7 @@ export default function UserManagement() {
           { key: 'ALL' as const, label: 'ทั้งหมด', value: counts.total, icon: <Users className="h-5 w-5" />, color: 'text-primary', bg: 'bg-primary/10' },
           { key: 'ADMIN' as const, label: 'Admin', value: counts.admin, icon: <ShieldCheck className="h-5 w-5" />, color: 'text-rose-600', bg: 'bg-rose-50' },
           { key: 'MESSENGER' as const, label: 'Messenger จัดส่ง', value: counts.messenger, icon: <Truck className="h-5 w-5" />, color: 'text-blue-600', bg: 'bg-blue-50' },
-          { key: 'USER' as const, label: 'ผู้ส่งพัสดุ', value: counts.user, icon: <User className="h-5 w-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { key: 'GUEST' as const, label: 'ไม่มีสิทธิ์พนักงาน', value: counts.guest, icon: <UserX className="h-5 w-5" />, color: 'text-slate-500', bg: 'bg-slate-50' },
         ].map(s => (
           <button
             key={s.label}
@@ -255,7 +255,7 @@ export default function UserManagement() {
                           <span className="material-symbols-outlined animate-spin text-lg text-primary">progress_activity</span>
                         ) : (
                           <RoleDropdown
-                            value={u.role as SystemRole}
+                            value={u.role}
                             onChange={(role) => handleRoleChange(u.employeeId, role)}
                             disabled={isSelf}
                           />
@@ -326,7 +326,7 @@ export default function UserManagement() {
                           <span className="material-symbols-outlined animate-spin text-lg text-primary">progress_activity</span>
                         ) : (
                           <RoleDropdown
-                            value={u.role as SystemRole}
+                            value={u.role}
                             onChange={(role) => handleRoleChange(u.employeeId, role)}
                             disabled={isSelf}
                           />

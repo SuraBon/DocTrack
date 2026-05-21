@@ -63,9 +63,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           toast.warning('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
         } else {
           const normalizedUser = { ...parsed, role: normalizeRole(parsed.role) };
-          setUser(normalizedUser);
-          localStorage.setItem(SESSION_KEY, JSON.stringify(normalizedUser));
-          resetInactivityTimer();
+          if (normalizedUser.role === 'GUEST') {
+            clearSession();
+          } else {
+            setUser(normalizedUser);
+            localStorage.setItem(SESSION_KEY, JSON.stringify(normalizedUser));
+            resetInactivityTimer();
+          }
         }
       } catch {
         localStorage.removeItem(SESSION_KEY);

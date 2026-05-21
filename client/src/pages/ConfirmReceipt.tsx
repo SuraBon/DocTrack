@@ -10,12 +10,16 @@ import L from 'leaflet';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useParcelStore } from '@/hooks/useParcelStore';
 import { getBranches, getParcel } from '@/lib/parcelService';
-import NativeSelect, { OTHER_VALUE, resolveSelectValue } from '@/components/NativeSelect';
+import NativeSelect, { resolveSelectValue } from '@/components/NativeSelect';
 import { toast } from 'sonner';
 import type { DeliveryMatchStatus, Parcel } from '@/types/parcel';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { MapView } from '@/components/Map';
-import { isValidTrackingId, sanitizeTextInput, validateRequiredText } from '@/lib/validation';
+import { isValidTrackingId, sanitizeTextInput } from '@/lib/validation';
+import { getErrorMessage } from '@/lib/apiErrorHelper';
+import { buildGpsEvidenceNote, getGpsQuality, needsGpsOverrideReason as shouldRequireGpsOverrideReason } from '@/lib/gpsQuality';
+import { processProofImageFile } from '@/lib/imageProofHelper';
+import { buildDeliveryActionPayload, getCurrentBranchFromParcel, isParcelTrulyDelivered } from '@/lib/deliveryActionBuilder';
 
 
 /** Rendered outside the main component so it never remounts on state changes. */
@@ -121,6 +125,8 @@ export default function ConfirmReceipt({
   const [proxyName, setProxyName] = useState('');
   const [deliveryMatchStatus, setDeliveryMatchStatus] = useState<DeliveryMatchStatus>('MATCHED_DECLARED_DESTINATION');
   const [deliveryMismatchReason, setDeliveryMismatchReason] = useState('');
+  const [gpsOverrideReason, setGpsOverrideReason] = useState('');
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
@@ -128,6 +134,14 @@ export default function ConfirmReceipt({
   const [checkedParcel, setCheckedParcel] = useState<Parcel | null>(null);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [isDelivered, setIsDelivered] = useState(false);
+
+  const gpsQuality = getGpsQuality(geoStatus, position);
+  const hasLowAccuracyGps = gpsQuality === 'low_accuracy';
+  const needsGpsOverrideReason = shouldRequireGpsOverrideReason(geoStatus);
+  const canProceedFromPhoto = Boolean(photoPreview) && (
+    geoStatus === 'success' ||
+    (needsGpsOverrideReason && gpsOverrideReason.trim().length > 0)
+  );
 
   useEffect(() => {
     onPreparingCameraChange?.(isAutoPreparingCamera);
@@ -167,46 +181,13 @@ export default function ConfirmReceipt({
       if (res.success && res.parcel) {
         const p = res.parcel;
 
-        let currentBranch = p['สาขาผู้ส่ง'];
-        const parcelNote = p['หมายเหตุ'] || '';
-        const forwardRegex = /\[ส่งต่อโดย:\s*(.*?)\s*จากสาขา:\s*(.*?)\s*ไปสาขา:\s*(.*?)\s*เมื่อ:\s*(.*?)\]/g;
-        let match;
-        while ((match = forwardRegex.exec(parcelNote)) !== null) {
-          currentBranch = match[3];
-        }
-
-        setForwardFromBranch(branches.includes(currentBranch) ? currentBranch : OTHER_VALUE);
+        setForwardFromBranch(getCurrentBranchFromParcel(p, branches));
 
         setCheckedParcel(p);
         setDeliveryMatchStatus('MATCHED_DECLARED_DESTINATION');
         setDeliveryMismatchReason('');
 
-        // ── Determine if truly delivered using events array (primary) or note regex (fallback) ──
-        const currentStatus = p['สถานะ'];
-        let actuallyDelivered = currentStatus === "ส่งสำเร็จ";
-
-        if (actuallyDelivered) {
-          if (Array.isArray(p.events) && p.events.length > 0) {
-            // Use structured events — more reliable than note regex
-            const actionEvents = p.events.filter(
-              e => e.eventType === 'FORWARD' || e.eventType === 'DELIVERED' || e.eventType === 'PROXY'
-            );
-            if (actionEvents.length > 0 && actionEvents[actionEvents.length - 1].eventType === 'FORWARD') {
-              actuallyDelivered = false;
-            }
-          } else {
-            // Fallback: legacy note regex
-            const noteStr = String(p['หมายเหตุ'] || "");
-            const maxIdx = Math.max(
-              noteStr.lastIndexOf('[ส่งต่อโดย:'),
-              noteStr.lastIndexOf('[รับแทนโดย:'),
-              noteStr.lastIndexOf('[รับพัสดุเรียบร้อย')
-            );
-            if (maxIdx >= 0 && maxIdx === noteStr.lastIndexOf('[ส่งต่อโดย:')) {
-              actuallyDelivered = false;
-            }
-          }
-        }
+        const actuallyDelivered = isParcelTrulyDelivered(p);
         setIsDelivered(actuallyDelivered);
 
         if (actuallyDelivered) {
@@ -249,6 +230,8 @@ export default function ConfirmReceipt({
     setForwardToBranch('');
     setIsProxy(false);
     setProxyName('');
+    setGpsOverrideReason('');
+    setShowAdvancedOptions(false);
     setDeliveryMatchStatus('MATCHED_DECLARED_DESTINATION');
     setDeliveryMismatchReason('');
     setCheckedParcel(null);
@@ -281,80 +264,14 @@ export default function ConfirmReceipt({
   };
 
   const processImageFile = async (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      toast.error('กรุณาเลือกไฟล์รูปภาพ');
-      return;
-    }
-
-    // ขนาดไฟล์ pre-check (20MB)
-    if (file.size > 20 * 1024 * 1024) {
-      toast.error('ไฟล์รูปภาพใหญ่เกินไป (สูงสุด 20MB)');
-      return;
-    }
-
-    const MAX_DIM = 1200;
-
     try {
-      // ใช้ createImageBitmap (non-blocking) ถ้า browser รองรับ
-      if (typeof createImageBitmap !== 'undefined') {
-        const bitmap = await createImageBitmap(file);
-        let { width, height } = bitmap;
-        if (width > MAX_DIM || height > MAX_DIM) {
-          const ratio = Math.min(MAX_DIM / width, MAX_DIM / height);
-          width = Math.round(width * ratio);
-          height = Math.round(height * ratio);
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) throw new Error('canvas context unavailable');
-        ctx.drawImage(bitmap, 0, 0, width, height);
-        bitmap.close();
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-        setPhotoPreview(dataUrl);
-        setPhotoUrl(dataUrl);
-        toast.success('แนบรูปหลักฐานแล้ว');
-        return;
-      }
-    } catch {
-      // fallback ด้านล่าง
+      const image = await processProofImageFile(file);
+      setPhotoPreview(image.dataUrl);
+      setPhotoUrl(image.dataUrl);
+      toast.success('แนบรูปหลักฐานแล้ว');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'เกิดข้อผิดพลาดในการประมวลผลรูปภาพ'));
     }
-
-    // Fallback: FileReader + Image (synchronous canvas)
-    const reader = new FileReader();
-    reader.onerror = () => toast.error('ไม่สามารถอ่านไฟล์ได้ กรุณาลองใหม่');
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onerror = () => toast.error('ไม่สามารถโหลดรูปภาพได้ กรุณาเลือกไฟล์อื่น');
-      img.onload = () => {
-        try {
-          let { width, height } = img;
-          if (width > MAX_DIM || height > MAX_DIM) {
-            const ratio = Math.min(MAX_DIM / width, MAX_DIM / height);
-            width = Math.round(width * ratio);
-            height = Math.round(height * ratio);
-          }
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(img, 0, 0, width, height);
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-            setPhotoPreview(dataUrl);
-            setPhotoUrl(dataUrl);
-            toast.success('แนบรูปหลักฐานแล้ว');
-          } else {
-            toast.error('ไม่สามารถประมวลผลรูปภาพได้');
-          }
-        } catch {
-          toast.error('เกิดข้อผิดพลาดในการประมวลผลรูปภาพ');
-        }
-      };
-      img.src = event.target?.result as string;
-    };
-    reader.readAsDataURL(file);
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -367,57 +284,39 @@ export default function ConfirmReceipt({
     setIsConfirmDialogOpen(false);
     setIsLoading(true);
     try {
-      let eventType: 'FORWARD' | 'PROXY' | 'DELIVERED' | undefined;
-      let eventLocation: string | undefined;
-      let eventDestLocation: string | undefined;
-      let eventPerson: string | undefined;
-
-      const finalForwardToBranch = resolveSelectValue(forwardToBranch);
-      const safeNote = sanitizeTextInput(note, 2000);
-      const safeForwardSender = sanitizeTextInput(forwardSender, 200);
-      const safeProxyName = sanitizeTextInput(proxyName, 200);
-
-      if (isForwarding && finalForwardToBranch) {
-        eventType = 'FORWARD';
-        // Use the last known branch from the parcel (auto-detected, not user-selected)
-        eventLocation = sanitizeTextInput(resolveSelectValue(forwardFromBranch), 100);
-        eventDestLocation = sanitizeTextInput(finalForwardToBranch, 100);
-        eventPerson = safeForwardSender;
-      } else if (isProxy && safeProxyName) {
-        eventType = 'PROXY';
-        eventLocation = sanitizeTextInput(checkedParcel?.['สาขาผู้รับ'], 100);
-        eventPerson = safeProxyName;
-      } else if (!isForwarding && !isProxy) {
-        eventType = 'DELIVERED';
-        eventLocation = sanitizeTextInput(checkedParcel?.['สาขาผู้รับ'], 100);
-        eventPerson = sanitizeTextInput(checkedParcel?.['ผู้รับ'], 200);
-      }
-
-      const isFinalDelivery = !isForwarding && (eventType === 'DELIVERED' || eventType === 'PROXY');
-      const finalDeliveryMatchStatus = isFinalDelivery ? deliveryMatchStatus : undefined;
-      const safeDeliveryMismatchReason = isFinalDelivery && deliveryMatchStatus === 'DELIVERED_ELSEWHERE'
-        ? sanitizeTextInput(deliveryMismatchReason, 500)
-        : undefined;
+      const safeGpsOverrideReason = sanitizeTextInput(gpsOverrideReason, 300);
+      const actionPayload = checkedParcel
+        ? buildDeliveryActionPayload(checkedParcel, {
+            note,
+            isForwarding,
+            forwardSender,
+            forwardFromBranch,
+            forwardToBranch,
+            isProxy,
+            proxyName,
+            deliveryMatchStatus,
+            deliveryMismatchReason,
+          })
+        : null;
 
       const validationError =
         !photoUrl ? 'กรุณาแนบรูปหลักฐาน' :
-        !eventType ? 'กรุณาเลือกวิธีบันทึกการจัดส่ง' :
-        isForwarding ? (
-          validateRequiredText(eventPerson, 'ชื่อผู้รับช่วงต่อ', 1, 200) ||
-          validateRequiredText(eventDestLocation, 'จุดหมายถัดไป', 1, 100)
-        ) :
-        isProxy ? validateRequiredText(eventPerson, 'ชื่อผู้รับแทน', 1, 200) :
-        isFinalDelivery && deliveryMatchStatus === 'DELIVERED_ELSEWHERE' ? validateRequiredText(safeDeliveryMismatchReason, 'เหตุผลที่ส่งคนละจุด', 1, 500) :
-        null;
+        needsGpsOverrideReason && !safeGpsOverrideReason ? 'กรุณาระบุเหตุผลที่ยืนยันโดยไม่มี GPS' :
+        !actionPayload ? 'กรุณาตรวจสอบพัสดุก่อนยืนยัน' :
+        actionPayload.validationError || null;
 
       if (validationError) {
         toast.error(validationError);
         setIsLoading(false);
         return;
       }
+      if (!actionPayload) {
+        setIsLoading(false);
+        return;
+      }
 
       const finalTrackingId = sanitizeTextInput(trackingId, 100).toUpperCase();
-      const finalEventType = eventType;
+      const finalEventType = actionPayload.eventType;
       
       // Optimistic Update
       const newStatus = isForwarding ? 'กำลังจัดส่ง' : 'ส่งสำเร็จ';
@@ -427,18 +326,23 @@ export default function ConfirmReceipt({
 
       toast.success('กำลังบันทึกการจัดส่ง...');
       
+      const finalNote = [
+        actionPayload.note,
+        ...buildGpsEvidenceNote({ status: geoStatus, position, overrideReason: safeGpsOverrideReason }),
+      ].filter(Boolean).join(' ');
+
       const response = await confirmReceipt(
         finalTrackingId,
         photoUrl,
-        safeNote,
+        finalNote,
         position?.latitude,
         position?.longitude,
         finalEventType,
-        eventLocation,
-        eventDestLocation,
-        eventPerson,
-        finalDeliveryMatchStatus,
-        safeDeliveryMismatchReason
+        actionPayload.location,
+        actionPayload.destLocation,
+        actionPayload.person,
+        actionPayload.deliveryMatchStatus,
+        actionPayload.deliveryMismatchReason
       );
       
       if (response && response.success) {
@@ -455,6 +359,8 @@ export default function ConfirmReceipt({
         setForwardToBranch('');
         setIsProxy(false);
         setProxyName('');
+        setGpsOverrideReason('');
+        setShowAdvancedOptions(false);
         setDeliveryMatchStatus('MATCHED_DECLARED_DESTINATION');
         setDeliveryMismatchReason('');
         setCheckedParcel(null);
@@ -622,12 +528,14 @@ export default function ConfirmReceipt({
 
             {/* GPS Status Indicator */}
             <div className={`flex items-start gap-3 rounded-2xl border p-3 ${
-              geoStatus === 'success' ? 'bg-green-50 border-green-200 text-green-800' :
+              geoStatus === 'success' && !hasLowAccuracyGps ? 'bg-green-50 border-green-200 text-green-800' :
+              geoStatus === 'success' && hasLowAccuracyGps ? 'bg-amber-50 border-amber-200 text-amber-900' :
               geoStatus === 'error' || geoStatus === 'denied' ? 'bg-error-container/30 border-error/20 text-error' :
               'bg-surface-container-low border-outline-variant text-on-surface-variant'
             }`}>
               <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                geoStatus === 'success' ? 'bg-green-100 text-green-700' :
+                geoStatus === 'success' && !hasLowAccuracyGps ? 'bg-green-100 text-green-700' :
+                geoStatus === 'success' && hasLowAccuracyGps ? 'bg-amber-100 text-amber-700' :
                 geoStatus === 'error' || geoStatus === 'denied' ? 'bg-error-container text-error' :
                 'bg-surface-container text-on-surface-variant'
               }`}>
@@ -639,24 +547,35 @@ export default function ConfirmReceipt({
               </div>
               <div className="flex-1">
                 <p className="text-sm font-black leading-tight">
-                  {geoStatus === 'success' ? 'พร้อมบันทึกพิกัด GPS' :
-                   geoStatus === 'loading' ? 'กำลังตรวจจับพิกัด GPS...' :
-                   geoStatus === 'denied' ? 'ยังไม่ได้อนุญาตให้ใช้ตำแหน่ง' :
-                   geoStatus === 'error' ? 'ยังดึงพิกัด GPS ไม่สำเร็จ' : 'รอเริ่มตรวจจับพิกัด'}
+                  {geoStatus === 'success' && !hasLowAccuracyGps ? 'พร้อมบันทึกตำแหน่ง' :
+                   geoStatus === 'success' && hasLowAccuracyGps ? 'ตำแหน่งแม่นยำต่ำ' :
+                   geoStatus === 'loading' ? 'กำลังหาตำแหน่ง' :
+                   geoStatus === 'denied' || geoStatus === 'error' ? 'ตำแหน่งไม่พร้อม' : 'รอเริ่มหาตำแหน่ง'}
                 </p>
                 <p className="mt-0.5 text-xs leading-snug opacity-75">
                   {geoStatus === 'success' && position
-                    ? `${position.latitude.toFixed(6)}, ${position.longitude.toFixed(6)} (ความแม่นยำ ~${Math.round(position.accuracy)}m${position.accuracy > 100 ? ' — ต่ำ' : ''})`
+                    ? `${position.latitude.toFixed(6)}, ${position.longitude.toFixed(6)} (ประมาณ ${Math.round(position.accuracy)}m${hasLowAccuracyGps ? ' - ใช้ได้แต่ควรตรวจปลายทางด้วยตา' : ''})`
                     : geoError ? geoError
-                    : 'ต้องมีพิกัด GPS ก่อนบันทึกการจัดส่ง'}
+                    : 'ระบบจะบันทึกตำแหน่งไว้เป็นหลักฐานประกอบ'}
                 </p>
                 {(geoStatus === 'error' || geoStatus === 'denied') && (
-                  <button
-                    onClick={requestLocation}
-                    className="mt-1 text-xs font-black underline underline-offset-2 hover:opacity-80"
-                  >
-                    ลองใหม่อีกครั้ง
-                  </button>
+                  <div className="mt-3 space-y-2">
+                    <button
+                      onClick={requestLocation}
+                      className="text-xs font-black underline underline-offset-2 hover:opacity-80"
+                    >
+                      ลองดึงตำแหน่งอีกครั้ง
+                    </button>
+                    <div>
+                      <label className="mb-1 block text-[10px] font-black uppercase tracking-wider opacity-70">เหตุผลถ้าต้องยืนยันโดยไม่มี GPS</label>
+                      <textarea
+                        value={gpsOverrideReason}
+                        onChange={(event) => setGpsOverrideReason(sanitizeTextInput(event.target.value, 300))}
+                        placeholder="เช่น อยู่ในอาคาร, สัญญาณไม่ขึ้น, ลูกค้ารีบ"
+                        className="min-h-[64px] w-full resize-none rounded-xl border border-error/20 bg-white px-3 py-2 text-sm text-on-surface outline-none focus:ring-1 focus:ring-error"
+                      />
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
@@ -664,17 +583,25 @@ export default function ConfirmReceipt({
             <div>
               <button
                 onClick={() => {
-                  if (geoStatus !== 'success') {
-                    toast.warning('กรุณารอให้ GPS พร้อม หรือลองดึงตำแหน่งใหม่ก่อนดำเนินการต่อ');
-                    if (geoStatus !== 'loading') requestLocation();
+                  if (!canProceedFromPhoto) {
+                    if (!photoPreview) {
+                      toast.warning('กรุณาถ่ายรูปหลักฐานก่อน');
+                    } else if (needsGpsOverrideReason) {
+                      toast.warning('กรุณากรอกเหตุผลที่ยืนยันโดยไม่มี GPS');
+                    } else if (geoStatus !== 'loading') {
+                      toast.warning('กรุณารอให้ระบบดึงตำแหน่ง หรือลองดึงตำแหน่งใหม่');
+                      requestLocation();
+                    } else {
+                      toast.warning('กำลังหาตำแหน่ง กรุณารอสักครู่');
+                    }
                     return;
                   }
                   setCurrentStep(3);
                 }}
-                disabled={!photoPreview || geoStatus === 'loading'}
+                disabled={!photoPreview || geoStatus === 'loading' || (needsGpsOverrideReason && !gpsOverrideReason.trim())}
                 className="group flex h-13 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 font-display text-base font-black text-white shadow-lg shadow-primary/20 transition-all hover:scale-[1.01] hover:bg-primary/95 active:scale-[0.98] disabled:scale-100 disabled:bg-on-surface-variant/30 disabled:shadow-none"
               >
-                ไปขั้นตอนต่อไป
+                {needsGpsOverrideReason ? 'ยืนยันโดยไม่มี GPS' : 'ไปขั้นตอนต่อไป'}
                 <span className="material-symbols-outlined transition-transform group-hover:translate-x-1">arrow_forward</span>
               </button>
             </div>
@@ -728,34 +655,116 @@ export default function ConfirmReceipt({
             </div>
 
             <div className="space-y-4">
-              <div className="space-y-3">
-                <div className={`rounded-2xl border-2 p-3 transition-all duration-300 ${isForwarding ? 'bg-secondary-fixed/10 border-secondary-container' : 'bg-white border-outline-variant/30 hover:border-outline-variant'}`}>
-                  <div className="flex items-center justify-between cursor-pointer group" onClick={() => { setIsForwarding(!isForwarding); if (!isForwarding) setIsProxy(false); }}>
-                    <div className="flex min-w-0 items-center gap-3">
-                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors ${isForwarding ? 'bg-secondary text-white' : 'bg-surface-container text-on-surface-variant'}`}>
-                        <span className="material-symbols-outlined text-xl">fork_right</span>
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-display text-sm font-black text-primary">ส่งต่อไปจุดถัดไป</p>
-                        <p className="text-[11px] leading-tight text-on-surface-variant/60">เลือกเมื่อยังไม่ได้ส่งถึงผู้รับ ต้องส่งต่อให้คนหรือสาขาอื่น</p>
-                      </div>
-                    </div>
-                    <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-all ${isForwarding ? 'border-secondary bg-secondary' : 'border-outline-variant group-hover:border-primary'}`}>
-                      {isForwarding && <span className="material-symbols-outlined text-white text-base">check</span>}
-                    </div>
+              <div className="rounded-2xl border border-green-200 bg-green-50 p-3 text-green-900">
+                <div className="flex items-start gap-2.5">
+                  <span className="material-symbols-outlined mt-0.5 text-xl">task_alt</span>
+                  <div>
+                    <p className="font-display text-sm font-black">ค่าเริ่มต้น: ส่งสำเร็จตามปลายทาง</p>
+                    <p className="text-xs font-semibold leading-snug opacity-75">ถ้าส่งตามงานปกติ ไม่ต้องเลือกอะไรเพิ่ม กดบันทึกผลการส่งได้เลย</p>
                   </div>
-                  {isForwarding && (
-                    <div className="mt-3 space-y-3 animate-in slide-in-from-top-2 duration-300">
-                      <div className="relative">
-                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/40 text-lg">person</span>
-                        <input
-                          placeholder="ชื่อคนที่รับช่วงต่อ"
-                          value={forwardSender}
-                          onChange={(e) => setForwardSender(sanitizeTextInput(e.target.value, 200))}
-                          className="w-full rounded-2xl border border-outline-variant bg-white py-2.5 pl-10 pr-4 font-display text-sm outline-none focus:ring-1 focus:ring-secondary"
-                        />
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowAdvancedOptions(value => !value)}
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-outline-variant/50 bg-white font-display text-sm font-black text-primary transition-all hover:bg-surface-container-lowest"
+              >
+                <span className="material-symbols-outlined text-lg">tune</span>
+                ตัวเลือกเพิ่มเติม
+                <span className={`material-symbols-outlined text-lg transition-transform ${showAdvancedOptions ? 'rotate-180' : ''}`}>expand_more</span>
+              </button>
+
+              {showAdvancedOptions && (
+                <div className="space-y-3 animate-in slide-in-from-top-2 duration-300">
+                  <div className={`rounded-2xl border-2 p-3 transition-all duration-300 ${isProxy ? 'bg-blue-50 border-blue-500' : 'bg-white border-outline-variant/30 hover:border-outline-variant'}`}>
+                    <div className="flex cursor-pointer items-center justify-between group" onClick={() => { setIsProxy(!isProxy); if (!isProxy) { setIsForwarding(false); setDeliveryMatchStatus('MATCHED_DECLARED_DESTINATION'); setDeliveryMismatchReason(''); } }}>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors ${isProxy ? 'bg-blue-600 text-white' : 'bg-surface-container text-on-surface-variant'}`}>
+                          <span className="material-symbols-outlined text-xl">account_circle</span>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-display text-sm font-black text-primary">มีผู้รับแทน</p>
+                          <p className="text-[11px] leading-tight text-on-surface-variant/60">ส่งถึงปลายทางแล้ว แต่คนอื่นรับแทนผู้รับตามรายการ</p>
+                        </div>
                       </div>
-                      <div>
+                      <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-all ${isProxy ? 'border-blue-600 bg-blue-600' : 'border-outline-variant group-hover:border-primary'}`}>
+                        {isProxy && <span className="material-symbols-outlined text-white text-base">check</span>}
+                      </div>
+                    </div>
+                    {isProxy && (
+                      <div className="mt-3 animate-in slide-in-from-top-2 duration-300">
+                        <div className="relative">
+                          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/40 text-lg">person</span>
+                          <input
+                            placeholder="ชื่อคนที่รับแทน"
+                            value={proxyName}
+                            onChange={(e) => setProxyName(sanitizeTextInput(e.target.value, 200))}
+                            className="w-full rounded-2xl border border-outline-variant bg-white py-2.5 pl-10 pr-4 font-display text-sm outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {!isForwarding && (
+                    <div className={`rounded-2xl border-2 p-3 transition-all duration-300 ${deliveryMatchStatus === 'DELIVERED_ELSEWHERE' ? 'bg-amber-50 border-amber-500' : 'bg-white border-outline-variant/30 hover:border-outline-variant'}`}>
+                      <div className="flex cursor-pointer items-center justify-between group" onClick={() => { setDeliveryMatchStatus(deliveryMatchStatus === 'DELIVERED_ELSEWHERE' ? 'MATCHED_DECLARED_DESTINATION' : 'DELIVERED_ELSEWHERE'); }}>
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors ${deliveryMatchStatus === 'DELIVERED_ELSEWHERE' ? 'bg-amber-500 text-white' : 'bg-surface-container text-on-surface-variant'}`}>
+                            <span className="material-symbols-outlined text-xl">move_location</span>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-display text-sm font-black text-primary">ส่งคนละจุด / ฝากไว้ที่อื่น</p>
+                            <p className="text-[11px] leading-tight text-on-surface-variant/60">ใช้เมื่อปลายทางจริงไม่ตรงกับที่ระบุไว้ในงาน</p>
+                          </div>
+                        </div>
+                        <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-all ${deliveryMatchStatus === 'DELIVERED_ELSEWHERE' ? 'border-amber-500 bg-amber-500' : 'border-outline-variant group-hover:border-primary'}`}>
+                          {deliveryMatchStatus === 'DELIVERED_ELSEWHERE' && <span className="material-symbols-outlined text-white text-base">check</span>}
+                        </div>
+                      </div>
+                      {deliveryMatchStatus === 'DELIVERED_ELSEWHERE' && (
+                        <div className="mt-3 animate-in slide-in-from-top-2 duration-300">
+                          <label className="mb-1.5 block px-1 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">
+                            เหตุผลที่ส่งคนละจุด
+                          </label>
+                          <textarea
+                            placeholder="เช่น ลูกค้าให้ฝากอีกแผนก, ฝากไว้ที่ป้อมยาม, ชื่อสถานที่ในระบบไม่ละเอียด..."
+                            value={deliveryMismatchReason}
+                            onChange={(e) => setDeliveryMismatchReason(sanitizeTextInput(e.target.value, 500))}
+                            className="min-h-[72px] w-full resize-none rounded-2xl border border-amber-200 bg-white px-4 py-2.5 font-display text-sm outline-none transition-all focus:ring-1 focus:ring-amber-500"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className={`rounded-2xl border-2 p-3 transition-all duration-300 ${isForwarding ? 'bg-secondary-fixed/10 border-secondary-container' : 'bg-white border-outline-variant/30 hover:border-outline-variant'}`}>
+                    <div className="flex cursor-pointer items-center justify-between group" onClick={() => { setIsForwarding(!isForwarding); if (!isForwarding) { setIsProxy(false); setProxyName(''); setDeliveryMatchStatus('MATCHED_DECLARED_DESTINATION'); setDeliveryMismatchReason(''); } }}>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors ${isForwarding ? 'bg-secondary text-white' : 'bg-surface-container text-on-surface-variant'}`}>
+                          <span className="material-symbols-outlined text-xl">fork_right</span>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-display text-sm font-black text-primary">ส่งต่อไปจุดถัดไป</p>
+                          <p className="text-[11px] leading-tight text-on-surface-variant/60">ยังไม่ถึงผู้รับ ต้องส่งต่อให้คนหรือสาขาอื่น</p>
+                        </div>
+                      </div>
+                      <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-all ${isForwarding ? 'border-secondary bg-secondary' : 'border-outline-variant group-hover:border-primary'}`}>
+                        {isForwarding && <span className="material-symbols-outlined text-white text-base">check</span>}
+                      </div>
+                    </div>
+                    {isForwarding && (
+                      <div className="mt-3 space-y-3 animate-in slide-in-from-top-2 duration-300">
+                        <div className="relative">
+                          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/40 text-lg">person</span>
+                          <input
+                            placeholder="ชื่อคนที่รับช่วงต่อ"
+                            value={forwardSender}
+                            onChange={(e) => setForwardSender(sanitizeTextInput(e.target.value, 200))}
+                            className="w-full rounded-2xl border border-outline-variant bg-white py-2.5 pl-10 pr-4 font-display text-sm outline-none focus:ring-1 focus:ring-secondary"
+                          />
+                        </div>
                         <NativeSelect
                           value={forwardToBranch}
                           onChange={setForwardToBranch}
@@ -766,91 +775,8 @@ export default function ConfirmReceipt({
                           otherPlaceholder="ระบุจุดหมายถัดไป"
                         />
                       </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className={`rounded-2xl border-2 p-3 transition-all duration-300 ${isProxy ? 'bg-blue-50 border-blue-500' : 'bg-white border-outline-variant/30 hover:border-outline-variant'}`}>
-                  <div className="flex items-center justify-between cursor-pointer group" onClick={() => { setIsProxy(!isProxy); if (!isProxy) setIsForwarding(false); }}>
-                    <div className="flex min-w-0 items-center gap-3">
-                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors ${isProxy ? 'bg-blue-600 text-white' : 'bg-surface-container text-on-surface-variant'}`}>
-                        <span className="material-symbols-outlined text-xl">account_circle</span>
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-display text-sm font-black text-primary">มีผู้รับแทน</p>
-                        <p className="text-[11px] leading-tight text-on-surface-variant/60">เลือกเมื่อส่งถึงปลายทางแล้ว แต่คนอื่นรับแทนผู้รับตามรายการ</p>
-                      </div>
-                    </div>
-                    <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-all ${isProxy ? 'border-blue-600 bg-blue-600' : 'border-outline-variant group-hover:border-primary'}`}>
-                      {isProxy && <span className="material-symbols-outlined text-white text-base">check</span>}
-                    </div>
+                    )}
                   </div>
-                  {isProxy && (
-                    <div className="mt-3 animate-in slide-in-from-top-2 duration-300">
-                      <div className="relative">
-                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/40 text-lg">person</span>
-                        <input
-                          placeholder="ชื่อคนที่รับแทน"
-                          value={proxyName}
-                          onChange={(e) => setProxyName(sanitizeTextInput(e.target.value, 200))}
-                          className="w-full rounded-2xl border border-outline-variant bg-white py-2.5 pl-10 pr-4 font-display text-sm outline-none focus:ring-1 focus:ring-blue-500"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {!isForwarding && (
-                <div className="space-y-3 rounded-2xl border border-outline-variant/30 bg-white p-3">
-                  <div>
-                    <p className="font-display text-sm font-black text-primary">ยืนยันจุดส่งจริง</p>
-                    <p className="text-[11px] leading-tight text-on-surface-variant/60">
-                      เลือกตามหน้างานจริงเมื่อไม่มีพิกัดปลายทางอ้างอิง
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDeliveryMatchStatus('MATCHED_DECLARED_DESTINATION');
-                        setDeliveryMismatchReason('');
-                      }}
-                      className={`flex min-h-16 items-center gap-2 rounded-2xl border px-3 py-2 text-left transition-all ${
-                        deliveryMatchStatus === 'MATCHED_DECLARED_DESTINATION'
-                          ? 'border-green-500 bg-green-50 text-green-900'
-                          : 'border-outline-variant/40 bg-surface-container-lowest text-on-surface-variant hover:border-primary/30'
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-xl">task_alt</span>
-                      <span className="text-sm font-black leading-snug">ส่งตรงตามปลายทางที่ระบุ</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDeliveryMatchStatus('DELIVERED_ELSEWHERE')}
-                      className={`flex min-h-16 items-center gap-2 rounded-2xl border px-3 py-2 text-left transition-all ${
-                        deliveryMatchStatus === 'DELIVERED_ELSEWHERE'
-                          ? 'border-amber-500 bg-amber-50 text-amber-950'
-                          : 'border-outline-variant/40 bg-surface-container-lowest text-on-surface-variant hover:border-primary/30'
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-xl">move_location</span>
-                      <span className="text-sm font-black leading-snug">ส่งคนละจุด / ฝากไว้ที่อื่น</span>
-                    </button>
-                  </div>
-                  {deliveryMatchStatus === 'DELIVERED_ELSEWHERE' && (
-                    <div className="animate-in slide-in-from-top-2 duration-300">
-                      <label className="mb-1.5 block px-1 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">
-                        เหตุผลที่ส่งคนละจุด
-                      </label>
-                      <textarea
-                        placeholder="เช่น ลูกค้าให้ฝากอีกแผนก, ฝากไว้ที่ป้อมยาม, ชื่อสถานที่ในระบบไม่ละเอียด..."
-                        value={deliveryMismatchReason}
-                        onChange={(e) => setDeliveryMismatchReason(sanitizeTextInput(e.target.value, 500))}
-                        className="min-h-[72px] w-full resize-none rounded-2xl border border-amber-200 bg-white px-4 py-2.5 font-display text-sm outline-none transition-all focus:ring-1 focus:ring-amber-500"
-                      />
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -1065,6 +991,18 @@ export default function ConfirmReceipt({
                     }}
                   />
                   <div className="absolute inset-0 shadow-[inset_0_0_20px_rgba(0,0,0,0.1)] z-[400] pointer-events-none" />
+                </div>
+              </div>
+            )}
+
+            {!position && gpsOverrideReason && (
+              <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-amber-950">
+                <div className="flex items-start gap-3">
+                  <span className="material-symbols-outlined text-xl">location_off</span>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider opacity-70">ยืนยันโดยไม่มี GPS</p>
+                    <p className="text-sm font-bold leading-snug">{gpsOverrideReason}</p>
+                  </div>
                 </div>
               </div>
             )}

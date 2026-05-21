@@ -68,6 +68,8 @@ export interface CreateParcelPayload {
   latitude?: number;
   longitude?: number;
   pin?: string;
+  clientId?: string;
+  idempotencyKey?: string;
 }
 
 export interface CreateParcelResponse {
@@ -122,6 +124,7 @@ export interface ConfirmReceiptPayload {
   deliveryMatchStatus?: DeliveryMatchStatus;
   deliveryMismatchReason?: string;
   pin?: string;
+  idempotencyKey?: string;
 }
 
 export interface ConfirmReceiptResponse {
@@ -132,6 +135,7 @@ export interface ConfirmReceiptResponse {
 export interface StartDeliveryPayload {
   action: 'startDelivery';
   trackingID: string;
+  idempotencyKey?: string;
 }
 
 export interface StartDeliveryResponse {
@@ -145,6 +149,7 @@ export interface StartDeliveryResponse {
 export interface ReleaseDeliveryPayload {
   action: 'releaseDelivery';
   trackingID: string;
+  idempotencyKey?: string;
 }
 
 export interface ReleaseDeliveryResponse {

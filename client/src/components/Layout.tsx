@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import NativeSelect, { resolveSelectValue } from '@/components/NativeSelect';
 
-type PageId = "dashboard" | "create" | "track" | "users";
+type PageId = "dashboard" | "create" | "track" | "users" | "login";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -22,6 +22,7 @@ const pagePaths: Record<PageId, string> = {
   create: "/create",
   track: "/track",
   users: "/users",
+  login: "/login",
 };
 
 type NavItem = {
@@ -108,22 +109,15 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
   };
 
   const currentRole = normalizeRole(user?.role ?? 'GUEST');
-  const dashboardLabel =
-    currentRole === 'USER'
-      ? 'รายการที่ฉันส่ง'
-      : currentRole === 'MESSENGER'
-        ? 'งานที่ต้องไปส่ง'
-        : 'ภาพรวมพัสดุ';
+  const dashboardLabel = currentRole === 'MESSENGER' ? 'งานที่ต้องไปส่ง' : 'ภาพรวมพัสดุ';
   const dashboardIcon =
     currentRole === 'MESSENGER'
       ? 'local_shipping'
-      : currentRole === 'USER'
-        ? 'inventory_2'
-        : 'analytics';
+      : 'analytics';
   const allNavItems: NavItem[] = [
-    { id: "dashboard", label: dashboardLabel, icon: dashboardIcon, badge: null, roles: ['ADMIN', 'MESSENGER', 'USER'], accent: "from-sky-400 to-blue-500" },
-    { id: "create",    label: "ส่งพัสดุใหม่", icon: "add_box", badge: null, roles: ['ADMIN'], accent: "from-amber-300 to-orange-500" },
-    { id: "track",     label: "ดูสถานะพัสดุ", icon: "qr_code_scanner", badge: null, roles: ['ADMIN', 'GUEST'], accent: "from-violet-300 to-indigo-500" },
+    { id: "dashboard", label: dashboardLabel, icon: dashboardIcon, badge: null, roles: ['ADMIN', 'MESSENGER'], accent: "from-sky-400 to-blue-500" },
+    { id: "create",    label: "ส่งพัสดุใหม่", icon: "add_box", badge: null, roles: ['ADMIN', 'MESSENGER', 'GUEST'], accent: "from-amber-300 to-orange-500" },
+    { id: "track",     label: "ดูสถานะพัสดุ", icon: "qr_code_scanner", badge: null, roles: ['ADMIN', 'MESSENGER', 'GUEST'], accent: "from-violet-300 to-indigo-500" },
     { id: "users",     label: "จัดการผู้ใช้", icon: "manage_accounts", badge: null, roles: ['ADMIN'], accent: "from-rose-300 to-red-500" },
   ];
   const navItems = allNavItems.filter(item => item.roles.includes(currentRole));
@@ -265,7 +259,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
               ) : (
                 <button
                   type="button"
-                  onClick={() => window.location.reload()}
+                  onClick={() => setCurrentPage("login")}
                   className="grid h-10 w-10 place-items-center rounded-2xl bg-primary/10 text-primary transition-all hover:bg-primary hover:text-white active:scale-95"
                   title="เข้าสู่ระบบพนักงาน"
                   aria-label="เข้าสู่ระบบพนักงาน"

@@ -1,10 +1,9 @@
-export type SystemRole = 'USER' | 'MESSENGER' | 'ADMIN';
+export type SystemRole = 'MESSENGER' | 'ADMIN';
 export type AppRole = SystemRole | 'GUEST';
 
-export const SYSTEM_ROLES: SystemRole[] = ['USER', 'MESSENGER', 'ADMIN'];
+export const SYSTEM_ROLES: SystemRole[] = ['MESSENGER', 'ADMIN'];
 
 export const ROLE_LABELS: Record<AppRole, string> = {
-  USER: 'ผู้ส่งพัสดุ',
   MESSENGER: 'Messenger จัดส่ง',
   ADMIN: 'Admin',
   GUEST: 'Guest',
@@ -15,6 +14,5 @@ export function normalizeRole(role: unknown): AppRole {
 
   if (normalized === 'ADMIN') return 'ADMIN';
   if (normalized === 'MESSENGER' || normalized === 'MANAGER') return 'MESSENGER';
-  if (normalized === 'USER') return 'USER';
   return 'GUEST';
 }

@@ -14,6 +14,14 @@ import NativeSelect, { resolveSelectValue } from '@/components/NativeSelect';
 import QRCode from 'qrcode';
 import { sanitizeTextInput, validateRequiredText } from '@/lib/validation';
 import { useGeolocation } from '@/hooks/useGeolocation';
+import { getErrorMessage } from '@/lib/apiErrorHelper';
+import { processProofImageFile } from '@/lib/imageProofHelper';
+import {
+  EMPTY_CREATE_PARCEL_DRAFT,
+  clearCreateParcelDraft,
+  loadCreateParcelDraft,
+  saveCreateParcelDraft,
+} from '@/lib/createParcelDraft';
 
 const DOC_TYPES = ['เอกสาร', 'พัสดุ'];
 
@@ -31,15 +39,7 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
   const { position, status: geoStatus, errorMessage: geoError, requestLocation } = useGeolocation();
   const proofInputRef = useRef<HTMLInputElement>(null);
 
-  const [formData, setFormData] = useState({
-    senderName: '',
-    senderBranch: '',
-    receiverName: '',
-    receiverBranch: '',
-    docType: '',
-    description: '',
-    note: '',
-  });
+  const [formData, setFormData] = useState(loadCreateParcelDraft);
 
   const [createdTrackingId, setCreatedTrackingId] = useState<string | null>(null);
   const [createdParcelDetails, setCreatedParcelDetails] = useState<CreatedParcelDetails | null>(null);
@@ -63,6 +63,10 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
   }, [geoStatus, requestLocation]);
 
   useEffect(() => {
+    saveCreateParcelDraft(formData);
+  }, [formData]);
+
+  useEffect(() => {
     if (!isLoading) return;
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault();
@@ -78,75 +82,14 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
   };
 
   const processProofImage = async (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      toast.error('กรุณาเลือกไฟล์รูปภาพ');
-      return;
-    }
-    if (file.size > 20 * 1024 * 1024) {
-      toast.error('ไฟล์รูปภาพใหญ่เกินไป (สูงสุด 20MB)');
-      return;
-    }
-
-    const MAX_DIM = 1200;
     try {
-      if (typeof createImageBitmap !== 'undefined') {
-        const bitmap = await createImageBitmap(file);
-        let { width, height } = bitmap;
-        if (width > MAX_DIM || height > MAX_DIM) {
-          const ratio = Math.min(MAX_DIM / width, MAX_DIM / height);
-          width = Math.round(width * ratio);
-          height = Math.round(height * ratio);
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) throw new Error('canvas context unavailable');
-        ctx.drawImage(bitmap, 0, 0, width, height);
-        bitmap.close();
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-        setProofPhotoPreview(dataUrl);
-        setProofPhotoUrl(dataUrl);
-        toast.success('แนบรูปหลักฐานแล้ว');
-        return;
-      }
-    } catch {
-      // Use FileReader fallback below.
+      const image = await processProofImageFile(file);
+      setProofPhotoPreview(image.dataUrl);
+      setProofPhotoUrl(image.dataUrl);
+      toast.success('แนบรูปหลักฐานแล้ว');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'เกิดข้อผิดพลาดในการประมวลผลรูปภาพ'));
     }
-
-    const reader = new FileReader();
-    reader.onerror = () => toast.error('ไม่สามารถอ่านไฟล์ได้ กรุณาลองใหม่');
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onerror = () => toast.error('ไม่สามารถโหลดรูปภาพได้ กรุณาเลือกไฟล์อื่น');
-      img.onload = () => {
-        try {
-          let { width, height } = img;
-          if (width > MAX_DIM || height > MAX_DIM) {
-            const ratio = Math.min(MAX_DIM / width, MAX_DIM / height);
-            width = Math.round(width * ratio);
-            height = Math.round(height * ratio);
-          }
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) {
-            toast.error('ไม่สามารถประมวลผลรูปภาพได้');
-            return;
-          }
-          ctx.drawImage(img, 0, 0, width, height);
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-          setProofPhotoPreview(dataUrl);
-          setProofPhotoUrl(dataUrl);
-          toast.success('แนบรูปหลักฐานแล้ว');
-        } catch {
-          toast.error('เกิดข้อผิดพลาดในการประมวลผลรูปภาพ');
-        }
-      };
-      img.src = event.target?.result as string;
-    };
-    reader.readAsDataURL(file);
   };
 
   const handleProofFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -233,7 +176,8 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
           createdAt: new Date().toISOString(),
         });
         setIsResultOpen(true);
-        setFormData({ senderName: '', senderBranch: '', receiverName: '', receiverBranch: '', docType: '', description: '', note: '' });
+        clearCreateParcelDraft();
+        setFormData(EMPTY_CREATE_PARCEL_DRAFT);
         clearProofPhoto();
       } else {
         toast.error(result.error || 'ไม่สามารถสร้างรายการได้');

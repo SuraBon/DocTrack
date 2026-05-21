@@ -13,6 +13,11 @@ import { parseParcelTimeline } from '@/lib/timeline';
 import TrackingMap from '@/components/TrackingMap';
 import { formatThaiDateTime } from '@/lib/dateUtils';
 import { isValidTrackingId, sanitizeTextInput } from '@/lib/validation';
+import {
+  getCreatedParcelHistory,
+  updateCreatedParcelHistoryFromParcel,
+  type CreatedParcelHistoryItem,
+} from '@/lib/createdParcelHistory';
 
 export default function Track({ embedded = false }: { embedded?: boolean }) {
   const [trackingId, setTrackingId] = useState('');
@@ -20,6 +25,7 @@ export default function Track({ embedded = false }: { embedded?: boolean }) {
   const [searchResults, setSearchResults] = useState<Parcel[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [createdHistory, setCreatedHistory] = useState<CreatedParcelHistoryItem[]>([]);
 
   useEffect(() => {
     try {
@@ -34,6 +40,13 @@ export default function Track({ embedded = false }: { embedded?: boolean }) {
     } catch {
       localStorage.removeItem('recent_searches');
     }
+  }, []);
+
+  useEffect(() => {
+    const syncHistory = () => setCreatedHistory(getCreatedParcelHistory());
+    syncHistory();
+    window.addEventListener('doc-track-created-parcels-updated', syncHistory);
+    return () => window.removeEventListener('doc-track-created-parcels-updated', syncHistory);
   }, []);
 
   const addToRecent = (id: string) => {
@@ -60,6 +73,7 @@ export default function Track({ embedded = false }: { embedded?: boolean }) {
     try {
       const res = await getParcel(id);
       if (res.success && res.parcel) {
+        updateCreatedParcelHistoryFromParcel(res.parcel);
         setParcel(res.parcel); setSearchResults([]); addToRecent(res.parcel.TrackingID);
         toast.success('พบข้อมูลพัสดุ');
       } else {
@@ -73,7 +87,10 @@ export default function Track({ embedded = false }: { embedded?: boolean }) {
         }
         const results = await searchParcels(id);
         if (results?.length) {
-          if (results.length === 1) { setParcel(results[0]); setSearchResults([]); addToRecent(results[0].TrackingID); }
+          if (results.length === 1) {
+            updateCreatedParcelHistoryFromParcel(results[0]);
+            setParcel(results[0]); setSearchResults([]); addToRecent(results[0].TrackingID);
+          }
           else { setSearchResults(results); setParcel(null); }
           toast.success(`พบข้อมูล ${results.length} รายการ`);
         } else {
@@ -169,6 +186,39 @@ export default function Track({ embedded = false }: { embedded?: boolean }) {
         )}
       </div>
 
+      {createdHistory.length > 0 && !embedded && (
+        <section className="rounded-2xl border border-outline-variant/25 bg-white/95 p-4 shadow-sm">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-display text-sm font-black text-primary">พัสดุที่สร้างจากเครื่องนี้</h2>
+              <p className="text-xs font-semibold text-on-surface-variant/60">บันทึกไว้เฉพาะ browser นี้ กดเพื่อดึงสถานะล่าสุดจากชีท</p>
+            </div>
+            <span className="rounded-full bg-primary/8 px-2.5 py-1 text-[11px] font-black text-primary">{createdHistory.length}</span>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {createdHistory.slice(0, 6).map(item => (
+              <button
+                key={item.trackingID}
+                type="button"
+                onClick={() => { setTrackingId(item.trackingID); handleSearch(undefined, item.trackingID); }}
+                className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-4 text-left transition-all hover:border-primary/35 hover:bg-primary/[0.03]"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <code className="min-w-0 break-all rounded-lg bg-primary/6 px-2.5 py-1 font-mono text-xs font-black text-primary">{item.trackingID}</code>
+                  {item.status && <StatusBadge status={item.status} />}
+                </div>
+                <div className="mt-3 flex items-center gap-1.5 text-sm">
+                  <span className="truncate font-bold text-primary">{item.senderName}</span>
+                  <span className="material-symbols-outlined shrink-0 text-sm text-outline-variant">arrow_forward</span>
+                  <span className="truncate font-bold text-primary">{item.receiverName}</span>
+                </div>
+                <p className="mt-1 text-xs text-on-surface-variant/55">{formatThaiDateTime(item.createdAt)}</p>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Search results */}
       {searchResults.length > 0 && !parcel && (
         <div className="space-y-3 animate-in slide-in-from-bottom-4 duration-400">
@@ -186,7 +236,7 @@ export default function Track({ embedded = false }: { embedded?: boolean }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
             {searchResults.map(p => (
               <div key={p.TrackingID}
-                onClick={() => { setParcel(p); setSearchResults([]); addToRecent(p.TrackingID); }}
+                onClick={() => { updateCreatedParcelHistoryFromParcel(p); setParcel(p); setSearchResults([]); addToRecent(p.TrackingID); }}
                 className="bg-white/95 border border-outline-variant/40 rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-primary/30 hover:-translate-y-0.5 transition-all cursor-pointer group">
                 <div className="flex justify-between items-start mb-3">
                   <code className="min-w-0 break-all text-xs font-mono font-black text-primary bg-primary/6 px-2.5 py-1 rounded-lg">{p.TrackingID}</code>

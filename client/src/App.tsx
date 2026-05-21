@@ -7,20 +7,20 @@ import Layout from "./components/Layout";
 import Login from "./pages/Login";
 import { isConfigured, onConfigUpdated } from "./lib/parcelService";
 import { useAuth } from "./contexts/AuthContext";
-import { normalizeRole, type AppRole } from "./lib/roles";
+import { normalizeRole } from "./lib/roles";
+import { canAccessPage, getVisiblePage, type PageId } from "./lib/permissionHelper";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const CreateParcel = lazy(() => import("./pages/CreateParcel"));
 const Track = lazy(() => import("./pages/Track"));
 const UserManagement = lazy(() => import("./pages/UserManagement"));
 
-type PageId = "dashboard" | "create" | "track" | "users";
-
 const pagePaths: Record<PageId, string> = {
   dashboard: "/dashboard",
   create: "/create",
   track: "/track",
   users: "/users",
+  login: "/login",
 };
 
 const pathPages: Record<string, PageId> = {
@@ -29,6 +29,7 @@ const pathPages: Record<string, PageId> = {
   "/create": "create",
   "/track": "track",
   "/users": "users",
+  "/login": "login",
 };
 
 const getRouteFromLocation = (): { page: PageId; isKnownPath: boolean } => {
@@ -36,15 +37,6 @@ const getRouteFromLocation = (): { page: PageId; isKnownPath: boolean } => {
   const page = pathPages[path];
   return page ? { page, isKnownPath: true } : { page: "dashboard", isKnownPath: false };
 };
-
-const pageRoles: Record<PageId, AppRole[]> = {
-  dashboard: ["ADMIN", "MESSENGER", "USER"],
-  create: ["ADMIN"],
-  track: ["ADMIN"],
-  users: ["ADMIN"],
-};
-
-const canAccessPage = (page: PageId, role: AppRole) => pageRoles[page].includes(role);
 
 const PageFallback = () => (
   <div className="grid min-h-[60vh] place-items-center bg-surface">
@@ -94,11 +86,11 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (loading || !user) return;
+    if (loading) return;
 
-    const role = normalizeRole(user.role);
+    const role = user ? normalizeRole(user.role) : "GUEST";
     if (!canAccessPage(currentPage, role)) {
-      navigateToPage("dashboard");
+      navigateToPage(role === "GUEST" ? "create" : "dashboard");
     }
   }, [currentPage, loading, navigateToPage, user]);
 
@@ -110,7 +102,8 @@ function App() {
     );
   }
 
-  if (!user) {
+  const role = user ? normalizeRole(user.role) : "GUEST";
+  if (!user && currentPage === "login") {
     return (
       <ErrorBoundary>
         <ThemeProvider defaultTheme="light">
@@ -121,8 +114,7 @@ function App() {
     );
   }
 
-  const role = normalizeRole(user.role);
-  const visiblePage = canAccessPage(currentPage, role) ? currentPage : "dashboard";
+  const visiblePage = getVisiblePage(currentPage, role);
   const renderCurrentPage = () => {
     switch (visiblePage) {
       case "dashboard":
@@ -132,6 +124,9 @@ function App() {
       case "users":
         return <ErrorBoundary><UserManagement /></ErrorBoundary>;
       case "track":
+        return <ErrorBoundary><Track /></ErrorBoundary>;
+      case "login":
+        return <ErrorBoundary><Login /></ErrorBoundary>;
       default:
         return <ErrorBoundary><Track /></ErrorBoundary>;
     }
