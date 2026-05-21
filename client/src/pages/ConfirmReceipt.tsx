@@ -116,6 +116,7 @@ export default function ConfirmReceipt({
   const [note, setNote] = useState('');
 
   const { position, status: geoStatus, errorMessage: geoError, requestLocation, reset: resetGeo } = useGeolocation();
+  const [isGpsBypassed, setIsGpsBypassed] = useState(false);
 
   const [isForwarding, setIsForwarding] = useState(false);
   const [forwardSender, setForwardSender] = useState('');
@@ -135,11 +136,12 @@ export default function ConfirmReceipt({
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [isDelivered, setIsDelivered] = useState(false);
 
-  const gpsQuality = getGpsQuality(geoStatus, position);
+  const effectiveGeoStatus = isGpsBypassed ? 'error' : geoStatus;
+  const gpsQuality = getGpsQuality(effectiveGeoStatus, position);
   const hasLowAccuracyGps = gpsQuality === 'low_accuracy';
-  const needsGpsOverrideReason = shouldRequireGpsOverrideReason(geoStatus);
+  const needsGpsOverrideReason = shouldRequireGpsOverrideReason(effectiveGeoStatus);
   const canProceedFromPhoto = Boolean(photoPreview) && (
-    geoStatus === 'success' ||
+    effectiveGeoStatus === 'success' ||
     (needsGpsOverrideReason && gpsOverrideReason.trim().length > 0)
   );
 
@@ -237,6 +239,7 @@ export default function ConfirmReceipt({
     setCheckedParcel(null);
     setIsDelivered(false);
     setIsConfirmDialogOpen(false);
+    setIsGpsBypassed(false);
     resetGeo();
     if (fileInputRef.current) fileInputRef.current.value = '';
 
@@ -365,6 +368,7 @@ export default function ConfirmReceipt({
         setDeliveryMismatchReason('');
         setCheckedParcel(null);
         setIsDelivered(false);
+        setIsGpsBypassed(false);
         resetGeo();
         onComplete?.();
       } else {
@@ -425,7 +429,7 @@ export default function ConfirmReceipt({
                   placeholder="เช่น TRK20260420001"
                   value={trackingId}
                   onChange={(e) => setTrackingId(sanitizeTextInput(e.target.value, 100).toUpperCase())}
-                  className="w-full h-14 sm:h-16 text-xl sm:text-2xl font-mono tracking-[0.2em] pl-6 pr-14 rounded-2xl border-2 border-outline-variant focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all text-primary placeholder:text-outline-variant placeholder:font-sans placeholder:text-base sm:placeholder:text-lg placeholder:tracking-normal"
+                  className="w-full h-14 sm:h-16 text-base sm:text-2xl font-mono tracking-[0.05em] sm:tracking-[0.2em] pl-4 sm:pl-6 pr-12 sm:pr-14 rounded-2xl border-2 border-outline-variant focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all text-primary placeholder:text-outline-variant placeholder:font-sans placeholder:text-sm sm:placeholder:text-lg placeholder:tracking-normal"
                   autoFocus
                 />
                 <button
@@ -504,105 +508,99 @@ export default function ConfirmReceipt({
                 <p className="mt-1 text-xs font-semibold text-on-surface-variant/60">ระบบจะบีบอัดรูปให้อัตโนมัติ</p>
               </div>
             ) : (
-              <div className="relative rounded-3xl overflow-hidden border border-outline-variant shadow-inner group aspect-video bg-surface-container-lowest">
-                <img src={photoPreview} alt="Preview" className="w-full h-full object-contain" />
-                <div className="absolute inset-0 bg-primary/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-4 backdrop-blur-[2px]">
-                  <button
-                    className="flex items-center gap-2 px-6 py-2.5 bg-white text-primary rounded-xl font-bold active:scale-95 transition-all shadow-lg hover:bg-primary hover:text-white"
-                    onClick={() => {
-                      setPhotoPreview(null);
-                      setPhotoUrl('');
-                      if (fileInputRef.current) fileInputRef.current.value = '';
-                    }}
-                  >
-                    <span className="material-symbols-outlined">restart_alt</span>
-                    ถ่ายใหม่
-                  </button>
-                  <p className="text-white font-medium text-sm flex items-center gap-2">
-                    <span className="material-symbols-outlined text-lg">zoom_out_map</span>
-                    แสดงภาพเต็ม
-                  </p>
+              <div className="relative h-64 sm:h-80 rounded-2xl overflow-hidden border border-outline-variant bg-surface-container-lowest">
+                <img src={photoPreview} alt="หลักฐานการจัดส่ง" className="w-full h-full object-contain animate-in fade-in zoom-in-95 duration-500" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent pointer-events-none" />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute bottom-4 right-4 flex items-center gap-2 bg-primary hover:bg-primary/95 text-white font-display text-sm font-black px-4.5 py-2.5 rounded-2xl shadow-lg transition-all hover:scale-[1.02] active:scale-95 z-10 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-lg">photo_camera</span>
+                  ถ่ายใหม่
+                </button>
+                <div className="absolute bottom-4 left-4 flex items-center gap-1.5 text-white/95 drop-shadow-md">
+                  <span className="material-symbols-outlined text-base">verified</span>
+                  <span className="text-xs font-bold uppercase tracking-wider">แนบรูปถ่ายสำเร็จ</span>
                 </div>
               </div>
             )}
 
-            {/* GPS Status Indicator */}
-            <div className={`flex items-start gap-3 rounded-2xl border p-3 ${
-              geoStatus === 'success' && !hasLowAccuracyGps ? 'bg-green-50 border-green-200 text-green-800' :
-              geoStatus === 'success' && hasLowAccuracyGps ? 'bg-amber-50 border-amber-200 text-amber-900' :
-              geoStatus === 'error' || geoStatus === 'denied' ? 'bg-error-container/30 border-error/20 text-error' :
-              'bg-surface-container-low border-outline-variant text-on-surface-variant'
-            }`}>
-              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                geoStatus === 'success' && !hasLowAccuracyGps ? 'bg-green-100 text-green-700' :
-                geoStatus === 'success' && hasLowAccuracyGps ? 'bg-amber-100 text-amber-700' :
-                geoStatus === 'error' || geoStatus === 'denied' ? 'bg-error-container text-error' :
-                'bg-surface-container text-on-surface-variant'
-              }`}>
-                <span className={`material-symbols-outlined text-lg ${geoStatus === 'loading' ? 'animate-spin' : ''}`}>
-                  {geoStatus === 'success' ? 'my_location' :
-                   geoStatus === 'loading' ? 'progress_activity' :
-                   geoStatus === 'error' || geoStatus === 'denied' ? 'location_disabled' : 'location_searching'}
-                </span>
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-black leading-tight">
-                  {geoStatus === 'success' && !hasLowAccuracyGps ? 'พร้อมบันทึกตำแหน่ง' :
-                   geoStatus === 'success' && hasLowAccuracyGps ? 'ตำแหน่งแม่นยำต่ำ' :
-                   geoStatus === 'loading' ? 'กำลังหาตำแหน่ง' :
-                   geoStatus === 'denied' || geoStatus === 'error' ? 'ตำแหน่งไม่พร้อม' : 'รอเริ่มหาตำแหน่ง'}
-                </p>
-                <p className="mt-0.5 text-xs leading-snug opacity-75">
-                  {geoStatus === 'success' && position
-                    ? `${position.latitude.toFixed(6)}, ${position.longitude.toFixed(6)} (ประมาณ ${Math.round(position.accuracy)}m${hasLowAccuracyGps ? ' - ใช้ได้แต่ควรตรวจปลายทางด้วยตา' : ''})`
-                    : geoError ? geoError
-                    : 'ระบบจะบันทึกตำแหน่งไว้เป็นหลักฐานประกอบ'}
-                </p>
-                {(geoStatus === 'error' || geoStatus === 'denied') && (
-                  <div className="mt-3 space-y-2">
-                    <button
-                      onClick={requestLocation}
-                      className="text-xs font-black underline underline-offset-2 hover:opacity-80"
-                    >
-                      ลองดึงตำแหน่งอีกครั้ง
-                    </button>
-                    <div>
-                      <label className="mb-1 block text-[10px] font-black uppercase tracking-wider opacity-70">เหตุผลถ้าต้องยืนยันโดยไม่มี GPS</label>
-                      <textarea
-                        value={gpsOverrideReason}
-                        onChange={(event) => setGpsOverrideReason(sanitizeTextInput(event.target.value, 300))}
-                        placeholder="เช่น อยู่ในอาคาร, สัญญาณไม่ขึ้น, ลูกค้ารีบ"
-                        className="min-h-[64px] w-full resize-none rounded-xl border border-error/20 bg-white px-3 py-2 text-sm text-on-surface outline-none focus:ring-1 focus:ring-error"
-                      />
-                    </div>
+            {/* GPS status panel */}
+            <div className="rounded-2xl border border-outline-variant/60 bg-surface-container-low/10 p-4 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors duration-300 ${
+                    effectiveGeoStatus === 'success' ? 'bg-green-500/10 text-green-600' :
+                    needsGpsOverrideReason ? 'bg-error/10 text-error' :
+                    'bg-amber-500/10 text-amber-600'
+                  }`}>
+                    <span className={`material-symbols-outlined text-xl ${effectiveGeoStatus === 'loading' ? 'animate-spin' : ''}`}>
+                      {effectiveGeoStatus === 'success' ? 'my_location' :
+                       effectiveGeoStatus === 'loading' ? 'progress_activity' :
+                       'location_off'}
+                    </span>
                   </div>
+                  <div className="space-y-0.5">
+                    <p className="font-display text-sm font-black text-primary">
+                      {effectiveGeoStatus === 'success' ? 'ระบุตำแหน่ง GPS สำเร็จ' :
+                       effectiveGeoStatus === 'loading' ? 'กำลังดึงตำแหน่ง GPS...' :
+                       'ไม่พบตำแหน่ง GPS'}
+                    </p>
+                    <p className="text-xs text-on-surface-variant/70 font-semibold leading-normal">
+                      {effectiveGeoStatus === 'success' ? `ตำแหน่งแม่นยำ ~${Math.round(position?.accuracy || 0)} เมตร` :
+                       effectiveGeoStatus === 'loading' ? 'กรุณารอสักครู่ กำลังระบุพิกัดเพื่อความถูกต้องในการส่งพัสดุ' :
+                       geoError || 'ไม่สามารถดึงตำแหน่งพิกัดได้'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* GPS Loading Bypass Button */}
+                {effectiveGeoStatus === 'loading' && (
+                  <button
+                    type="button"
+                    onClick={() => setIsGpsBypassed(true)}
+                    className="w-full sm:w-auto shrink-0 font-display text-xs font-black text-primary hover:text-primary/95 border border-primary/20 hover:bg-primary/5 px-3 py-2 rounded-xl transition-all active:scale-[0.98] cursor-pointer"
+                  >
+                    ข้ามการค้นหาตำแหน่ง (ไม่มี GPS)
+                  </button>
                 )}
               </div>
+
+              {/* If bypassed / error / denied, we need a reason */}
+              {needsGpsOverrideReason && (
+                <div className="space-y-2 border-t border-outline-variant/10 pt-4 animate-in slide-in-from-top-2 duration-300">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-error px-1">
+                    ระบุเหตุผลที่ยืนยันโดยไม่มี GPS <span className="text-error font-bold">*</span>
+                  </label>
+                  <textarea
+                    placeholder="เช่น สัญญาณเน็ตล่ม, อยู่ในอาคารชั้นใต้ดิน, ลูกค้ามารับนอกพิกัด..."
+                    value={gpsOverrideReason}
+                    onChange={(e) => setGpsOverrideReason(sanitizeTextInput(e.target.value, 300))}
+                    className="min-h-[72px] w-full resize-none rounded-2xl border-2 border-error/20 bg-white px-3.5 py-2.5 font-display text-sm outline-none transition-all focus:border-error focus:ring-4 focus:ring-error/5 text-primary placeholder:text-on-surface-variant/40"
+                  />
+                </div>
+              )}
             </div>
 
-            <div>
+            {/* Navigation controls */}
+            <div className="grid grid-cols-[0.9fr_1.4fr] gap-2.5 sm:gap-3 pt-2">
               <button
-                onClick={() => {
-                  if (!canProceedFromPhoto) {
-                    if (!photoPreview) {
-                      toast.warning('กรุณาถ่ายรูปหลักฐานก่อน');
-                    } else if (needsGpsOverrideReason) {
-                      toast.warning('กรุณากรอกเหตุผลที่ยืนยันโดยไม่มี GPS');
-                    } else if (geoStatus !== 'loading') {
-                      toast.warning('กรุณารอให้ระบบดึงตำแหน่ง หรือลองดึงตำแหน่งใหม่');
-                      requestLocation();
-                    } else {
-                      toast.warning('กำลังหาตำแหน่ง กรุณารอสักครู่');
-                    }
-                    return;
-                  }
-                  setCurrentStep(3);
-                }}
-                disabled={!photoPreview || geoStatus === 'loading' || (needsGpsOverrideReason && !gpsOverrideReason.trim())}
-                className="group flex h-13 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 font-display text-base font-black text-white shadow-lg shadow-primary/20 transition-all hover:scale-[1.01] hover:bg-primary/95 active:scale-[0.98] disabled:scale-100 disabled:bg-on-surface-variant/30 disabled:shadow-none"
+                type="button"
+                onClick={() => setCurrentStep(1)}
+                className="flex h-13 min-w-0 items-center justify-center gap-1.5 rounded-2xl border border-outline-variant/70 bg-white px-2 font-display text-sm font-black text-on-surface-variant shadow-sm transition-all hover:border-primary/30 hover:bg-surface-container-lowest hover:text-primary active:scale-[0.98] cursor-pointer sm:text-base"
               >
-                {needsGpsOverrideReason ? 'ยืนยันโดยไม่มี GPS' : 'ไปขั้นตอนต่อไป'}
-                <span className="material-symbols-outlined transition-transform group-hover:translate-x-1">arrow_forward</span>
+                <span className="material-symbols-outlined text-lg sm:text-xl">arrow_back</span>
+                ย้อนกลับ
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentStep(3)}
+                disabled={!canProceedFromPhoto}
+                className="group flex h-13 min-w-0 items-center justify-center gap-2 rounded-2xl bg-primary px-3 font-display text-sm font-black text-white shadow-lg shadow-primary/20 transition-all hover:scale-[1.01] hover:bg-primary/95 active:scale-[0.98] disabled:scale-100 disabled:bg-on-surface-variant/30 disabled:shadow-none cursor-pointer sm:text-base"
+              >
+                ขั้นตอนถัดไป
+                <span className="material-symbols-outlined text-xl transition-transform group-hover:translate-x-1 sm:text-2xl font-black">arrow_forward</span>
               </button>
             </div>
           </div>

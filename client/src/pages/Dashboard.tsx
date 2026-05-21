@@ -519,71 +519,135 @@ const MessengerDeliveryCard = ({
     : canConfirmDelivery
       ? 'ส่งสำเร็จ'
       : '';
+
+  // Determine border and background styles based on parcel status
+  let cardStyles = 'border-l-4 border-l-outline-variant border-outline-variant/30 bg-white shadow-sm';
+  let iconName = 'help';
+  let accentColorText = 'text-primary';
+
+  if (isDone) {
+    cardStyles = 'border-l-4 border-l-emerald-500 border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.03] to-emerald-500/[0.005] shadow-sm shadow-emerald-500/[0.02] hover:border-emerald-500/40 hover:shadow-md transition-all duration-300';
+    iconName = 'check_circle';
+    accentColorText = 'text-emerald-700';
+  } else if (canConfirmDelivery) {
+    cardStyles = 'border-l-4 border-l-blue-600 border-blue-500/20 bg-gradient-to-br from-blue-600/[0.03] to-blue-600/[0.005] shadow-sm shadow-blue-500/[0.02] hover:border-blue-500/40 hover:shadow-md transition-all duration-300';
+    iconName = 'local_shipping';
+    accentColorText = 'text-blue-700';
+  } else if (canStartDelivery) {
+    cardStyles = 'border-l-4 border-l-amber-500 border-amber-500/20 bg-gradient-to-br from-amber-500/[0.03] to-amber-500/[0.005] shadow-sm shadow-amber-500/[0.02] hover:border-amber-500/40 hover:shadow-md transition-all duration-300';
+    iconName = 'schedule';
+    accentColorText = 'text-amber-700';
+  }
+
   return (
-    <article className={`rounded-xl border bg-card p-3 shadow-sm sm:p-4 ${isDone ? 'border-emerald-100' : 'border-border'}`}>
-      <div className="mb-3 flex flex-col gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <code className="rounded-md bg-muted px-2 py-1 font-mono text-xs font-semibold text-foreground">{parcel.TrackingID}</code>
-            {isDone && <StatusBadge status={parcel['สถานะ']} className="h-6 w-[92px] text-[10px]" />}
-            <StaleBadge parcel={parcel} />
+    <article className={`rounded-2xl border p-4 sm:p-5 flex flex-col justify-between h-full group ${cardStyles}`}>
+      <div className="space-y-4">
+        {/* Header section of card */}
+        <div className="flex flex-col gap-3.5 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <code className="rounded-lg border border-outline-variant/20 bg-white/95 px-2.5 py-1 font-mono text-xs font-black text-primary shadow-sm tracking-wide">
+                {parcel.TrackingID}
+              </code>
+              {isDone && <StatusBadge status={parcel['สถานะ']} className="h-6 w-[92px] text-[10px] font-black" />}
+              <StaleBadge parcel={parcel} />
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <span className={`material-symbols-outlined text-xl ${accentColorText}`} style={{ fontVariationSettings: "'FILL' 1" }}>
+                {iconName}
+              </span>
+              <h3 className="font-display text-base sm:text-lg font-black leading-tight text-primary">
+                ผู้รับ: {parcel['ผู้รับ'] || '-'}
+              </h3>
+            </div>
           </div>
-          <p className="mt-2 text-base font-semibold leading-tight text-foreground">{parcel['ผู้รับ'] || '-'}</p>
+
+          {/* Action button inside header area */}
+          {!isDone && (canStartDelivery || canConfirmDelivery) && (
+            <div className="shrink-0">
+              <DashboardActionButton
+                icon={canStartDelivery ? 'local_shipping' : 'task_alt'}
+                onClick={canStartDelivery ? onStartDelivery : onConfirm}
+                loading={canStartDelivery ? isStartingDelivery : false}
+                variant={canStartDelivery ? 'blue' : 'primary'}
+                className="w-full sm:w-auto h-11 px-5 rounded-xl font-bold shadow-md shadow-primary/10 hover:scale-[1.01] active:scale-95 transition-all text-sm cursor-pointer"
+              >
+                {actionLabel}
+              </DashboardActionButton>
+            </div>
+          )}
         </div>
-        {!isDone && (canStartDelivery || canConfirmDelivery) && (
-          <DashboardActionButton
-            icon={canStartDelivery ? 'local_shipping' : 'task_alt'}
-            onClick={canStartDelivery ? onStartDelivery : onConfirm}
-            loading={canStartDelivery ? isStartingDelivery : false}
-            variant={canStartDelivery ? 'blue' : 'primary'}
-            className="w-full sm:w-auto"
-          >
-            {actionLabel}
-          </DashboardActionButton>
+
+        {/* Assignment details */}
+        {assignment && !isDone && (
+          <div className="rounded-xl overflow-hidden shadow-sm">
+            <AssignmentBadge assignment={assignment} isMine={!isAssignedElsewhere} />
+          </div>
+        )}
+
+        {/* Route Summary */}
+        <div className="shadow-sm rounded-xl overflow-hidden bg-white/60">
+          <MessengerRouteSummary parcel={parcel} />
+        </div>
+
+        {/* Notes and description */}
+        {(parcel['รายละเอียด'] || note) && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {parcel['รายละเอียด'] && (
+              <div className="rounded-xl border border-outline-variant/30 bg-surface-container-low/20 px-3.5 py-2.5 shadow-sm">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/50 leading-none block mb-1">
+                  รายละเอียดสิ่งที่ส่ง
+                </span>
+                <p className="text-sm font-semibold text-primary truncate">
+                  {parcel['รายละเอียด']}
+                </p>
+              </div>
+            )}
+            {note && (
+              <div className="rounded-xl border border-outline-variant/30 bg-surface-container-low/20 px-3.5 py-2.5 shadow-sm">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/50 leading-none block mb-1">
+                  หมายเหตุ
+                </span>
+                <p className="text-sm font-semibold text-primary truncate italic">
+                  {note}
+                </p>
+              </div>
+            )}
+          </div>
         )}
       </div>
-      {assignment && !isDone && (
-        <div className="mb-3">
-          <AssignmentBadge assignment={assignment} isMine={!isAssignedElsewhere} />
+
+      {/* Footer controls */}
+      <div className="mt-5 pt-3 border-t border-outline-variant/10 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5 text-[11px] font-bold text-on-surface-variant/50">
+          <span className="material-symbols-outlined text-sm">schedule</span>
+          <span>{parcel['วันทีรับเข้า'] ? new Date(parcel['วันทีรับเข้า']).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' }) : '-'}</span>
         </div>
-      )}
-      <MessengerRouteSummary parcel={parcel} />
-      {(parcel['รายละเอียด'] || note) && (
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          {parcel['รายละเอียด'] && (
-            <div className="rounded-lg border border-border bg-muted/35 px-3 py-2">
-              <p className="text-[10px] font-semibold text-muted-foreground">รายละเอียดสิ่งที่ส่ง</p>
-              <p className="mt-0.5 truncate text-sm font-medium text-foreground">{parcel['รายละเอียด']}</p>
-            </div>
+
+        <div className="flex items-center gap-2">
+          {canReleaseDelivery && (
+            <DashboardActionButton
+              icon="undo"
+              onClick={onReleaseDelivery}
+              loading={isReleasingDelivery}
+              variant="warning"
+              compact
+              className="h-8.5 rounded-lg cursor-pointer"
+            >
+              {isReleasingDelivery ? 'กำลังคืนงาน' : 'คืนงาน'}
+            </DashboardActionButton>
           )}
-          {note && (
-            <div className="rounded-lg border border-border bg-muted/35 px-3 py-2">
-              <p className="text-[10px] font-semibold text-muted-foreground">หมายเหตุ</p>
-              <p className="mt-0.5 truncate text-sm font-medium text-foreground">{note}</p>
-            </div>
-          )}
-        </div>
-      )}
-      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-        {canReleaseDelivery && (
           <DashboardActionButton
-            icon="undo"
-            onClick={onReleaseDelivery}
-            loading={isReleasingDelivery}
-            variant="warning"
+            icon="history"
+            onClick={onOpen}
+            variant="ghost"
             compact
+            className="h-8.5 rounded-lg cursor-pointer hover:bg-black/5"
           >
-            {isReleasingDelivery ? 'กำลังคืนงาน' : 'คืนงาน'}
+            ดูประวัติ
           </DashboardActionButton>
-        )}
-        <DashboardActionButton
-          icon="history"
-          onClick={onOpen}
-          variant="ghost"
-          compact
-        >
-          ดูประวัติ
-        </DashboardActionButton>
+        </div>
       </div>
     </article>
   );
@@ -1305,7 +1369,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
           showCloseButton={false}
           className="max-h-[92vh] w-[calc(100vw-1rem)] max-w-2xl overflow-hidden rounded-3xl border-none bg-transparent p-0 shadow-none"
         >
-          <div className="modal-scroll relative max-h-[92vh] overflow-y-auto p-3 pr-4 sm:p-5 sm:pr-6">
+          <div className="modal-scroll relative max-h-[92vh] overflow-y-auto p-4 sm:p-6">
             {!isConfirmPreparingCamera && (
               <button
                 type="button"
