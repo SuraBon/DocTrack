@@ -138,7 +138,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
       : BarChart3;
   const allNavItems: NavItem[] = [
     { id: "dashboard", label: dashboardLabel, icon: dashboardIcon, badge: null, roles: ['ADMIN', 'MESSENGER'], accent: "from-sky-400 to-blue-500" },
-    { id: "create",    label: UI_COPY.nav.create, icon: PackagePlus, badge: null, roles: ['GUEST'], accent: "from-amber-300 to-orange-500" },
+    { id: "create",    label: UI_COPY.nav.create, icon: PackagePlus, badge: null, roles: ['GUEST', 'ADMIN', 'MESSENGER'], accent: "from-amber-300 to-orange-500" },
     { id: "track",     label: UI_COPY.nav.track, icon: Search, badge: null, roles: ['GUEST'], accent: "from-violet-300 to-indigo-500" },
     { id: "login",     label: UI_COPY.nav.staffLogin, icon: LogIn, badge: null, roles: ['GUEST'], accent: "from-zinc-500 to-zinc-900" },
     { id: "users",     label: UI_COPY.nav.users, icon: Users, badge: null, roles: ['ADMIN'], accent: "from-rose-300 to-red-500" },

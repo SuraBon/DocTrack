@@ -28,7 +28,7 @@ export function getActiveDeliveryAssignment(parcel: Parcel): DeliveryAssignment 
       if (!assignedToId) continue;
       active = {
         assignedToId,
-        assignedToName: event.person || assignedToId || 'Messenger',
+        assignedToName: event.person || assignedToId || 'พนักงานส่ง',
         timestamp: event.timestamp,
       };
       continue;

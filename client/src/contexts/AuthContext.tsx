@@ -42,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const parsed = JSON.parse(savedUser) as User;
         const normalizedUser = { ...parsed, role: normalizeRole(parsed.role) };
-        if (normalizedUser.role === 'GUEST') {
+        if (normalizedUser.role === 'GUEST' || !normalizedUser.token) {
           clearSession();
         } else {
           setUser(normalizedUser);

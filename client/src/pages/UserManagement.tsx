@@ -15,7 +15,7 @@ const ROLE_CONFIG: Record<AppRole, { label: string; color: string; bg: string; b
     icon: <ShieldCheck className="h-3.5 w-3.5" />,
   },
   MESSENGER: {
-    label: 'Messenger จัดส่ง',
+    label: 'พนักงานส่ง',
     color: 'text-foreground',
     bg: 'bg-muted',
     border: 'border-border',
@@ -202,7 +202,7 @@ export default function UserManagement() {
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-foreground">จัดการพนักงาน</h1>
-            <p className="text-sm text-muted-foreground">สร้างรหัสพนักงานและกำหนดสิทธิ์ Admin/Messenger</p>
+            <p className="text-sm text-muted-foreground">สร้างรหัสพนักงานและกำหนดสิทธิ์ Admin/พนักงานส่ง</p>
           </div>
         </div>
         <button
@@ -279,7 +279,7 @@ export default function UserManagement() {
         {[
           { key: 'ALL' as const, label: 'ทั้งหมด', value: counts.total, icon: <Users className="h-4 w-4" /> },
           { key: 'ADMIN' as const, label: 'Admin', value: counts.admin, icon: <ShieldCheck className="h-4 w-4" /> },
-          { key: 'MESSENGER' as const, label: 'Messenger', value: counts.messenger, icon: <Truck className="h-4 w-4" /> },
+          { key: 'MESSENGER' as const, label: 'พนักงานส่ง', value: counts.messenger, icon: <Truck className="h-4 w-4" /> },
           { key: 'GUEST' as const, label: 'ไม่มีสิทธิ์', value: counts.guest, icon: <UserX className="h-4 w-4" /> },
         ].map(s => (
           <button

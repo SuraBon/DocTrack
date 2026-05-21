@@ -6,7 +6,7 @@ export const UI_COPY = {
     create: 'สร้างรายการส่ง',
     track: 'ติดตามสถานะ',
     users: 'พนักงาน',
-    staffLogin: 'เข้าสู่ระบบพนักงาน',
+    staffLogin: 'เข้าสู่ระบบพนักงานส่ง',
   },
   parcel: {
     trackingId: 'หมายเลขติดตาม',

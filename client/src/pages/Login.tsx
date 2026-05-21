@@ -53,19 +53,20 @@ export default function Login() {
 
   const isAuthSubmitting = authDialog.open && authDialog.status === 'loading';
   const isLoginDisabled = loading || isAuthSubmitting;
+  const showAuthError = (title: string, message: string) => {
+    setAuthDialog({ open: true, status: 'error', title, message });
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!employeeId) {
       const message = 'กรุณากรอกรหัสพนักงานก่อนเข้าสู่ระบบ';
-      setAuthDialog({ open: true, status: 'error', title: DEFAULT_LOGIN_ERROR, message });
-      toast.error(DEFAULT_LOGIN_ERROR, { description: message });
+      showAuthError(DEFAULT_LOGIN_ERROR, message);
       return;
     }
     if (!isValidEmployeeId(employeeId)) {
       const message = 'รหัสพนักงานต้องใช้ A-Z, 0-9 หรือ _ เท่านั้น';
-      setAuthDialog({ open: true, status: 'error', title: DEFAULT_LOGIN_ERROR, message });
-      toast.error(DEFAULT_LOGIN_ERROR, { description: message });
+      showAuthError(DEFAULT_LOGIN_ERROR, message);
       return;
     }
 
@@ -75,8 +76,7 @@ export default function Login() {
       const branchError = validateRequiredText(branch, 'สาขา', 1, 100);
       if (passwordError || nameError || branchError) {
         const message = passwordError || nameError || branchError || 'กรุณากรอกข้อมูลให้ครบถ้วน';
-        setAuthDialog({ open: true, status: 'error', title: 'ตั้งค่าการเข้าใช้งานไม่สำเร็จ', message });
-        toast.error('ตั้งค่าการเข้าใช้งานไม่สำเร็จ', { description: message });
+        showAuthError('ตั้งค่าการเข้าใช้งานไม่สำเร็จ', message);
         return;
       }
       setAuthDialog({
@@ -96,20 +96,17 @@ export default function Login() {
         toast.success('ตั้งค่า PIN สำเร็จ');
       } else {
         const message = res.error || 'เกิดข้อผิดพลาดในการตั้งค่า กรุณาลองใหม่อีกครั้ง';
-        setAuthDialog({ open: true, status: 'error', title: 'ตั้งค่าการเข้าใช้งานไม่สำเร็จ', message });
-        toast.error('ตั้งค่าการเข้าใช้งานไม่สำเร็จ', { description: message });
+        showAuthError('ตั้งค่าการเข้าใช้งานไม่สำเร็จ', message);
       }
     } else {
       if (!pin) {
         const message = 'กรุณากรอกรหัสผ่านก่อนเข้าสู่ระบบ';
-        setAuthDialog({ open: true, status: 'error', title: DEFAULT_LOGIN_ERROR, message });
-        toast.error(DEFAULT_LOGIN_ERROR, { description: message });
+        showAuthError(DEFAULT_LOGIN_ERROR, message);
         return;
       }
       const passwordError = validatePassword(pin, 20);
       if (passwordError) {
-        setAuthDialog({ open: true, status: 'error', title: DEFAULT_LOGIN_ERROR, message: passwordError });
-        toast.error(DEFAULT_LOGIN_ERROR, { description: passwordError });
+        showAuthError(DEFAULT_LOGIN_ERROR, passwordError);
         return;
       }
 
@@ -144,8 +141,7 @@ export default function Login() {
         }
       } else {
         const message = getLoginErrorMessage(res.error);
-        setAuthDialog({ open: true, status: 'error', title: 'เข้าสู่ระบบไม่สำเร็จ', message });
-        toast.error('เข้าสู่ระบบไม่สำเร็จ', { description: message, duration: 6000 });
+        showAuthError('เข้าสู่ระบบไม่สำเร็จ', message);
       }
     }
   };
@@ -161,10 +157,10 @@ export default function Login() {
             <PackageSearch className="h-7 w-7" aria-hidden="true" />
           </div>
           <h1 className="text-2xl font-semibold text-foreground">
-            {isSetup ? 'ตั้งค่าการเข้าใช้งาน' : 'เข้าสู่ระบบพนักงาน'}
+            {isSetup ? 'ตั้งค่าการเข้าใช้งาน' : 'เข้าสู่ระบบพนักงานส่ง'}
           </h1>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            {isSetup ? 'กรุณาตั้งรหัส PIN และข้อมูลของท่าน' : 'สำหรับ Admin และ Messenger'}
+            {isSetup ? 'กรุณาตั้งรหัสผ่านและข้อมูลของท่าน' : 'สำหรับ Admin และพนักงานส่ง'}
           </p>
         </div>
 
@@ -242,7 +238,7 @@ export default function Login() {
                 onClick={() => { window.history.pushState({}, '', '/create'); window.dispatchEvent(new PopStateEvent('popstate')); }}
                 className="text-primary font-bold text-sm hover:underline transition-colors"
               >
-                ส่งพัสดุโดยไม่ต้องเข้าระบบ
+                สร้างรายการแบบไม่เข้าสู่ระบบ
               </button>
             </div>
           )}
@@ -269,8 +265,8 @@ export default function Login() {
             )}
             </div>
             <DialogHeader className="items-center text-center">
-              <DialogTitle className="font-display text-xl font-black text-primary">{authDialog.title}</DialogTitle>
-              <DialogDescription className="whitespace-nowrap text-[11px] leading-relaxed text-on-surface-variant min-[380px]:text-xs sm:text-sm">
+              <DialogTitle className="text-xl font-semibold text-primary">{authDialog.title}</DialogTitle>
+              <DialogDescription className="max-w-full whitespace-normal break-words text-sm leading-relaxed text-muted-foreground">
                 {authDialog.message}
               </DialogDescription>
             </DialogHeader>

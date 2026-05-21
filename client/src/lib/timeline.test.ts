@@ -51,6 +51,27 @@ describe('parseParcelTimeline', () => {
     });
   });
 
+  it('uses redacted guest parcel coordinates when structured events are hidden', () => {
+    const parcel = createParcel({
+      'สถานะ': 'ส่งสำเร็จ',
+      OriginLatitude: 13.7,
+      OriginLongitude: 100.5,
+      Latitude: 13.8,
+      Longitude: 100.6,
+    });
+    const events = parseParcelTimeline(parcel);
+    expect(events[0]).toMatchObject({
+      title: 'สร้างรายการส่ง',
+      latitude: 13.7,
+      longitude: 100.5,
+    });
+    expect(events[events.length - 1]).toMatchObject({
+      title: 'ส่งสำเร็จ',
+      latitude: 13.8,
+      longitude: 100.6,
+    });
+  });
+
   it('shows start delivery event from messenger pickup', () => {
     const parcel = createParcel({
       events: [{

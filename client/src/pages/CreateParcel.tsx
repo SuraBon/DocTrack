@@ -243,40 +243,32 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
                   otherPlaceholder="ระบุชื่อสาขาผู้ส่ง"
                 />
               </div>
-              <div className={`rounded-lg border p-3 text-xs ${
+              <div className={`inline-flex w-fit max-w-full items-center gap-2 rounded-full border px-3 py-2 text-xs ${
                 geoStatus === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-900' :
                 geoStatus === 'denied' || geoStatus === 'error' ? 'border-destructive/30 bg-destructive/5 text-destructive' :
                 'border-border bg-muted text-muted-foreground'
               }`}>
-                <div className="flex items-start gap-2.5">
-                  <span className={`material-symbols-outlined text-lg ${geoStatus === 'loading' ? 'animate-spin' : ''}`}>
-                    {geoStatus === 'success' ? 'my_location' :
-                     geoStatus === 'loading' ? 'progress_activity' :
-                     geoStatus === 'denied' || geoStatus === 'error' ? 'location_disabled' : 'location_searching'}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold">
-                      {geoStatus === 'success' ? 'บันทึกพิกัดต้นทางแล้ว' :
-                       geoStatus === 'loading' ? 'กำลังดึงพิกัดต้นทาง...' :
-                       geoStatus === 'denied' ? 'ไม่ได้รับอนุญาต GPS' :
-                       geoStatus === 'error' ? 'ยังไม่ได้พิกัดต้นทาง' : 'รอการดึงพิกัดต้นทาง'}
-                    </p>
-                    <p className="mt-0.5 opacity-80">
-                      {geoStatus === 'success' && position
-                        ? `${position.latitude.toFixed(6)}, ${position.longitude.toFixed(6)}`
-                        : geoError || 'พิกัดนี้จะใช้แสดงจุดเริ่มต้นบนแผนที่'}
-                    </p>
-                    {(geoStatus === 'error' || geoStatus === 'denied') && (
-                      <button
-                        type="button"
-                        onClick={requestLocation}
-                        className="mt-1 font-semibold underline underline-offset-2"
-                      >
-                        ลองดึงพิกัดอีกครั้ง
-                      </button>
-                    )}
-                  </div>
-                </div>
+                <span className={`material-symbols-outlined text-base ${geoStatus === 'loading' ? 'animate-spin' : ''}`}>
+                  {geoStatus === 'success' ? 'my_location' :
+                   geoStatus === 'loading' ? 'progress_activity' :
+                   geoStatus === 'denied' || geoStatus === 'error' ? 'location_disabled' : 'location_searching'}
+                </span>
+                <span className="font-semibold">
+                  {geoStatus === 'success' ? 'บันทึก GPS แล้ว' :
+                   geoStatus === 'loading' ? 'กำลังอ่าน GPS' :
+                   geoStatus === 'denied' ? 'ไม่ได้รับอนุญาต GPS' :
+                   geoStatus === 'error' ? 'ยังไม่ได้ GPS' : 'รอ GPS'}
+                </span>
+                {(geoStatus === 'error' || geoStatus === 'denied') && (
+                  <button
+                    type="button"
+                    onClick={requestLocation}
+                    className="font-semibold underline underline-offset-2"
+                    title={geoError || 'ลองดึง GPS อีกครั้ง'}
+                  >
+                    ลองใหม่
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -379,7 +371,7 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
                     <span className="material-symbols-outlined text-2xl">add_a_photo</span>
                   </span>
                   <span className="text-sm font-semibold text-foreground">ถ่ายหรือแนบรูปสิ่งที่ส่ง</span>
-                  <span className="text-xs text-muted-foreground">ใช้ยืนยันของที่ Messenger ต้องรับไปส่ง</span>
+                  <span className="text-xs text-muted-foreground">ใช้ยืนยันของที่พนักงานส่งต้องรับไปส่ง</span>
                 </button>
               ) : (
                 <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
@@ -481,14 +473,9 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
                 </div>
 
                 {position && (
-                  <div className="rounded-2xl border border-green-200 bg-green-50 p-4 text-green-800 shadow-sm">
-                    <div className="mb-1 flex items-center gap-2">
-                      <span className="material-symbols-outlined text-lg">my_location</span>
-                      <p className="text-[10px] font-black uppercase tracking-widest">พิกัดต้นทาง</p>
-                    </div>
-                    <p className="font-mono text-sm font-black">
-                      {position.latitude.toFixed(6)}, {position.longitude.toFixed(6)}
-                    </p>
+                  <div className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900">
+                    <span className="material-symbols-outlined text-base">my_location</span>
+                    บันทึก GPS ต้นทางแล้ว
                   </div>
                 )}
 

@@ -4,7 +4,7 @@ export type PageId = 'dashboard' | 'create' | 'track' | 'users' | 'login';
 
 const PAGE_ROLES: Record<PageId, AppRole[]> = {
   dashboard: ['ADMIN', 'MESSENGER'],
-  create: ['GUEST'],
+  create: ['GUEST', 'ADMIN', 'MESSENGER'],
   track: ['GUEST'],
   users: ['ADMIN'],
   login: ['GUEST'],

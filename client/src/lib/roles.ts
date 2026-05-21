@@ -4,7 +4,7 @@ export type AppRole = SystemRole | 'GUEST';
 export const SYSTEM_ROLES: SystemRole[] = ['MESSENGER', 'ADMIN'];
 
 export const ROLE_LABELS: Record<AppRole, string> = {
-  MESSENGER: 'Messenger จัดส่ง',
+  MESSENGER: 'พนักงานส่ง',
   ADMIN: 'Admin',
   GUEST: 'Guest',
 };

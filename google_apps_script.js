@@ -480,7 +480,12 @@ function redactParcelForGuest(parcel) {
     "ผู้รับ",
     "สาขาผู้รับ",
     "ประเภทเอกสาร",
-    "สถานะ"
+    "สถานะ",
+    "วันที่รับ",
+    "Latitude",
+    "Longitude",
+    "OriginLatitude",
+    "OriginLongitude"
   ].forEach(function(key) {
     if (Object.prototype.hasOwnProperty.call(parcel, key)) redacted[key] = parcel[key];
   });
@@ -819,7 +824,7 @@ function doGet() {
 }
 
 function handleCreateParcel(payload) {
-  if (!hasAnyRole(payload, ['ADMIN', 'GUEST'])) {
+  if (!hasAnyRole(payload, ['ADMIN', 'MESSENGER', 'GUEST'])) {
     return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง" });
   }
 
@@ -999,7 +1004,7 @@ function getActiveDeliveryAssignmentFromEvents(events) {
       if (!assignedToId) continue;
       active = {
         assignedToId: assignedToId,
-        assignedToName: evt.person || assignedToId || "Messenger",
+        assignedToName: evt.person || assignedToId || "พนักงานส่ง",
         timestamp: evt.timestamp
       };
     } else if (

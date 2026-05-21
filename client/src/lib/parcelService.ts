@@ -22,7 +22,7 @@ import type {
 import { applyDerivedStatus, applyDerivedStatuses } from './parcelStatus';
 import { normalizeRole, type AppRole } from './roles';
 import { getDeviceId } from './createdParcelHistory';
-import { getErrorMessage, isAuthErrorMessage } from './apiErrorHelper';
+import { getErrorMessage, getServerErrorMessage, isAuthErrorMessage } from './apiErrorHelper';
 import { createIdempotencyKey } from './idempotency';
 
 // ── Status normalizer ────────────────────────────────────────────────────────
@@ -178,9 +178,11 @@ async function callAPI<T>(
       continue;
     }
     if (dispatchAuthError && data && data['success'] === false) {
-      if (isAuthErrorMessage(data['error'])) {
+      const storedUser = includeAuth ? localStorage.getItem('doc_track_user') : null;
+      if (storedUser && isAuthErrorMessage(data['error'])) {
         window.dispatchEvent(new Event('auth_error'));
       }
+      data['error'] = getServerErrorMessage(data['error']);
     }
     return data as T;
   }
