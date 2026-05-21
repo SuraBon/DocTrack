@@ -18,6 +18,7 @@ import {
   getActiveDeliveryAssignment,
   isAssignedToCurrentUser,
   isAvailableForMessenger,
+  parseAssignedToId,
   type DeliveryAssignment,
 } from '@/lib/deliveryAssignment';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -63,7 +64,7 @@ const STATS = [
 ] as const;
 
 const STALE_DAYS = 2;
-type MessengerView = 'waiting' | 'mine';
+type MessengerView = 'waiting' | 'mine' | 'done';
 
 const StatsCard = ({
   label,
@@ -197,6 +198,24 @@ const sortMessengerWork = (a: Parcel, b: Parcel) => {
   const priorityDiff = priority(a) - priority(b);
   if (priorityDiff !== 0) return priorityDiff;
   return getDateTime(a['วันที่สร้าง']) - getDateTime(b['วันที่สร้าง']);
+};
+
+const wasAssignedToMe = (parcel: Parcel, employeeId: string): boolean => {
+  const currentId = employeeId.trim().toUpperCase();
+  if (!currentId) return false;
+  
+  let lastAssignedId = '';
+  for (const event of parcel.events || []) {
+    if (event.eventType === 'START_DELIVERY') {
+      const assignedToId = parseAssignedToId(event.note);
+      if (assignedToId) {
+        lastAssignedId = assignedToId.trim().toUpperCase();
+      }
+    } else if (event.eventType === 'RELEASE_DELIVERY') {
+      lastAssignedId = '';
+    }
+  }
+  return lastAssignedId === currentId;
 };
 
 const resolveDashboardRole = (rawRole: unknown): AppRole => {
@@ -821,8 +840,8 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
     [filteredParcels, currentEmployeeId],
   );
   const messengerDoneParcels = useMemo(
-    () => filteredParcels.filter(parcel => parcel['สถานะ'] === 'ส่งสำเร็จ'),
-    [filteredParcels],
+    () => filteredParcels.filter(parcel => parcel['สถานะ'] === 'ส่งสำเร็จ' && wasAssignedToMe(parcel, currentEmployeeId)),
+    [filteredParcels, currentEmployeeId],
   );
   const adminNeedsAttentionParcels = useMemo(
     () => filteredParcels
@@ -924,7 +943,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
       events: res.alreadyStarted && hasLocalAssignment ? parcel.events : [...(parcel.events || []), startEvent],
     });
     setMessengerView('mine');
-    toast.success(res.alreadyStarted ? 'งานนี้อยู่ในงานของฉันแล้ว' : 'รับงานแล้ว');
+    toast.success(res.alreadyStarted ? 'งานนี้อยู่ในรายการที่ต้องส่งแล้ว' : 'รับงานสำเร็จ');
     loadParcels(undefined, true).catch(() => {});
   };
 
@@ -955,7 +974,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
       events: [...(parcel.events || []), releaseEvent],
     });
     setMessengerView('waiting');
-    toast.success(res.alreadyReleased ? 'งานนี้พร้อมให้รับแล้ว' : 'คืนงานแล้ว');
+    toast.success(res.alreadyReleased ? 'งานนี้พร้อมให้ผู้อื่นกดรับแล้ว' : 'คืนงานสำเร็จ');
     loadParcels(undefined, true).catch(() => {});
   };
 
@@ -1134,10 +1153,11 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
           </div>
         ) : isMessengerDashboard ? (
           <div className="space-y-4 p-3 sm:p-4">
-            <div className="grid grid-cols-2 gap-1 rounded-xl border border-border bg-muted p-1">
+            <div className="grid grid-cols-3 gap-1 rounded-xl border border-border bg-muted p-1">
               {[
-                { id: 'waiting' as const, label: 'รับงาน', icon: 'inventory_2', count: messengerWaitingParcels.length },
-                { id: 'mine' as const, label: 'งานของฉัน', icon: 'local_shipping', count: messengerMineParcels.length },
+                { id: 'waiting' as const, label: 'งานรอกดรับ', icon: 'inventory_2', count: messengerWaitingParcels.length },
+                { id: 'mine' as const, label: 'งานที่ต้องส่ง', icon: 'local_shipping', count: messengerMineParcels.length },
+                { id: 'done' as const, label: 'ส่งสำเร็จแล้ว', icon: 'done_all', count: messengerDoneParcels.length },
               ].map(item => {
                 const active = messengerView === item.id;
                 return (
@@ -1146,24 +1166,24 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
                     type="button"
                     onClick={() => setMessengerView(item.id)}
                     aria-pressed={active}
-                    className={`flex h-11 items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-all ${
+                    className={`flex h-11 items-center justify-center gap-1 sm:gap-2 rounded-lg text-xs sm:text-sm font-semibold px-1 sm:px-3 transition-all ${
                       active ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-background hover:text-foreground'
                     }`}
                   >
-                    <DashboardIcon icon={item.icon} className="h-4 w-4" />
-                    <span>{item.label}</span>
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] ${active ? 'bg-white/15 text-white' : 'bg-white text-primary'}`}>{item.count}</span>
+                    <DashboardIcon icon={item.icon} className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{item.label}</span>
+                    <span className={`rounded-full px-1.5 py-0.5 text-[9px] sm:text-[10px] shrink-0 ${active ? 'bg-white/15 text-white' : 'bg-white text-primary'}`}>{item.count}</span>
                   </button>
                 );
               })}
             </div>
 
-            {messengerView === 'waiting' ? (
+            {messengerView === 'waiting' && (
               <div>
                 <RoleSectionHeader
                   icon="inventory_2"
-                  title="รับงาน"
-                  subtitle="งานที่ยังไม่มีผู้รับ"
+                  title="งานรอกดรับ"
+                  subtitle="รายการพัสดุที่ว่างอยู่ สามารถกดปุ่มรับงานเพื่อเริ่มนำส่งพัสดุได้"
                   count={messengerWaitingParcels.length}
                   tone="amber"
                 />
@@ -1187,64 +1207,32 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
                     ))}
                   </div>
                 ) : (
-                  <EmptyState icon="task_alt" title="ไม่มีงานให้รับในตอนนี้" description="เมื่อมีรายการใหม่ งานจะมาแสดงในหน้านี้" tone="emerald" />
+                  <EmptyState icon="task_alt" title="ไม่มีงานให้รับในตอนนี้" description="เมื่อมีพัสดุใหม่ในระบบ งานจะแสดงที่นี่" tone="emerald" />
                 )}
               </div>
-            ) : (
-              <div className="space-y-5">
-                <div>
-                  <RoleSectionHeader
-                    icon="local_shipping"
-                    title="งานของฉัน"
-                    subtitle="กำลังส่ง"
-                    count={messengerMineParcels.length}
-                    tone="blue"
-                  />
-                  {messengerMineParcels.length ? (
-                    <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-                      {messengerMineParcels.map(parcel => {
-                        const assignment = getActiveDeliveryAssignment(parcel);
-                        return (
-                          <MessengerDeliveryCard
-                            key={parcel.TrackingID}
-                            parcel={parcel}
-                            assignment={assignment}
-                            canStartDelivery={false}
-                            canReleaseDelivery={canReleaseMessengerJob(parcel, currentEmployeeId, role)}
-                            canConfirmDelivery={canConfirmMessengerJob(parcel, currentEmployeeId)}
-                            onOpen={() => { setSelectedParcel(parcel); setIsTimelineOpen(true); }}
-                            onConfirm={() => openConfirmFlow(parcel.TrackingID)}
-                            onStartDelivery={() => handleStartDelivery(parcel)}
-                            onReleaseDelivery={() => handleReleaseDelivery(parcel)}
-                            isStartingDelivery={startingDeliveryId === parcel.TrackingID}
-                            isReleasingDelivery={releasingDeliveryId === parcel.TrackingID}
-                          />
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <EmptyState icon="local_shipping" title="ยังไม่มีงานที่คุณรับไว้" description="กลับไปแท็บรับงานเพื่อเลือกงานก่อนออกไปส่ง" />
-                  )}
-                </div>
+            )}
 
-                <div>
-                  <RoleSectionHeader
-                    icon="done_all"
-                    title="ส่งสำเร็จแล้ว"
-                    subtitle="ประวัติงานที่ปิดแล้ว"
-                    count={messengerDoneParcels.length}
-                    tone="emerald"
-                  />
-                  {messengerDoneParcels.length ? (
-                    <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-                      {messengerDoneParcels.map(parcel => (
+            {messengerView === 'mine' && (
+              <div>
+                <RoleSectionHeader
+                  icon="local_shipping"
+                  title="งานที่ต้องส่ง"
+                  subtitle="รายการพัสดุที่คุณกำลังนำส่งในขณะนี้ กรุณาบันทึกผลการส่งเมื่อจัดส่งเสร็จสิ้น"
+                  count={messengerMineParcels.length}
+                  tone="blue"
+                />
+                {messengerMineParcels.length ? (
+                  <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                    {messengerMineParcels.map(parcel => {
+                      const assignment = getActiveDeliveryAssignment(parcel);
+                      return (
                         <MessengerDeliveryCard
                           key={parcel.TrackingID}
                           parcel={parcel}
-                          assignment={null}
+                          assignment={assignment}
                           canStartDelivery={false}
-                          canReleaseDelivery={false}
-                          canConfirmDelivery={false}
+                          canReleaseDelivery={canReleaseMessengerJob(parcel, currentEmployeeId, role)}
+                          canConfirmDelivery={canConfirmMessengerJob(parcel, currentEmployeeId)}
                           onOpen={() => { setSelectedParcel(parcel); setIsTimelineOpen(true); }}
                           onConfirm={() => openConfirmFlow(parcel.TrackingID)}
                           onStartDelivery={() => handleStartDelivery(parcel)}
@@ -1252,12 +1240,50 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
                           isStartingDelivery={startingDeliveryId === parcel.TrackingID}
                           isReleasingDelivery={releasingDeliveryId === parcel.TrackingID}
                         />
-                      ))}
-                    </div>
-                  ) : (
-                    <EmptyState icon="inventory_2" title="ยังไม่มีงานที่ส่งสำเร็จ" />
-                  )}
-                </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <EmptyState 
+                    icon="local_shipping" 
+                    title="ไม่มีงานค้างส่งในขณะนี้" 
+                    description="สามารถไปรับงานส่งพัสดุได้ที่แท็บ 'งานรอกดรับ'" 
+                  />
+                )}
+              </div>
+            )}
+
+            {messengerView === 'done' && (
+              <div>
+                <RoleSectionHeader
+                  icon="done_all"
+                  title="ส่งสำเร็จแล้ว"
+                  subtitle="ประวัติพัสดุทั้งหมดที่คุณได้ทำการจัดส่งสำเร็จเสร็จสิ้นแล้ว"
+                  count={messengerDoneParcels.length}
+                  tone="emerald"
+                />
+                {messengerDoneParcels.length ? (
+                  <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                    {messengerDoneParcels.map(parcel => (
+                      <MessengerDeliveryCard
+                        key={parcel.TrackingID}
+                        parcel={parcel}
+                        assignment={null}
+                        canStartDelivery={false}
+                        canReleaseDelivery={false}
+                        canConfirmDelivery={false}
+                        onOpen={() => { setSelectedParcel(parcel); setIsTimelineOpen(true); }}
+                        onConfirm={() => openConfirmFlow(parcel.TrackingID)}
+                        onStartDelivery={() => handleStartDelivery(parcel)}
+                        onReleaseDelivery={() => handleReleaseDelivery(parcel)}
+                        isStartingDelivery={startingDeliveryId === parcel.TrackingID}
+                        isReleasingDelivery={releasingDeliveryId === parcel.TrackingID}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState icon="inventory_2" title="ยังไม่มีประวัติการส่งสำเร็จ" description="ประวัติงานส่งพัสดุที่สำเร็จของคุณจะแสดงที่นี่" />
+                )}
               </div>
             )}
           </div>
