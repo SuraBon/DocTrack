@@ -17,11 +17,11 @@ export function applyDerivedStatus(parcel: Parcel): Parcel {
   if (Array.isArray(parcel.events) && parcel.events.length > 0) {
     // Find the last meaningful event (ignore CREATED)
     const actionEvents = parcel.events.filter(
-      e => e.eventType === 'FORWARD' || e.eventType === 'START_DELIVERY' || e.eventType === 'RELEASE_DELIVERY' || e.eventType === 'DELIVERED' || e.eventType === 'PROXY'
+      e => e.eventType === 'FORWARD' || e.eventType === 'START_DELIVERY' || e.eventType === 'PICKUP' || e.eventType === 'RELEASE_DELIVERY' || e.eventType === 'DELIVERED' || e.eventType === 'PROXY'
     );
     if (actionEvents.length > 0) {
       const lastEvent = actionEvents[actionEvents.length - 1];
-      if (lastEvent.eventType === 'FORWARD' || lastEvent.eventType === 'START_DELIVERY') {
+      if (lastEvent.eventType === 'FORWARD' || lastEvent.eventType === 'START_DELIVERY' || lastEvent.eventType === 'PICKUP') {
         return { ...parcel, 'สถานะ': 'กำลังจัดส่ง' };
       }
       if (lastEvent.eventType === 'RELEASE_DELIVERY') {

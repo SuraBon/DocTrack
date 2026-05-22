@@ -745,7 +745,7 @@ export default function ConfirmReceipt({
                         </div>
                         <div className="min-w-0">
                           <p className="font-display text-sm font-black text-primary">ส่งต่อไปจุดถัดไป</p>
-                          <p className="text-[11px] leading-tight text-on-surface-variant/60">ยังไม่ถึงผู้รับ ต้องส่งต่อให้คนหรือสาขาอื่น</p>
+                          <p className="text-[11px] leading-tight text-on-surface-variant/60">ยังไม่ถึงผู้รับ ต้องส่งต่อให้คนหรือแผนก/สาขาอื่น</p>
                         </div>
                       </div>
                       <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-all ${isForwarding ? 'border-secondary bg-secondary' : 'border-outline-variant group-hover:border-primary'}`}>
@@ -868,7 +868,7 @@ export default function ConfirmReceipt({
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="flex-1 bg-white rounded-xl px-3 py-2 border border-outline-variant/20 text-center">
-                    <p className="text-[9px] text-on-surface-variant/50 font-bold uppercase tracking-wider mb-0.5">จากสาขา</p>
+                    <p className="text-[9px] text-on-surface-variant/50 font-bold uppercase tracking-wider mb-0.5">จากแผนก/สาขา</p>
                     <p className="text-sm font-black text-primary truncate">
                       {resolveSelectValue(forwardFromBranch)}
                     </p>

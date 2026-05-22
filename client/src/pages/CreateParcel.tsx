@@ -122,7 +122,7 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
     // ✅ FIX: Proper validation with specific messages
     const validationError =
       validateRequiredText(v.senderName, 'ชื่อผู้ส่ง', 2, 200) ||
-      validateRequiredText(v.senderBranch, 'สาขาผู้ส่ง', 1, 100) ||
+      validateRequiredText(v.senderBranch, 'แผนก/สาขาผู้ส่ง', 1, 100) ||
       validateRequiredText(v.receiverName, 'ชื่อผู้รับหรือชื่อสถานที่ปลายทาง', 2, 200) ||
       validateRequiredText(v.receiverBranch, 'จุดหมายปลายทาง', 1, 100) ||
       (v.description && validateRequiredText(v.description, 'รายละเอียด', 0, 200)) ||
@@ -233,14 +233,14 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
                 </div>
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="px-1 text-sm font-medium text-foreground">สาขาผู้ส่ง *</label>
+                <label className="px-1 text-sm font-medium text-foreground">แผนก/สาขาผู้ส่ง *</label>
                 <NativeSelect
                   value={formData.senderBranch}
                   onChange={v => setFormData(p => ({ ...p, senderBranch: v }))}
                   options={branches}
-                  placeholder="เลือกสาขา"
+                  placeholder="เลือกแผนก/สาขา"
                   icon="apartment"
-                  otherPlaceholder="ระบุชื่อสาขาผู้ส่ง"
+                  otherPlaceholder="ระบุแผนก/สาขาผู้ส่ง"
                 />
               </div>
               <div className={`inline-flex w-fit max-w-full items-center gap-2 rounded-full border px-3 py-2 text-xs ${
@@ -300,12 +300,12 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
                 </div>
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="px-1 text-sm font-medium text-foreground">ส่งไปที่ *</label>
+                <label className="px-1 text-sm font-medium text-foreground">แผนก/สาขา หรือสถานที่ปลายทาง *</label>
                 <NativeSelect
                   value={formData.receiverBranch}
                   onChange={v => setFormData(p => ({ ...p, receiverBranch: v }))}
                   options={branches}
-                  placeholder="เลือกสาขา หรือระบุสถานที่ปลายทาง"
+                  placeholder="เลือกแผนก/สาขา หรือระบุสถานที่ปลายทาง"
                   otherPlaceholder="ระบุสถานที่ปลายทาง"
                 />
               </div>

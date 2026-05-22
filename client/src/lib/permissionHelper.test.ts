@@ -16,7 +16,7 @@ describe('permissionHelper', () => {
 
   it('keeps staff on staff routes', () => {
     expect(canAccessPage('dashboard', 'MESSENGER')).toBe(true);
-    expect(canAccessPage('create', 'MESSENGER')).toBe(true);
+    expect(canAccessPage('create', 'MESSENGER')).toBe(false);
     expect(canAccessPage('track', 'MESSENGER')).toBe(false);
     expect(canAccessPage('create', 'ADMIN')).toBe(true);
     expect(canAccessPage('track', 'ADMIN')).toBe(false);

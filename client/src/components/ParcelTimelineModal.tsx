@@ -5,9 +5,6 @@ import { lazy, Suspense, useState } from 'react';
 import Timeline from '@/components/Timeline';
 import type { Parcel } from '@/types/parcel';
 import type { TimelineEvent } from '@/types/timeline';
-import { useAuth } from '@/contexts/AuthContext';
-import { normalizeRole } from '@/lib/roles';
-import { applyDerivedStatus } from '@/lib/parcelStatus';
 
 const TrackingMap = lazy(() => import('@/components/TrackingMap'));
 
@@ -36,80 +33,51 @@ export default function ParcelTimelineModal({
   selectedParcel,
   selectedTimelineEvents,
   hasKnownBranches,
-  onConfirmParcel,
 }: ParcelTimelineModalProps) {
-  const { user } = useAuth();
-  const role = normalizeRole(user?.role);
-  const canConfirmParcel = role === 'ADMIN' || role === 'MESSENGER';
   const [isMapOpen, setIsMapOpen] = useState(false);
 
   if (!selectedParcel) return null;
 
-  // Use derived status so forwarded parcels show correctly
-  const derivedParcel = applyDerivedStatus(selectedParcel);
-  const isActuallyDelivered = derivedParcel['สถานะ'] === 'ส่งสำเร็จ';
-
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="w-full max-w-[92vw] sm:max-w-3xl max-h-[88vh] overflow-hidden p-0 rounded-2xl border-none shadow-2xl" showCloseButton={false}>
-        <div className="flex flex-col max-h-[88vh]">
-          <DialogHeader className="shrink-0 p-4 sm:p-5 text-white"
-            style={{ background: 'linear-gradient(135deg, #0d1f3c 0%, #091426 100%)' }}>
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <DialogTitle className="text-base sm:text-lg font-black font-display text-white leading-tight">ลำดับการจัดส่ง</DialogTitle>
-                <p className="mt-1 min-w-0 text-xs leading-tight text-white/55">
-                  หมายเลขติดตาม: <code className="font-mono text-white/80 font-bold break-all">{selectedParcel.TrackingID}</code>
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center justify-end gap-2">
-                {canConfirmParcel && !isActuallyDelivered && (
-                  <button
-                    onClick={() => { setIsOpen(false); onConfirmParcel(selectedParcel.TrackingID); }}
-                    className="hidden items-center gap-1.5 px-3 py-2 bg-secondary text-primary rounded-xl font-display font-bold text-xs hover:opacity-90 active:scale-95 transition-all sm:flex"
-                  >
-                    <span className="material-symbols-outlined text-base">add_a_photo</span>
-                    บันทึกผลการส่ง
-                  </button>
-                )}
-                <button onClick={() => setIsOpen(false)}
-                  className="p-1.5 bg-white/10 rounded-xl hover:bg-white/20 transition-colors">
-                  <span className="material-symbols-outlined text-white text-lg">close</span>
-                </button>
-              </div>
-            </div>
-            {canConfirmParcel && !isActuallyDelivered && (
-              <div className="mt-3 flex justify-start">
-                <button
-                  onClick={() => { setIsOpen(false); onConfirmParcel(selectedParcel.TrackingID); }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary text-primary rounded-xl font-display font-bold text-xs hover:opacity-90 active:scale-95 transition-all sm:hidden"
-                >
-                  <span className="material-symbols-outlined text-base">add_a_photo</span>
-                  บันทึกผลการส่ง
-                </button>
-              </div>
-            )}
+      <DialogContent className="w-[calc(100vw-1.5rem)] max-w-[380px] max-h-[86vh] overflow-hidden rounded-[22px] border-none bg-white p-0 shadow-[0_20px_50px_rgba(0,0,0,0.18)]" showCloseButton={false}>
+        <div className="flex max-h-[86vh] flex-col">
+          <DialogHeader className="relative shrink-0 bg-slate-900 px-5 py-4 text-white">
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              className="absolute right-4 top-3 grid h-7 w-7 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+              aria-label="ปิดรายละเอียดพัสดุ"
+            >
+              <span className="material-symbols-outlined text-sm">close</span>
+            </button>
+            <DialogTitle className="pr-8 text-sm font-semibold leading-tight text-white">ลำดับการจัดส่ง</DialogTitle>
+            <p className="mt-1 min-w-0 pr-8 text-[10px] tracking-wide text-slate-400">
+              <code className="font-mono font-semibold text-slate-400 break-all">{selectedParcel.TrackingID}</code>
+            </p>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto bg-background p-3 sm:p-4">
-            <div className="rounded-3xl border border-outline-variant/20 bg-white p-3 shadow-sm sm:p-5">
+          <div className="flex-1 overflow-y-auto bg-gray-50 px-4 py-4">
+            <div className="rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
               <div className="mb-4 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-on-surface-variant/45">
+                <div className="flex min-w-0 items-center gap-2">
+                  <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-blue-50 text-blue-500">
                     <span className="material-symbols-outlined text-sm">route</span>
-                    ลำดับการจัดส่ง
-                  </p>
-                  <p className="mt-1 text-xs font-semibold text-on-surface-variant/55">เรียงจากเหตุการณ์ล่าสุดไปยังจุดเริ่มต้น</p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-gray-800">สถานะล่าสุด</p>
+                    <p className="mt-0.5 truncate text-[10px] text-gray-400">เรียงจากล่าสุด</p>
+                  </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => hasKnownBranches && setIsMapOpen(true)}
                   disabled={!hasKnownBranches}
-                  className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-outline-variant/25 bg-white px-3 text-xs font-black text-primary transition-all hover:border-primary/30 hover:bg-primary/5 active:scale-95 disabled:cursor-not-allowed disabled:opacity-45"
+                  className="inline-flex h-7 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-gray-100 px-2.5 text-[10px] font-medium text-gray-600 transition-all hover:bg-gray-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-45"
                   title={hasKnownBranches ? 'เปิดแผนที่' : 'ยังไม่มีพิกัด GPS'}
                   aria-label={hasKnownBranches ? 'เปิดแผนที่' : 'ยังไม่มีพิกัด GPS'}
                 >
-                  <span className="material-symbols-outlined text-[18px]">{hasKnownBranches ? 'map' : 'map_off'}</span>
+                  <span className="material-symbols-outlined text-sm">{hasKnownBranches ? 'map' : 'map_off'}</span>
                   แผนที่
                 </button>
               </div>

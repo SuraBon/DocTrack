@@ -299,10 +299,16 @@ export async function confirmReceipt(
   }
 }
 
-export async function startDelivery(trackingID: string): Promise<StartDeliveryResponse> {
+export async function startDelivery(
+  trackingID: string,
+  latitude?: number,
+  longitude?: number,
+): Promise<StartDeliveryResponse> {
   const payload: StartDeliveryPayload = {
     action: 'startDelivery',
     trackingID,
+    latitude,
+    longitude,
     idempotencyKey: createIdempotencyKey('startDelivery'),
   };
   try {

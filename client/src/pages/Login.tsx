@@ -73,7 +73,7 @@ export default function Login() {
     if (isSetup) {
       const passwordError = validatePassword(pin, 20);
       const nameError = validateRequiredText(name, 'ชื่อ-นามสกุล', 1, 100);
-      const branchError = validateRequiredText(branch, 'สาขา', 1, 100);
+      const branchError = validateRequiredText(branch, 'แผนก/สาขา', 1, 100);
       if (passwordError || nameError || branchError) {
         const message = passwordError || nameError || branchError || 'กรุณากรอกข้อมูลให้ครบถ้วน';
         showAuthError('ตั้งค่าการเข้าใช้งานไม่สำเร็จ', message);
@@ -191,7 +191,7 @@ export default function Login() {
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-foreground">สาขาประจำ</label>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">แผนก/สาขาประจำ</label>
                 <input
                   type="text"
                   value={branch}

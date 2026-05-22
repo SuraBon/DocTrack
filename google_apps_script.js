@@ -54,6 +54,7 @@ const EVENT_HEADERS = [
   "DeliveryMatchStatus",
   "DeliveryMismatchReason"
 ];
+const AUTO_PICKUP_RADIUS_METERS = 150;
 
 function getSpreadsheet() {
   try {
@@ -468,6 +469,20 @@ function sanitizeCoordinate(value, min, max) {
   const num = Number(value);
   if (!isFinite(num) || num < min || num > max) return "";
   return Math.round(num * 10000000) / 10000000;
+}
+
+function getDistanceMeters(lat1, lng1, lat2, lng2) {
+  if (lat1 === "" || lng1 === "" || lat2 === "" || lng2 === "") return null;
+  const aLat = Number(lat1), aLng = Number(lng1), bLat = Number(lat2), bLng = Number(lng2);
+  if (!isFinite(aLat) || !isFinite(aLng) || !isFinite(bLat) || !isFinite(bLng)) return null;
+  const radius = 6371000;
+  const toRad = function(deg) { return deg * Math.PI / 180; };
+  const dLat = toRad(bLat - aLat);
+  const dLng = toRad(bLng - aLng);
+  const sinLat = Math.sin(dLat / 2);
+  const sinLng = Math.sin(dLng / 2);
+  const h = sinLat * sinLat + Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * sinLng * sinLng;
+  return 2 * radius * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
 function redactParcelForGuest(parcel) {
@@ -1144,11 +1159,11 @@ function handleExportSummary(payload) {
       if (status === "ส่งถึงแล้ว") {
         const events = eventsMap[trackingID] || [];
         const actionEvents = events.filter(function(e) {
-          return e.eventType === 'FORWARD' || e.eventType === 'START_DELIVERY' || e.eventType === 'RELEASE_DELIVERY' || e.eventType === 'DELIVERED' || e.eventType === 'PROXY';
+          return e.eventType === 'FORWARD' || e.eventType === 'START_DELIVERY' || e.eventType === 'PICKUP' || e.eventType === 'RELEASE_DELIVERY' || e.eventType === 'DELIVERED' || e.eventType === 'PROXY';
         });
         if (
           actionEvents.length > 0 &&
-          (actionEvents[actionEvents.length - 1].eventType === 'FORWARD' || actionEvents[actionEvents.length - 1].eventType === 'START_DELIVERY')
+          (actionEvents[actionEvents.length - 1].eventType === 'FORWARD' || actionEvents[actionEvents.length - 1].eventType === 'START_DELIVERY' || actionEvents[actionEvents.length - 1].eventType === 'PICKUP')
         ) {
           status = "กำลังจัดส่ง";
         } else if (actionEvents.length > 0 && actionEvents[actionEvents.length - 1].eventType === 'RELEASE_DELIVERY') {
@@ -1447,6 +1462,13 @@ function handleStartDelivery(payload) {
         sheet.getRange(rowIndex, 10).setValue("กำลังจัดส่ง");
       }
 
+      const startLatitude = sanitizeCoordinate(payload.latitude, -90, 90);
+      const startLongitude = sanitizeCoordinate(payload.longitude, -180, 180);
+      const originLatitude = sanitizeCoordinate(row[14], -90, 90);
+      const originLongitude = sanitizeCoordinate(row[15], -180, 180);
+      const pickupDistance = getDistanceMeters(startLatitude, startLongitude, originLatitude, originLongitude);
+      const autoPickedUp = pickupDistance !== null && pickupDistance <= AUTO_PICKUP_RADIUS_METERS;
+
       const eventSheet = getEventSheetForSpreadsheet(storage.spreadsheet);
       if (eventSheet) {
         const eventId = "EVT" + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyyMMddHHmmssSSS") + Math.floor(Math.random() * 1000);
@@ -1461,19 +1483,38 @@ function handleStartDelivery(payload) {
           escapeSheetValue(row[5] || ""),
           assignedToName,
           "",
-          "",
-          "",
+          startLatitude,
+          startLongitude,
           buildAssignmentNote(payload.employeeId),
           "",
           ""
         ]);
+        if (autoPickedUp) {
+          const pickupEventId = "EVT" + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyyMMddHHmmssSSS") + Math.floor(Math.random() * 1000);
+          eventSheet.appendRow([
+            pickupEventId,
+            payload.trackingID,
+            eventTimeStr,
+            "PICKUP",
+            escapeSheetValue(row[3] || ""),
+            escapeSheetValue(row[5] || ""),
+            assignedToName,
+            "",
+            startLatitude,
+            startLongitude,
+            "autoPickup=originGpsMatched;distanceMeters=" + Math.round(pickupDistance),
+            "",
+            ""
+          ]);
+        }
       }
 
       writeAuditLog(payload.employeeId, "START_DELIVERY", payload.trackingID, "Status: " + currentStatus + " → กำลังจัดส่ง");
       return createJsonResponse({
         success: true,
         assignedToId: currentEmployeeId,
-        assignedToName: payload.name || payload.employeeId || ""
+        assignedToName: payload.name || payload.employeeId || "",
+        autoPickedUp: autoPickedUp
       });
     }
   }

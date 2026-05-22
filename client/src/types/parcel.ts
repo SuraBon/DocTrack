@@ -30,7 +30,7 @@ export interface ParcelEventRecord {
   id: string;
   trackingId: string;
   timestamp: string;
-  eventType: 'FORWARD' | 'PROXY' | 'DELIVERED' | 'CREATED' | 'START_DELIVERY' | 'RELEASE_DELIVERY';
+  eventType: 'FORWARD' | 'PROXY' | 'DELIVERED' | 'CREATED' | 'START_DELIVERY' | 'PICKUP' | 'RELEASE_DELIVERY';
   location: string;
   destLocation?: string;
   person?: string;
@@ -135,6 +135,8 @@ export interface ConfirmReceiptResponse {
 export interface StartDeliveryPayload {
   action: 'startDelivery';
   trackingID: string;
+  latitude?: number;
+  longitude?: number;
   idempotencyKey?: string;
 }
 
@@ -144,6 +146,7 @@ export interface StartDeliveryResponse {
   alreadyStarted?: boolean;
   assignedToId?: string;
   assignedToName?: string;
+  autoPickedUp?: boolean;
 }
 
 export interface ReleaseDeliveryPayload {

@@ -92,47 +92,46 @@ export default function Timeline({ events, className = '', compact = false }: Ti
 
     return (
       <div className={`relative ${className}`}>
-        <div className="space-y-1">
+        <div className="space-y-0">
           {displayEvents.map((event, index) => {
             const { day, time } = formatTimelineDateParts(event.timestamp);
             const isLatest = index === 0;
             const hasNext = index < displayEvents.length - 1;
             return (
-              <div key={event.id} className="grid grid-cols-[58px_30px_1fr] gap-2 sm:grid-cols-[70px_34px_1fr] sm:gap-3">
-                <div className={`pt-2 text-right leading-tight ${isLatest ? 'text-primary' : 'text-on-surface-variant/45'}`}>
-                  <p className="text-[11px] font-black sm:text-xs">{day}</p>
-                  <p className="mt-1 text-[10px] font-bold sm:text-[11px]">{time}</p>
+              <div key={event.id} className="grid grid-cols-[48px_20px_minmax(0,1fr)] gap-2">
+                <div className={`pt-1 text-right leading-none ${isLatest ? 'text-gray-800' : 'text-gray-400'}`}>
+                  <p className="text-[10px] font-semibold">{day}</p>
+                  <p className="mt-1 text-[9px] font-medium">{time}</p>
                 </div>
                 <div className="relative flex justify-center">
                   {hasNext && (
-                    <span className={`absolute top-7 bottom-[-4px] w-px ${isLatest ? 'bg-primary/30' : 'bg-outline-variant/35'}`} />
+                    <span className="absolute bottom-[-2px] top-[15px] w-px bg-slate-200" />
                   )}
-                  <span className={`relative z-10 mt-2 grid h-6 w-6 place-items-center rounded-full ring-4 sm:h-7 sm:w-7 ${
+                  <span className={`relative z-10 mt-1 grid h-3.5 w-3.5 place-items-center rounded-full border-2 ${
                     isLatest
-                      ? 'bg-primary text-white ring-primary/10 shadow-lg shadow-primary/20'
-                      : 'border border-outline-variant/25 bg-white text-on-surface-variant/45 ring-surface-container-low'
+                      ? 'border-blue-500 bg-blue-500 shadow-[0_0_0_4px_rgba(59,130,246,0.16)]'
+                      : 'border-slate-300 bg-white'
                   }`}>
-                    <span className="material-symbols-outlined text-[14px] sm:text-[15px]">{isLatest ? 'radio_button_checked' : 'check'}</span>
                   </span>
                 </div>
-                <div className="min-w-0 pb-3">
-                  <div className={`rounded-2xl border p-3 transition-all ${
+                <div className="min-w-0 pb-2">
+                  <div className={`rounded-lg border px-3 py-2 transition-all ${
                     isLatest
-                      ? 'border-primary/20 bg-primary/[0.035] shadow-sm'
-                      : 'border-outline-variant/15 bg-white'
+                      ? 'border-blue-100 bg-blue-50/45'
+                      : 'border-transparent bg-transparent'
                   }`}>
                     <div className="flex min-w-0 items-start gap-2">
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <p className={`text-sm font-black leading-snug sm:text-base ${isLatest ? 'text-primary' : 'text-on-surface-variant/70'}`}>
+                          <p className={`text-xs font-semibold leading-tight ${isLatest ? 'text-blue-700' : 'text-gray-700'}`}>
                             {event.title}
                           </p>
                           {isLatest && (
-                            <span className="rounded-full bg-primary px-2 py-0.5 text-[9px] font-black text-white">ล่าสุด</span>
+                            <span className="rounded bg-blue-600 px-1.5 py-0.5 text-[8px] font-bold uppercase leading-none text-white">ล่าสุด</span>
                           )}
                         </div>
                         {event.description && (
-                          <p className={`mt-1 break-words text-xs font-semibold leading-snug sm:text-sm ${isLatest ? 'text-primary/75' : 'text-on-surface-variant/55'}`}>
+                          <p className="mt-1 line-clamp-1 break-words text-[10px] font-medium leading-snug text-gray-500">
                             {event.description}
                           </p>
                         )}
@@ -142,27 +141,25 @@ export default function Timeline({ events, className = '', compact = false }: Ti
                       )}
                     </div>
 
-                    <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-outline-variant/10 pt-2">
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-on-surface-variant/55">
-                        <span className="material-symbols-outlined text-[14px]">schedule</span>
+                    <div className={`${isLatest ? 'mt-2 border-t border-blue-100/60 pt-1.5' : 'mt-1'} flex flex-wrap items-center gap-x-3 gap-y-1`}>
+                      <span className="inline-flex items-center text-[9px] font-medium text-gray-400">
                         {event.timestamp ? formatThaiDateTime(event.timestamp) : '-'}
                       </span>
                       {event.location && (
-                        <span className="inline-flex min-w-0 items-center gap-1 text-[11px] font-bold text-on-surface-variant/55">
-                          <span className="material-symbols-outlined text-[14px]">location_on</span>
+                        <span className="inline-flex min-w-0 items-center text-[9px] font-medium text-gray-400">
                           <span className="truncate">{event.location}</span>
                         </span>
                       )}
                     </div>
 
                     {event.deliveryMatchStatus && (
-                      <div className="mt-2">
-                        <span className={`inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1 text-[10px] font-black ${
+                      <div className="mt-1.5">
+                        <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[9px] font-bold ${
                           event.deliveryMatchStatus === 'DELIVERED_ELSEWHERE'
                             ? 'border-amber-100 bg-amber-50 text-amber-800'
                             : 'border-green-100 bg-green-50 text-green-700'
                         }`}>
-                          <span className="material-symbols-outlined text-sm">
+                          <span className="material-symbols-outlined text-[12px]">
                             {event.deliveryMatchStatus === 'DELIVERED_ELSEWHERE' ? 'move_location' : 'task_alt'}
                           </span>
                           {event.deliveryMatchStatus === 'DELIVERED_ELSEWHERE' ? 'ส่งคนละจุด' : 'ส่งตรงปลายทาง'}

@@ -138,7 +138,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
       : BarChart3;
   const allNavItems: NavItem[] = [
     { id: "dashboard", label: dashboardLabel, icon: dashboardIcon, badge: null, roles: ['ADMIN', 'MESSENGER'], accent: "from-sky-400 to-blue-500" },
-    { id: "create",    label: UI_COPY.nav.create, icon: PackagePlus, badge: null, roles: ['GUEST', 'ADMIN', 'MESSENGER'], accent: "from-amber-300 to-orange-500" },
+    { id: "create",    label: UI_COPY.nav.create, icon: PackagePlus, badge: null, roles: ['GUEST', 'ADMIN'], accent: "from-amber-300 to-orange-500" },
     { id: "track",     label: UI_COPY.nav.track, icon: Search, badge: null, roles: ['GUEST'], accent: "from-violet-300 to-indigo-500" },
     { id: "login",     label: UI_COPY.nav.staffLogin, icon: LogIn, badge: null, roles: ['GUEST'], accent: "from-zinc-500 to-zinc-900" },
     { id: "users",     label: UI_COPY.nav.users, icon: Users, badge: null, roles: ['ADMIN'], accent: "from-rose-300 to-red-500" },
@@ -160,7 +160,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
     e.preventDefault();
     const { name, branch, currentPassword, newPassword, confirmPassword } = profileForm;
     if (!name.trim()) { toast.error('กรุณากรอกชื่อ-นามสกุล'); return; }
-    if (!branch.trim() || !resolveSelectValue(branch)) { toast.error('กรุณาเลือกสาขา'); return; }
+    if (!branch.trim() || !resolveSelectValue(branch)) { toast.error('กรุณาเลือกแผนก/สาขา'); return; }
     if (showPasswordFields && !currentPassword) { toast.error('กรุณากรอกรหัสผ่านปัจจุบัน'); return; }
     if (showPasswordFields && !newPassword) { toast.error('กรุณากรอกรหัสผ่านใหม่'); return; }
     if (showPasswordFields && newPassword.length < 4) { toast.error('รหัสผ่านใหม่ต้องมีอย่างน้อย 4 ตัวอักษร'); return; }
@@ -348,7 +348,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
               <div>
                 <DialogTitle className="text-lg font-semibold text-primary">แก้ไขโปรไฟล์</DialogTitle>
                 <DialogDescription className="mt-1 text-xs text-on-surface-variant">
-                  แก้ไขชื่อ สาขา หรือรหัสผ่านของคุณ
+                  แก้ไขชื่อ แผนก/สาขา หรือรหัสผ่านของคุณ
                 </DialogDescription>
               </div>
             </div>
@@ -371,15 +371,15 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
 
             {/* Branch */}
             <div>
-              <label className="block text-sm font-bold text-on-surface-variant mb-1.5">สาขาประจำ</label>
+              <label className="block text-sm font-bold text-on-surface-variant mb-1.5">แผนก/สาขาประจำ</label>
               <NativeSelect
                 value={profileForm.branch}
                 onChange={v => setProfileForm(f => ({ ...f, branch: v }))}
                 options={getBranches()}
-                placeholder="เลือกสาขา"
+                placeholder="เลือกแผนก/สาขา"
                 icon="apartment"
                 disabled={profileLoading}
-                otherPlaceholder="ระบุชื่อสาขา"
+                otherPlaceholder="ระบุแผนก/สาขา"
               />
             </div>
 

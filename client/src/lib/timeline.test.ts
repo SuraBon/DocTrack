@@ -93,6 +93,32 @@ describe('parseParcelTimeline', () => {
     });
   });
 
+  it('shows automatic pickup event after near-origin start delivery', () => {
+    const parcel = createParcel({
+      events: [{
+        id: 'EVT1',
+        trackingId: 'TRK1',
+        timestamp: '1 มกราคม 2569 10:30',
+        eventType: 'PICKUP',
+        location: 'ศูนย์ใหญ่บางนา',
+        destLocation: 'มีนบุรี',
+        person: 'Messenger A',
+        latitude: 13.7,
+        longitude: 100.5,
+        note: 'autoPickup=originGpsMatched',
+      }],
+    });
+    const events = parseParcelTimeline(parcel);
+    expect(events[0]).toMatchObject({
+      title: 'รับพัสดุ',
+      description: 'ผู้รับพัสดุ: Messenger A',
+      location: 'ศูนย์ใหญ่บางนา',
+      destLocation: 'มีนบุรี',
+      latitude: 13.7,
+      longitude: 100.5,
+    });
+  });
+
   it('shows release delivery event', () => {
     const parcel = createParcel({
       events: [{

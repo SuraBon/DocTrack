@@ -150,7 +150,7 @@ export default function UserManagement() {
     const password = newUser.password.trim();
 
     const nameError = validateRequiredText(name, 'ชื่อ-นามสกุล', 1, 100);
-    const branchError = validateRequiredText(branch, 'สาขา', 1, 100);
+    const branchError = validateRequiredText(branch, 'แผนก/สาขา', 1, 100);
     const passwordError = validatePassword(password, 100);
     if (!isValidEmployeeId(employeeId)) {
       toast.error('รหัสพนักงานต้องใช้ A-Z, 0-9 หรือ _ เท่านั้น');
@@ -243,7 +243,7 @@ export default function UserManagement() {
           value={newUser.branch}
           onChange={e => setNewUser(current => ({ ...current, branch: e.target.value }))}
           disabled={creatingUser}
-          placeholder="สาขา"
+          placeholder="แผนก/สาขา"
           className="app-input"
         />
         <select
@@ -310,7 +310,7 @@ export default function UserManagement() {
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="ค้นหาด้วยรหัสพนักงาน ชื่อ สาขา หรือสิทธิ์..."
+          placeholder="ค้นหาด้วยรหัสพนักงาน ชื่อ แผนก/สาขา หรือสิทธิ์..."
           className="app-input w-full pl-10"
         />
       </div>
@@ -376,7 +376,7 @@ export default function UserManagement() {
               <tr className="bg-surface-container-lowest border-b border-outline-variant/20">
                 <th className="px-5 py-3.5 text-[11px] font-black text-on-surface-variant/60 uppercase tracking-widest">รหัสพนักงาน</th>
                 <th className="px-5 py-3.5 text-[11px] font-black text-on-surface-variant/60 uppercase tracking-widest">ชื่อ-นามสกุล</th>
-                <th className="px-5 py-3.5 text-[11px] font-black text-on-surface-variant/60 uppercase tracking-widest">สาขา</th>
+                <th className="px-5 py-3.5 text-[11px] font-black text-on-surface-variant/60 uppercase tracking-widest">แผนก/สาขา</th>
                 <th className="px-5 py-3.5 text-[11px] font-black text-on-surface-variant/60 uppercase tracking-widest">สิทธิ์</th>
               </tr>
             </thead>

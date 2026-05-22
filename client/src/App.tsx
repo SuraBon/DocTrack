@@ -38,14 +38,26 @@ const getRouteFromLocation = (): { page: PageId; isKnownPath: boolean } => {
   return page ? { page, isKnownPath: true } : { page: "create", isKnownPath: false };
 };
 
-const PageFallback = () => (
-  <div className="grid min-h-[60vh] place-items-center bg-surface">
-    <div className="flex flex-col items-center gap-3 text-primary">
-      <span className="material-symbols-outlined animate-spin text-4xl">progress_activity</span>
-      <p className="text-sm font-black">กำลังโหลดหน้า...</p>
+const AppLoading = ({ fullScreen = false }: { fullScreen?: boolean }) => (
+  <div className={`grid place-items-center bg-background px-4 ${fullScreen ? "min-h-screen" : "min-h-[56vh]"}`}>
+    <div className="flex w-full max-w-[280px] flex-col items-center rounded-2xl border border-outline-variant/20 bg-white px-6 py-7 text-center shadow-sm">
+      <div className="grid h-12 w-12 place-items-center rounded-2xl bg-primary text-white shadow-sm">
+        <span className="material-symbols-outlined text-2xl">inventory_2</span>
+      </div>
+      <div className="mt-4">
+        <p className="font-display text-base font-black leading-tight text-primary">DocTrack</p>
+        <p className="mt-1 text-xs font-semibold text-on-surface-variant/55">กำลังเตรียมข้อมูล</p>
+      </div>
+      <div className="mt-5 flex items-center gap-1.5">
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary/35 [animation-delay:0ms]" />
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary/50 [animation-delay:120ms]" />
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary/70 [animation-delay:240ms]" />
+      </div>
     </div>
   </div>
 );
+
+const PageFallback = () => <AppLoading />;
 
 function App() {
   const { user, loading } = useAuth();
@@ -95,11 +107,7 @@ function App() {
   }, [currentPage, loading, navigateToPage, user]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-surface">
-        <span className="material-symbols-outlined animate-spin text-4xl text-primary">progress_activity</span>
-      </div>
-    );
+    return <AppLoading fullScreen />;
   }
 
   const role = user ? normalizeRole(user.role) : "GUEST";

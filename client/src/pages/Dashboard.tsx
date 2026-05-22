@@ -7,6 +7,7 @@ import { useParcelStore } from '@/hooks/useParcelStore';
 import { useAuth } from '@/contexts/AuthContext';
 import { deleteParcel, releaseDelivery, startDelivery } from '@/lib/parcelService';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useGeolocation } from '@/hooks/useGeolocation';
 import StatusBadge from '@/components/StatusBadge';
 import type { Parcel } from '@/types/parcel';
 import { toast } from 'sonner';
@@ -132,26 +133,22 @@ const LazyPanelFallback = ({ label = 'กำลังโหลด...' }: { label
 );
 
 const MessengerRouteSummary = ({ parcel, compact = false }: { parcel: Parcel; compact?: boolean }) => (
-  <div className={`rounded-xl border border-outline-variant/20 bg-surface-container-lowest/40 ${compact ? 'p-2.5' : 'p-3.5'}`}>
-    <div className="grid items-center gap-2 grid-cols-[1fr_auto_1fr]">
-      <div className="min-w-0">
-        <div className="mb-1 flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-on-surface-variant/40">
-          <span className="material-symbols-outlined text-[13px]">package_2</span>
-          ต้นทาง
+  <div className={`rounded-xl bg-slate-50 ${compact ? 'p-2.5' : 'p-3'}`}>
+    <div className="space-y-2">
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="h-2 w-2 shrink-0 rounded-full bg-blue-500 shadow-[0_0_0_3px_rgba(59,130,246,0.18)]" />
+        <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
+          <p className="min-w-0 truncate text-xs font-semibold text-slate-700">
+            {parcel['สาขาผู้ส่ง'] || '-'} <span className="font-medium text-slate-500">({parcel['ผู้ส่ง'] || '-'})</span>
+          </p>
+          <span className="material-symbols-outlined shrink-0 text-[14px] text-slate-300">arrow_forward</span>
         </div>
-        <p className="truncate text-sm font-black leading-tight text-primary">{parcel['สาขาผู้ส่ง'] || '-'}</p>
-        {!compact && <p className="mt-0.5 truncate text-[11px] font-semibold text-on-surface-variant/60">{parcel['ผู้ส่ง'] || '-'}</p>}
       </div>
-      <div className="flex w-6 items-center justify-center text-on-surface-variant/30 shrink-0">
-        <span className="material-symbols-outlined text-lg">arrow_forward</span>
-      </div>
-      <div className="min-w-0">
-        <div className="mb-1 flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-on-surface-variant/40">
-          <span className="material-symbols-outlined text-[13px]">flag</span>
-          ปลายทาง
-        </div>
-        <p className="truncate text-sm font-black leading-tight text-primary">{parcel['สาขาผู้รับ'] || '-'}</p>
-        {!compact && <p className="mt-0.5 truncate text-[11px] font-semibold text-on-surface-variant/60">{parcel['ผู้รับ'] || '-'}</p>}
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="h-2 w-2 shrink-0 rounded-full bg-red-400 shadow-[0_0_0_3px_rgba(248,113,113,0.18)]" />
+        <p className="min-w-0 truncate text-xs font-semibold text-slate-700">
+          {parcel['สาขาผู้รับ'] || '-'} <span className="font-medium text-slate-500">({parcel['ผู้รับ'] || '-'})</span>
+        </p>
       </div>
     </div>
     {compact && (
@@ -387,6 +384,58 @@ const RoleSectionHeader = ({
   );
 };
 
+const MessengerViewBanner = ({
+  icon,
+  title,
+  subtitle,
+  count,
+  tone = 'amber',
+}: {
+  icon: string;
+  title: string;
+  subtitle: string;
+  count: number;
+  tone?: SectionTone;
+}) => {
+  const toneMap: Record<SectionTone, { shell: string; icon: string; badge: string }> = {
+    default: {
+      shell: 'border-slate-100 bg-slate-50/70',
+      icon: 'bg-white text-slate-700',
+      badge: 'border-slate-100 bg-white text-slate-700',
+    },
+    amber: {
+      shell: 'border-orange-100 bg-orange-50/50',
+      icon: 'bg-orange-100 text-orange-600',
+      badge: 'border-orange-100 bg-white text-orange-600',
+    },
+    emerald: {
+      shell: 'border-emerald-100 bg-emerald-50/60',
+      icon: 'bg-emerald-100 text-emerald-700',
+      badge: 'border-emerald-100 bg-white text-emerald-700',
+    },
+    blue: {
+      shell: 'border-blue-100 bg-blue-50/60',
+      icon: 'bg-blue-100 text-blue-700',
+      badge: 'border-blue-100 bg-white text-blue-700',
+    },
+  };
+  const classes = toneMap[tone];
+  return (
+    <div className={`mb-4 flex items-start gap-4 rounded-2xl border p-4 ${classes.shell}`}>
+      <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${classes.icon}`}>
+        <DashboardIcon icon={icon} className="h-5 w-5" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <h3 className="truncate text-sm font-bold text-gray-800">{title}</h3>
+          <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold ${classes.badge}`}>{count} งาน</span>
+        </div>
+        <p className="text-[11px] leading-relaxed text-gray-500">{subtitle}</p>
+      </div>
+    </div>
+  );
+};
+
 const EmptyState = ({
   icon,
   title,
@@ -539,143 +588,134 @@ const MessengerDeliveryCard = ({
       ? 'ส่งสำเร็จ'
       : '';
 
-  // Determine border and background styles based on parcel status
-  let cardStyles = 'border-l-4 border-l-outline-variant border-outline-variant/30 bg-white shadow-sm';
-  let iconName = 'help';
-  let accentColorText = 'text-primary';
+  let cardStyles = 'border-slate-100 bg-white shadow-[0_4px_20px_rgba(15,23,42,0.04)]';
+  let iconName = 'person';
+  let accentClass = 'bg-blue-50 text-blue-500';
+  let statusLabel = 'รอดำเนินการ';
+  let statusPillClass = 'bg-slate-100 text-slate-500';
 
   if (isDone) {
-    cardStyles = 'border-l-4 border-l-emerald-500 border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.03] to-emerald-500/[0.005] shadow-sm shadow-emerald-500/[0.02] hover:border-emerald-500/40 hover:shadow-md transition-all duration-300';
+    cardStyles = 'border-emerald-100 bg-white shadow-[0_4px_20px_rgba(15,23,42,0.04)]';
     iconName = 'check_circle';
-    accentColorText = 'text-emerald-700';
+    accentClass = 'bg-emerald-50 text-emerald-600';
+    statusLabel = 'ส่งแล้ว';
+    statusPillClass = 'bg-emerald-100 text-emerald-700';
   } else if (canConfirmDelivery) {
-    cardStyles = 'border-l-4 border-l-blue-600 border-blue-500/20 bg-gradient-to-br from-blue-600/[0.03] to-blue-600/[0.005] shadow-sm shadow-blue-500/[0.02] hover:border-blue-500/40 hover:shadow-md transition-all duration-300';
+    cardStyles = 'border-blue-100 bg-white shadow-[0_4px_20px_rgba(15,23,42,0.04)]';
     iconName = 'local_shipping';
-    accentColorText = 'text-blue-700';
+    accentClass = 'bg-blue-50 text-blue-500';
+    statusLabel = 'กำลังส่ง';
+    statusPillClass = 'bg-blue-100 text-blue-600';
   } else if (canStartDelivery) {
-    cardStyles = 'border-l-4 border-l-amber-500 border-amber-500/20 bg-gradient-to-br from-amber-500/[0.03] to-amber-500/[0.005] shadow-sm shadow-amber-500/[0.02] hover:border-amber-500/40 hover:shadow-md transition-all duration-300';
-    iconName = 'schedule';
-    accentColorText = 'text-amber-700';
+    iconName = 'person';
+    accentClass = 'bg-blue-50 text-blue-500';
+    statusLabel = 'งานใหม่';
+    statusPillClass = 'bg-blue-100 text-blue-600';
+  } else if (isAssignedElsewhere) {
+    statusLabel = 'มีผู้รับงานแล้ว';
+    statusPillClass = 'bg-blue-50 text-blue-700';
   }
 
-  return (
-    <article className={`rounded-2xl border p-4 sm:p-5 flex flex-col justify-between h-full group ${cardStyles}`}>
-      <div className="space-y-4">
-        {/* Header section of card */}
-        <div className="flex flex-col gap-3.5 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <code className="rounded-lg border border-outline-variant/20 bg-white/95 px-2.5 py-1 font-mono text-xs font-black text-primary shadow-sm tracking-wide">
-                {parcel.TrackingID}
-              </code>
-              {isDone && <StatusBadge status={parcel['สถานะ']} className="h-6 w-[92px] text-[10px] font-black" />}
-              <StaleBadge parcel={parcel} />
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <span className={`material-symbols-outlined text-xl ${accentColorText}`} style={{ fontVariationSettings: "'FILL' 1" }}>
-                {iconName}
-              </span>
-              <h3 className="font-display text-base sm:text-lg font-black leading-tight text-primary">
-                ผู้รับ: {parcel['ผู้รับ'] || '-'}
-              </h3>
-            </div>
-          </div>
+  const dateLabel = parcel['วันที่รับ']
+    ? new Date(parcel['วันที่รับ']).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' })
+    : 'เพิ่งเมื่อสักครู่';
 
-          {/* Action button inside header area */}
-          {!isDone && (canStartDelivery || canConfirmDelivery) && (
-            <div className="shrink-0">
+  return (
+    <article className={`flex h-full flex-col overflow-hidden rounded-2xl border transition-all duration-200 hover:shadow-md ${cardStyles}`}>
+      <div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-4 py-2">
+        <code className="min-w-0 truncate font-mono text-[10px] font-black tracking-wider text-slate-400">
+          {parcel.TrackingID}
+        </code>
+        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusPillClass}`}>
+          {statusLabel}
+        </span>
+      </div>
+
+      <div className="flex flex-1 flex-col justify-between p-4">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${accentClass}`}>
+                <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>{iconName}</span>
+              </span>
+              <div className="min-w-0">
+                <p className="text-[10px] leading-none text-slate-400">ผู้รับ</p>
+                <h3 className="mt-1 truncate text-sm font-semibold leading-tight text-slate-800">
+                  {parcel['ผู้รับ'] || '-'}
+                </h3>
+              </div>
+            </div>
+
+            {!isDone && (canStartDelivery || canConfirmDelivery) && (
               <DashboardActionButton
-                icon={canStartDelivery ? 'local_shipping' : 'task_alt'}
+                icon={canStartDelivery ? 'task_alt' : 'task_alt'}
                 onClick={canStartDelivery ? onStartDelivery : onConfirm}
                 loading={canStartDelivery ? isStartingDelivery : false}
-                variant={canStartDelivery ? 'blue' : 'primary'}
-                className="w-full sm:w-auto h-11 px-5 rounded-xl font-bold shadow-md shadow-primary/10 hover:scale-[1.01] active:scale-95 transition-all text-sm cursor-pointer"
+                variant="blue"
+                compact
+                className="h-9 flex-none rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 px-4 text-xs font-semibold shadow-md shadow-blue-100 hover:from-blue-600 hover:to-blue-800"
               >
                 {actionLabel}
               </DashboardActionButton>
+            )}
+          </div>
+
+          {assignment && !isDone && (
+            <AssignmentBadge assignment={assignment} isMine={!isAssignedElsewhere} />
+          )}
+
+          <MessengerRouteSummary parcel={parcel} />
+
+          {(parcel['รายละเอียด'] || note || isParcelStale(parcel)) && (
+            <div className="space-y-2">
+              {parcel['รายละเอียด'] && (
+                <div className="flex min-w-0 items-start gap-2">
+                  <Package className="mt-0.5 h-3 w-3 shrink-0 text-slate-400" aria-hidden="true" />
+                  <p className="min-w-0 truncate text-[11px] text-slate-600">
+                    <span className="font-semibold text-slate-800">พัสดุ:</span> {parcel['รายละเอียด']}
+                  </p>
+                </div>
+              )}
+              {note && (
+                <div className="flex min-w-0 items-start gap-2">
+                  <span className="material-symbols-outlined mt-0.5 shrink-0 text-[13px] text-orange-400">sticky_note_2</span>
+                  <p className="min-w-0 truncate text-[11px] text-slate-600">
+                    <span className="font-semibold text-orange-600">หมายเหตุ:</span> {note}
+                  </p>
+                </div>
+              )}
+              <StaleBadge parcel={parcel} />
             </div>
           )}
         </div>
 
-        {/* Assignment details */}
-        {assignment && !isDone && (
-          <div className="rounded-xl overflow-hidden shadow-sm">
-            <AssignmentBadge assignment={assignment} isMine={!isAssignedElsewhere} />
+        <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-50 pt-3">
+          <div className="flex min-w-0 items-center gap-1 text-[10px] text-slate-300">
+            <span className="material-symbols-outlined text-[14px]">schedule</span>
+            <span className="truncate">{dateLabel}</span>
           </div>
-        )}
-
-        {/* Route Summary */}
-        <div className="shadow-sm rounded-xl overflow-hidden bg-white/60">
-          <MessengerRouteSummary parcel={parcel} />
-        </div>
-
-        {/* Notes and description */}
-        {(parcel['รายละเอียด'] || note) && (
-          <div className="space-y-3 pt-0.5">
-            {parcel['รายละเอียด'] && (
-              <div className="flex items-start gap-2.5 px-1">
-                <span className="material-symbols-outlined text-on-surface-variant/40 text-lg shrink-0 mt-0.5" style={{ fontVariationSettings: "'FILL' 0" }}>
-                  description
-                </span>
-                <div className="min-w-0 flex-1">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-on-surface-variant/40 leading-none block">
-                    รายละเอียดสิ่งที่ส่ง
-                  </span>
-                  <p className="mt-1 text-sm font-bold text-primary truncate">
-                    {parcel['รายละเอียด']}
-                  </p>
-                </div>
-              </div>
+          <div className="flex items-center gap-2">
+            {canReleaseDelivery && (
+              <DashboardActionButton
+                icon="undo"
+                onClick={onReleaseDelivery}
+                loading={isReleasingDelivery}
+                variant="warning"
+                compact
+                className="h-8 flex-none rounded-lg px-2.5 text-[11px]"
+              >
+                {isReleasingDelivery ? 'กำลังคืน' : 'คืนงาน'}
+              </DashboardActionButton>
             )}
-            {note && (
-              <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl bg-amber-500/[0.04] border border-amber-500/10">
-                <span className="material-symbols-outlined text-amber-600/70 text-lg shrink-0 mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>
-                  chat_bubble
-                </span>
-                <div className="min-w-0 flex-1">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-600/60 leading-none block">
-                    หมายเหตุ
-                  </span>
-                  <p className="mt-1 text-sm font-bold text-amber-900/90 truncate italic">
-                    {note}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Footer controls */}
-      <div className="mt-5 pt-3 border-t border-outline-variant/10 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5 text-[11px] font-bold text-on-surface-variant/50">
-          <span className="material-symbols-outlined text-sm">schedule</span>
-          <span>{parcel['วันทีรับเข้า'] ? new Date(parcel['วันทีรับเข้า']).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' }) : '-'}</span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {canReleaseDelivery && (
-            <DashboardActionButton
-              icon="undo"
-              onClick={onReleaseDelivery}
-              loading={isReleasingDelivery}
-              variant="warning"
-              compact
-              className="h-8.5 rounded-lg cursor-pointer"
+            <button
+              type="button"
+              onClick={onOpen}
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-500 transition-colors hover:text-blue-700"
             >
-              {isReleasingDelivery ? 'กำลังคืนงาน' : 'คืนงาน'}
-            </DashboardActionButton>
-          )}
-          <DashboardActionButton
-            icon="history"
-            onClick={onOpen}
-            variant="ghost"
-            compact
-            className="h-8.5 rounded-lg cursor-pointer hover:bg-black/5"
-          >
-            ดูประวัติ
-          </DashboardActionButton>
+              ดูรายละเอียด
+              <span className="material-symbols-outlined text-[13px]">chevron_right</span>
+            </button>
+          </div>
         </div>
       </div>
     </article>
@@ -748,6 +788,11 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
   const debouncedSearch = useDebounce(searchTerm, 300);
   const role = resolveDashboardRole(user?.role);
   const isMessengerDashboard = role === 'MESSENGER';
+  const {
+    position: messengerPosition,
+    status: messengerGeoStatus,
+    requestLocation: requestMessengerLocation,
+  } = useGeolocation();
   const defaultStatusFilter = 'ทั้งหมด';
   const [statusFilter, setStatusFilter] = useState(() => defaultStatusFilter);
   const [selectedParcel, setSelectedParcel] = useState<Parcel | null>(null);
@@ -796,6 +841,10 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
     if (!isConfigured) return;
     fetchData();
   }, [isConfigured, fetchData]);
+
+  useEffect(() => {
+    if (isMessengerDashboard && messengerGeoStatus === 'idle') requestMessengerLocation();
+  }, [isMessengerDashboard, messengerGeoStatus, requestMessengerLocation]);
 
   // Refresh once when returning to an old visible dashboard. Avoid polling Apps Script.
   useEffect(() => {
@@ -914,8 +963,13 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
 
   const handleStartDelivery = async (parcel: Parcel) => {
     if (startingDeliveryId) return;
+    if (!messengerPosition && messengerGeoStatus !== 'loading') requestMessengerLocation();
     setStartingDeliveryId(parcel.TrackingID);
-    const res = await startDelivery(parcel.TrackingID);
+    const res = await startDelivery(
+      parcel.TrackingID,
+      messengerPosition?.latitude,
+      messengerPosition?.longitude,
+    );
     setStartingDeliveryId(null);
 
     if (!res.success) {
@@ -935,15 +989,32 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
       destLocation: parcel['สาขาผู้รับ'] || '',
       person: res.assignedToName || user?.name || user?.employeeId || '',
       note: buildAssignmentNote(res.assignedToId || currentEmployeeId),
+      latitude: messengerPosition?.latitude,
+      longitude: messengerPosition?.longitude,
     };
+    const pickupEvent = res.autoPickedUp ? {
+      id: `LOCAL-PICKUP-${Date.now()}`,
+      trackingId: parcel.TrackingID,
+      timestamp: new Date().toISOString(),
+      eventType: 'PICKUP' as const,
+      location: parcel['สาขาผู้ส่ง'] || '',
+      destLocation: parcel['สาขาผู้รับ'] || '',
+      person: res.assignedToName || user?.name || user?.employeeId || '',
+      note: 'autoPickup=originGpsMatched',
+      latitude: messengerPosition?.latitude,
+      longitude: messengerPosition?.longitude,
+    } : null;
 
     const hasLocalAssignment = Boolean(getActiveDeliveryAssignment(parcel));
+    const nextEvents = res.alreadyStarted && hasLocalAssignment
+      ? parcel.events
+      : [...(parcel.events || []), startEvent, ...(pickupEvent ? [pickupEvent] : [])];
     updateParcelLocally(parcel.TrackingID, {
       'สถานะ': 'กำลังจัดส่ง',
-      events: res.alreadyStarted && hasLocalAssignment ? parcel.events : [...(parcel.events || []), startEvent],
+      events: nextEvents,
     });
     setMessengerView('mine');
-    toast.success(res.alreadyStarted ? 'งานนี้อยู่ในรายการที่ต้องส่งแล้ว' : 'รับงานสำเร็จ');
+    toast.success(res.autoPickedUp ? 'รับงานและรับพัสดุอัตโนมัติแล้ว' : (res.alreadyStarted ? 'งานนี้อยู่ในรายการที่ต้องส่งแล้ว' : 'รับงานสำเร็จ'));
     loadParcels(undefined, true).catch(() => {});
   };
 
@@ -1009,7 +1080,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className={`${isMessengerDashboard ? 'mx-auto max-w-[390px] space-y-4 md:max-w-none md:space-y-5' : 'space-y-4 sm:space-y-6'} animate-in fade-in slide-in-from-bottom-4 duration-500`}>
       {error && (
         <div className="flex flex-col gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -1070,16 +1141,18 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
       )}
 
       {/* ── Filters ── */}
-      <div className="bg-white/85 backdrop-blur-sm border border-outline-variant/30 rounded-xl p-2.5 sm:rounded-2xl sm:p-4 shadow-sm">
+      <div className={isMessengerDashboard ? 'bg-transparent md:rounded-2xl md:border md:border-gray-100 md:bg-white md:p-4 md:shadow-sm' : 'bg-white/85 backdrop-blur-sm border border-outline-variant/30 rounded-xl p-2.5 sm:rounded-2xl sm:p-4 shadow-sm'}>
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Search */}
           <div className="relative min-w-0 flex-1">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 text-xl">search</span>
+            <span className={`material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-xl ${isMessengerDashboard ? 'text-gray-400' : 'text-on-surface-variant/50'}`}>search</span>
             <input
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               placeholder="ค้นหาหมายเลขติดตาม ผู้ส่ง ผู้รับ หรือปลายทาง..."
-              className="h-10 w-full bg-surface-container-lowest border border-outline-variant/50 rounded-xl pl-10 pr-10 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-display transition-all"
+              className={isMessengerDashboard
+                ? 'h-11 w-full rounded-xl border border-gray-100 bg-gray-50 pl-10 pr-10 text-sm text-gray-700 outline-none transition-all placeholder:text-gray-400 focus:border-primary/40 focus:ring-2 focus:ring-primary/10 md:h-12'
+                : 'h-10 w-full bg-surface-container-lowest border border-outline-variant/50 rounded-xl pl-10 pr-10 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-display transition-all'}
             />
             {searchTerm && (
               <button
@@ -1101,7 +1174,9 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
             <button
               onClick={handleRefresh}
               disabled={loading}
-              className="grid h-8 w-8 place-items-center rounded-lg border border-outline-variant/35 bg-white text-on-surface-variant shadow-sm transition-all hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+              className={isMessengerDashboard
+                ? 'grid h-11 w-11 place-items-center rounded-xl border border-gray-100 bg-white text-gray-600 shadow-sm transition-all hover:text-primary disabled:cursor-not-allowed disabled:opacity-50 md:h-12 md:w-12'
+                : 'grid h-8 w-8 place-items-center rounded-lg border border-outline-variant/35 bg-white text-on-surface-variant shadow-sm transition-all hover:text-primary disabled:cursor-not-allowed disabled:opacity-50'}
               title="รีเฟรช"
             >
               <span className={`material-symbols-outlined text-lg ${loading ? 'animate-spin' : ''}`}>refresh</span>
@@ -1111,7 +1186,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
       </div>
 
       {/* ── Role Cards ── */}
-      <section className="overflow-hidden rounded-xl border border-outline-variant/35 bg-white/90 shadow-sm backdrop-blur-sm sm:rounded-2xl">
+      <section className={isMessengerDashboard ? 'overflow-visible bg-transparent' : 'overflow-hidden rounded-xl border border-outline-variant/35 bg-white/90 shadow-sm backdrop-blur-sm sm:rounded-2xl'}>
         {!isMessengerDashboard && (
         <div className="flex items-center justify-between gap-3 border-b border-outline-variant/10 px-3 py-2.5 sm:px-5 sm:py-3">
           <div className="flex min-w-0 items-center gap-2.5">
@@ -1152,35 +1227,10 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
             />
           </div>
         ) : isMessengerDashboard ? (
-          <div className="space-y-4 p-3 sm:p-4">
-            <div className="grid grid-cols-3 gap-1 rounded-xl border border-border bg-muted p-1">
-              {[
-                { id: 'waiting' as const, label: 'งานรอกดรับ', icon: 'inventory_2', count: messengerWaitingParcels.length },
-                { id: 'mine' as const, label: 'งานที่ต้องส่ง', icon: 'local_shipping', count: messengerMineParcels.length },
-                { id: 'done' as const, label: 'ส่งสำเร็จแล้ว', icon: 'done_all', count: messengerDoneParcels.length },
-              ].map(item => {
-                const active = messengerView === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => setMessengerView(item.id)}
-                    aria-pressed={active}
-                    className={`flex h-11 items-center justify-center gap-1 sm:gap-2 rounded-lg text-xs sm:text-sm font-semibold px-1 sm:px-3 transition-all ${
-                      active ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-background hover:text-foreground'
-                    }`}
-                  >
-                    <DashboardIcon icon={item.icon} className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{item.label}</span>
-                    <span className={`rounded-full px-1.5 py-0.5 text-[9px] sm:text-[10px] shrink-0 ${active ? 'bg-white/15 text-white' : 'bg-white text-primary'}`}>{item.count}</span>
-                  </button>
-                );
-              })}
-            </div>
-
+          <div className="space-y-4 p-0 pb-20">
             {messengerView === 'waiting' && (
               <div>
-                <RoleSectionHeader
+                <MessengerViewBanner
                   icon="inventory_2"
                   title="งานรอกดรับ"
                   subtitle="รายการพัสดุที่ว่างอยู่ สามารถกดปุ่มรับงานเพื่อเริ่มนำส่งพัสดุได้"
@@ -1188,7 +1238,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
                   tone="amber"
                 />
                 {messengerWaitingParcels.length ? (
-                  <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
                     {messengerWaitingParcels.map(parcel => (
                       <MessengerDeliveryCard
                         key={parcel.TrackingID}
@@ -1214,7 +1264,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
 
             {messengerView === 'mine' && (
               <div>
-                <RoleSectionHeader
+                <MessengerViewBanner
                   icon="local_shipping"
                   title="งานที่ต้องส่ง"
                   subtitle="รายการพัสดุที่คุณกำลังนำส่งในขณะนี้ กรุณาบันทึกผลการส่งเมื่อจัดส่งเสร็จสิ้น"
@@ -1222,7 +1272,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
                   tone="blue"
                 />
                 {messengerMineParcels.length ? (
-                  <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
                     {messengerMineParcels.map(parcel => {
                       const assignment = getActiveDeliveryAssignment(parcel);
                       return (
@@ -1255,7 +1305,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
 
             {messengerView === 'done' && (
               <div>
-                <RoleSectionHeader
+                <MessengerViewBanner
                   icon="done_all"
                   title="ส่งสำเร็จแล้ว"
                   subtitle="ประวัติพัสดุทั้งหมดที่คุณได้ทำการจัดส่งสำเร็จเสร็จสิ้นแล้ว"
@@ -1263,7 +1313,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
                   tone="emerald"
                 />
                 {messengerDoneParcels.length ? (
-                  <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
                     {messengerDoneParcels.map(parcel => (
                       <MessengerDeliveryCard
                         key={parcel.TrackingID}
@@ -1286,6 +1336,60 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
                 )}
               </div>
             )}
+            <div className="fixed inset-x-0 bottom-0 z-50 border-t border-gray-100 bg-white/95 px-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur md:hidden">
+              <div className="mx-auto grid max-w-[390px] grid-cols-3 gap-1">
+                {[
+                  { id: 'waiting' as const, label: 'งานรอรับ', icon: 'inventory_2', count: messengerWaitingParcels.length },
+                  { id: 'mine' as const, label: 'งานที่ต้องส่ง', icon: 'local_shipping', count: messengerMineParcels.length },
+                  { id: 'done' as const, label: 'ส่งสำเร็จ', icon: 'done_all', count: messengerDoneParcels.length },
+                ].map(item => {
+                  const active = messengerView === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setMessengerView(item.id)}
+                      aria-pressed={active}
+                      className={`flex h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-semibold transition-colors ${
+                        active ? 'bg-slate-900 text-white' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <DashboardIcon icon={item.icon} className="h-4 w-4 shrink-0" />
+                        {item.count > 0 && (
+                          <span className={`rounded px-1.5 py-0.5 text-[10px] leading-none ${active ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>{item.count}</span>
+                        )}
+                      </div>
+                      <span className="w-full truncate px-1 text-center">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="sticky bottom-3 z-20 hidden gap-2 rounded-2xl border border-gray-100 bg-white/95 p-1 shadow-lg backdrop-blur md:grid md:grid-cols-3 xl:mx-auto xl:max-w-3xl">
+              {[
+                { id: 'waiting' as const, label: 'งานรอรับ', icon: 'inventory_2', count: messengerWaitingParcels.length },
+                { id: 'mine' as const, label: 'งานที่ต้องส่ง', icon: 'local_shipping', count: messengerMineParcels.length },
+                { id: 'done' as const, label: 'ส่งสำเร็จ', icon: 'done_all', count: messengerDoneParcels.length },
+              ].map(item => {
+                const active = messengerView === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setMessengerView(item.id)}
+                    aria-pressed={active}
+                    className={`flex h-10 items-center justify-center gap-2 rounded-xl px-3 text-xs font-semibold transition-all ${
+                      active ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                    }`}
+                  >
+                    <DashboardIcon icon={item.icon} className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{item.label}</span>
+                    <span className={`rounded px-1.5 py-0.5 text-[10px] leading-none ${active ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>{item.count}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         ) : (
           <div className="space-y-3 p-3 sm:p-4">
