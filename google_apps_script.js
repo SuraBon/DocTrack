@@ -6,7 +6,7 @@ const VALID_ROLES = ["MESSENGER", "ADMIN"];
 // Fallback key (ใช้กรณีไม่อยากตั้ง Script Properties)
 // ตั้งค่านี้ให้ตรงกับ VITE_GAS_API_KEY แล้ว Deploy ใหม่
 // แนะนำ: อย่า commit ค่า key ลง git ถ้า repo เป็น public
-const SCRIPT_API_KEY = "";
+const SCRIPT_API_KEY = "mtrk_2026_05_22__X9vA7cR2pL4qT8uY1wE5sB0z";
 const MAX_NOTE_LENGTH = 2000;
 const MAX_BASE64_LENGTH = 6 * 1024 * 1024;
 const TRACKING_ID_REGEX = /^TRK\d{8}\d{4,}$/;
@@ -16,7 +16,7 @@ const VALID_EVENT_TYPES = ["FORWARD", "PROXY", "DELIVERED"];
 const VALID_DELIVERY_MATCH_STATUSES = ["MATCHED_DECLARED_DESTINATION", "DELIVERED_ELSEWHERE"];
 
 const SHEET_URL = "https://docs.google.com/spreadsheets/d/1EiIWLpHupOzkrh_Oft74U21XTeAc2KSah8H1t0ufNoQ/edit?gid=454662424#gid=454662424";
-const DOC_TRACK_FOLDER_ID = "";
+const DOC_TRACK_FOLDER_ID = "19OGCWa52JD6nFSBYcesfx51i7KjuAOT-";
 const YEAR_SPREADSHEETS_PROPERTY = "YEAR_SPREADSHEETS";
 const YEAR_SPREADSHEET_PREFIX = "DocTrack";
 const LEGACY_PARCEL_SHEET_NAME = SHEET_NAME;
@@ -130,10 +130,10 @@ function formatThaiDateForSheet(value) {
   if (!date || isNaN(date.getTime())) return value ? String(value) : "";
 
   const tz = Session.getScriptTimeZone();
-  const day   = Number(Utilities.formatDate(date, tz, "d"));
+  const day = Number(Utilities.formatDate(date, tz, "d"));
   const month = Number(Utilities.formatDate(date, tz, "M"));
-  const year  = Number(Utilities.formatDate(date, tz, "yyyy")) + 543;
-  const time  = Utilities.formatDate(date, tz, "HH:mm");
+  const year = Number(Utilities.formatDate(date, tz, "yyyy")) + 543;
+  const time = Utilities.formatDate(date, tz, "HH:mm");
 
   return day + " " + THAI_MONTHS[month - 1] + " " + year + " " + time + " น.";
 }
@@ -169,7 +169,7 @@ function ensureHeaderRow(sheet, headers, background) {
   }
   const currentLastColumn = Math.max(sheet.getLastColumn(), 1);
   const currentHeaders = sheet.getRange(1, 1, 1, currentLastColumn).getValues()[0].map(String);
-  headers.forEach(function(header) {
+  headers.forEach(function (header) {
     if (currentHeaders.indexOf(header) === -1) {
       sheet.getRange(1, sheet.getLastColumn() + 1).setValue(header);
     }
@@ -253,14 +253,14 @@ function getYearSpreadsheet(year, createIfMissing) {
 
 function getYearSpreadsheetsForRead() {
   const map = getStoredYearSpreadsheetMap();
-  const years = Object.keys(map).map(Number).filter(function(year) { return !isNaN(year); });
+  const years = Object.keys(map).map(Number).filter(function (year) { return !isNaN(year); });
   const currentYear = getYearFromDate(new Date());
   if (years.indexOf(currentYear) === -1) years.push(currentYear);
-  years.sort(function(a, b) { return b - a; });
+  years.sort(function (a, b) { return b - a; });
 
   const result = [];
   const seenIds = {};
-  years.forEach(function(year) {
+  years.forEach(function (year) {
     const ss = getYearSpreadsheet(year, year === currentYear);
     if (ss) {
       seenIds[ss.getId()] = true;
@@ -269,7 +269,7 @@ function getYearSpreadsheetsForRead() {
   });
 
   const master = getSpreadsheet();
-  const hasLegacyParcelSheets = master.getSheets().some(function(sheet) {
+  const hasLegacyParcelSheets = master.getSheets().some(function (sheet) {
     return sheet.getName() === LEGACY_PARCEL_SHEET_NAME || sheet.getName().indexOf(PARCEL_SHEET_PREFIX) === 0;
   });
   if (hasLegacyParcelSheets && !seenIds[master.getId()]) {
@@ -295,17 +295,17 @@ function getParcelSheet(date, createIfMissing) {
 
 function getParcelSheetsForRead() {
   const result = [];
-  getYearSpreadsheetsForRead().forEach(function(entry) {
+  getYearSpreadsheetsForRead().forEach(function (entry) {
     const sheets = entry.spreadsheet.getSheets()
-      .filter(function(sheet) {
+      .filter(function (sheet) {
         return sheet.getName() === LEGACY_PARCEL_SHEET_NAME || sheet.getName().indexOf(PARCEL_SHEET_PREFIX) === 0;
       })
-      .sort(function(a, b) {
+      .sort(function (a, b) {
         if (a.getName() === LEGACY_PARCEL_SHEET_NAME) return 1;
         if (b.getName() === LEGACY_PARCEL_SHEET_NAME) return -1;
         return b.getName().localeCompare(a.getName());
       });
-    sheets.forEach(function(sheet) {
+    sheets.forEach(function (sheet) {
       ensureParcelSheetSchema(sheet);
       result.push({ year: entry.year, spreadsheet: entry.spreadsheet, sheet: sheet });
     });
@@ -473,7 +473,7 @@ function getDistanceMeters(lat1, lng1, lat2, lng2) {
   const aLat = Number(lat1), aLng = Number(lng1), bLat = Number(lat2), bLng = Number(lng2);
   if (!isFinite(aLat) || !isFinite(aLng) || !isFinite(bLat) || !isFinite(bLng)) return null;
   const radius = 6371000;
-  const toRad = function(deg) { return deg * Math.PI / 180; };
+  const toRad = function (deg) { return deg * Math.PI / 180; };
   const dLat = toRad(bLat - aLat);
   const dLng = toRad(bLng - aLng);
   const sinLat = Math.sin(dLat / 2);
@@ -498,7 +498,7 @@ function redactParcelForGuest(parcel) {
     "Longitude",
     "OriginLatitude",
     "OriginLongitude"
-  ].forEach(function(key) {
+  ].forEach(function (key) {
     if (Object.prototype.hasOwnProperty.call(parcel, key)) redacted[key] = parcel[key];
   });
   return redacted;
@@ -540,7 +540,7 @@ function saveImagePayloadToDrive(imageValue, trackingId) {
       : DriveApp.createFolder("DocTrack_Images");
     try {
       rootFolder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    } catch (e) {}
+    } catch (e) { }
   }
 
   // สร้างโฟลเดอร์ย่อยตามเดือน (เช่น 2026-04)
@@ -553,7 +553,7 @@ function saveImagePayloadToDrive(imageValue, trackingId) {
     folder = rootFolder.createFolder(dateStr);
     try {
       folder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    } catch (e) {}
+    } catch (e) { }
   }
 
   const splitData = finalPhotoUrl.split(',');
@@ -568,7 +568,7 @@ function saveImagePayloadToDrive(imageValue, trackingId) {
   const file = folder.createFile(blob);
   try {
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-  } catch (e) {}
+  } catch (e) { }
 
   return "https://drive.google.com/uc?export=view&id=" + file.getId();
 }
@@ -580,24 +580,24 @@ function authorizeDrive() {
 }
 
 function migrateExistingDatesToThai() {
-  getParcelSheetsForRead().forEach(function(entry) {
+  getParcelSheetsForRead().forEach(function (entry) {
     const sheet = entry.sheet;
     const lastRow = sheet.getLastRow();
     if (lastRow <= 1) return;
 
     const values = sheet.getRange(2, 2, lastRow - 1, 1).getValues();
-    const nextValues = values.map(function(row) {
+    const nextValues = values.map(function (row) {
       return [formatSheetDateValue(row[0])];
     });
     sheet.getRange(2, 2, nextValues.length, 1).setValues(nextValues);
   });
 
-  getYearSpreadsheetsForRead().forEach(function(entry) {
+  getYearSpreadsheetsForRead().forEach(function (entry) {
     const eventSheet = entry.spreadsheet.getSheetByName("ParcelEvents");
     if (!eventSheet || eventSheet.getLastRow() <= 1) return;
 
     const values = eventSheet.getRange(2, 3, eventSheet.getLastRow() - 1, 1).getValues();
-    const nextValues = values.map(function(row) {
+    const nextValues = values.map(function (row) {
       return [formatSheetDateValue(row[0])];
     });
     eventSheet.getRange(2, 3, nextValues.length, 1).setValues(nextValues);
@@ -606,7 +606,7 @@ function migrateExistingDatesToThai() {
   const usersSheet = getUsersSheet();
   if (usersSheet && usersSheet.getLastRow() > 1) {
     const values = usersSheet.getRange(2, 6, usersSheet.getLastRow() - 1, 1).getValues();
-    const nextValues = values.map(function(row) {
+    const nextValues = values.map(function (row) {
       return [formatSheetDateValue(row[0])];
     });
     usersSheet.getRange(2, 6, nextValues.length, 1).setValues(nextValues);
@@ -649,7 +649,7 @@ function ensureUsersSheetSchema(sheet) {
   const lastRow = sheet.getLastRow();
   if (lastRow > 1) {
     const statusRange = sheet.getRange(2, 7, lastRow - 1, 1);
-    const statusValues = statusRange.getValues().map(function(row) {
+    const statusValues = statusRange.getValues().map(function (row) {
       return [String(row[0] || "").trim() || "ACTIVE"];
     });
     statusRange.setValues(statusValues);
@@ -673,7 +673,7 @@ function getBranchesSheet() {
   if (!sheet) {
     sheet = ss.insertSheet("Branches");
     sheet.appendRow(BRANCH_HEADERS);
-    DEFAULT_BRANCHES.forEach(function(name) {
+    DEFAULT_BRANCHES.forEach(function (name) {
       sheet.appendRow([name, formatThaiDateForSheet(new Date()), "setup"]);
     });
   }
@@ -695,7 +695,7 @@ function readBranches() {
     }
   }
   if (branches.length === 0) {
-    DEFAULT_BRANCHES.forEach(function(name) { branches.push(name); });
+    DEFAULT_BRANCHES.forEach(function (name) { branches.push(name); });
   }
   return branches;
 }
@@ -818,7 +818,7 @@ function doPost(e) {
   } catch (error) {
     try {
       console.error("doPost error: " + (error && error.stack ? error.stack : error));
-    } catch (logError) {}
+    } catch (logError) { }
     return createJsonResponse({ success: false, error: "เกิดข้อผิดพลาดภายในระบบ กรุณาลองใหม่อีกครั้ง" });
   }
 }
@@ -871,13 +871,13 @@ function handleCreateParcel(payload) {
   }
 
   // Sanitize inputs
-  const senderName   = escapeSheetValue(payload.senderName);
+  const senderName = escapeSheetValue(payload.senderName);
   const receiverName = escapeSheetValue(payload.receiverName);
   const senderBranch = escapeSheetValue(payload.senderBranch);
   const receiverBranch = escapeSheetValue(payload.receiverBranch);
-  const docType      = escapeSheetValue(payload.docType);
-  const description  = escapeSheetValue(payload.description || '');
-  const note         = escapeSheetValue(payload.note || '');
+  const docType = escapeSheetValue(payload.docType);
+  const description = escapeSheetValue(payload.description || '');
+  const note = escapeSheetValue(payload.note || '');
   const originLatitude = sanitizeCoordinate(payload.latitude, -90, 90);
   const originLongitude = sanitizeCoordinate(payload.longitude, -180, 180);
 
@@ -886,11 +886,11 @@ function handleCreateParcel(payload) {
   }
 
   // Input length validation
-  if (senderName.length > 200)   return createJsonResponse({ success: false, error: "ชื่อผู้ส่งยาวเกินไป" });
+  if (senderName.length > 200) return createJsonResponse({ success: false, error: "ชื่อผู้ส่งยาวเกินไป" });
   if (receiverName.length > 200) return createJsonResponse({ success: false, error: "ชื่อผู้รับยาวเกินไป" });
   if (senderBranch.length > 100) return createJsonResponse({ success: false, error: "ชื่อสาขาผู้ส่งยาวเกินไป" });
   if (receiverBranch.length > 100) return createJsonResponse({ success: false, error: "ชื่อสาขาผู้รับยาวเกินไป" });
-  if (docType.length > 100)      return createJsonResponse({ success: false, error: "ประเภทพัสดุยาวเกินไป" });
+  if (docType.length > 100) return createJsonResponse({ success: false, error: "ประเภทพัสดุยาวเกินไป" });
   if (note.length > MAX_NOTE_LENGTH) return createJsonResponse({ success: false, error: "หมายเหตุยาวเกินไป" });
   const imageValidation = validateImagePayload(payload.photoUrl);
   if (!imageValidation.ok) {
@@ -962,7 +962,7 @@ function handleCreateParcel(payload) {
 function getParcelEventsMap() {
   const eventsByTrackingId = {};
 
-  getYearSpreadsheetsForRead().forEach(function(entry) {
+  getYearSpreadsheetsForRead().forEach(function (entry) {
     const eventSheet = entry.spreadsheet.getSheetByName("ParcelEvents");
     if (!eventSheet) return;
     const data = eventSheet.getDataRange().getValues();
@@ -1062,7 +1062,7 @@ function handleGetParcels(payload) {
     return createJsonResponse({ success: true, parcels: [], totalCount: 0, hasMore: false });
   }
 
-  sheets.forEach(function(entry) {
+  sheets.forEach(function (entry) {
     const sheet = entry.sheet;
     const lastRow = sheet.getLastRow();
     if (lastRow <= 1) return;
@@ -1105,8 +1105,8 @@ function handleGetParcels(payload) {
     p.events = eventsMap[p.TrackingID] || [];
   }
 
-  return createJsonResponse({ 
-    success: true, 
+  return createJsonResponse({
+    success: true,
     parcels: parcels,
     totalCount: totalCount,
     hasMore: hasMore
@@ -1163,7 +1163,7 @@ function handleExportSummary(payload) {
   // Build events map once for derived status calculation
   const eventsMap = getParcelEventsMap();
 
-  getParcelSheetsForRead().forEach(function(entry) {
+  getParcelSheetsForRead().forEach(function (entry) {
     const data = entry.sheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
@@ -1174,7 +1174,7 @@ function handleExportSummary(payload) {
       // Apply derived status: if last event was FORWARD, treat as กำลังจัดส่ง
       if (status === "ส่งถึงแล้ว") {
         const events = eventsMap[trackingID] || [];
-        const actionEvents = events.filter(function(e) {
+        const actionEvents = events.filter(function (e) {
           return e.eventType === 'FORWARD' || e.eventType === 'START_DELIVERY' || e.eventType === 'PICKUP' || e.eventType === 'RELEASE_DELIVERY' || e.eventType === 'DELIVERED' || e.eventType === 'PROXY';
         });
         if (
@@ -1283,7 +1283,7 @@ function handleConfirmReceipt(payload) {
           assignedToName: activeAssignment.assignedToName
         });
       }
-      
+
       let isActuallyDelivered = currentStatus === "ส่งถึงแล้ว";
 
       // ── State Machine Validation ──────────────────────────────────────────
@@ -1330,7 +1330,7 @@ function handleConfirmReceipt(payload) {
               : DriveApp.createFolder("DocTrack_Images");
             try {
               rootFolder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-            } catch (e) {}
+            } catch (e) { }
           }
 
           // สร้างโฟลเดอร์ย่อยตามเดือน (เช่น 2026-04)
@@ -1343,7 +1343,7 @@ function handleConfirmReceipt(payload) {
             folder = rootFolder.createFolder(dateStr);
             try {
               folder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-            } catch (e) {}
+            } catch (e) { }
           }
 
           const splitData = finalPhotoUrl.split(',');
@@ -1358,7 +1358,7 @@ function handleConfirmReceipt(payload) {
           const file = folder.createFile(blob);
           try {
             file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-          } catch (e) {}
+          } catch (e) { }
 
           finalPhotoUrl = "https://drive.google.com/uc?export=view&id=" + file.getId();
         } catch (e) {
@@ -1387,7 +1387,7 @@ function handleConfirmReceipt(payload) {
 
       // Insert structured event into ParcelEvents
       if (payload.eventType) {
-          const eventSheet = getEventSheetForSpreadsheet(storage.spreadsheet);
+        const eventSheet = getEventSheetForSpreadsheet(storage.spreadsheet);
         if (eventSheet) {
           const eventId = "EVT" + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyyMMddHHmmssSSS") + Math.floor(Math.random() * 1000);
           const eventTimeStr = formatThaiDateForSheet(new Date());
@@ -1826,7 +1826,7 @@ function checkWriteRateLimit(employeeId, action) {
   const key = "write_rate_" + sanitizeText(action) + "_" + normalizeEmployeeId(employeeId);
   const raw = cache.get(key);
   let count = 0;
-  try { if (raw) count = parseInt(raw) || 0; } catch {}
+  try { if (raw) count = parseInt(raw) || 0; } catch { }
   if (count >= MAX_WRITE_PER_WINDOW) {
     return { allowed: false };
   }
@@ -1856,7 +1856,7 @@ function recordFailedLogin(employeeId) {
   const key = "login_attempts_" + normalizeEmployeeId(employeeId);
   const raw = cache.get(key);
   let data = { count: 0, lockedUntil: null };
-  try { if (raw) data = JSON.parse(raw); } catch {}
+  try { if (raw) data = JSON.parse(raw); } catch { }
   data.count = (data.count || 0) + 1;
   if (data.count >= MAX_LOGIN_ATTEMPTS) {
     data.lockedUntil = Date.now() + LOGIN_LOCKOUT_MS;
@@ -1891,7 +1891,7 @@ function handleLogin(payload) {
 
   const sheet = getUsersSheet();
   const data = sheet.getDataRange().getValues();
-  
+
   for (let i = 1; i < data.length; i++) {
     if (normalizeEmployeeId(data[i][0]) === employeeId) {
       const storedPin = String(data[i][4] || "").trim();
@@ -1963,7 +1963,7 @@ function handleSetupPin(payload) {
       sheet.getRange(i + 1, 5).setValue(encodePassword(pin));
       sheet.getRange(i + 1, 7).setValue("ACTIVE");
       sheet.getRange(i + 1, 8).setValue(formatThaiDateForSheet(new Date()));
-      
+
       const role = normalizeRole(data[i][3] || "GUEST");
       if (role === "GUEST") {
         return createJsonResponse({ success: false, error: "บัญชีนี้ไม่มีสิทธิ์ตั้งค่าการเข้าใช้งานพนักงาน" });
@@ -1987,7 +1987,7 @@ function handleGetUsers(payload) {
   const data = sheet.getDataRange().getValues();
   const users = [];
   const headers = data[0];
-  
+
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     users.push({
@@ -2339,8 +2339,8 @@ function handleUpdateProfile(payload) {
   const employeeId = normalizeEmployeeId(payload.employeeId);
   if (!employeeId) return createJsonResponse({ success: false, error: "Missing employeeId" });
 
-  const newName     = payload.newName     ? escapeSheetValue(payload.newName)     : null;
-  const newBranch   = payload.newBranch   ? escapeSheetValue(payload.newBranch)   : null;
+  const newName = payload.newName ? escapeSheetValue(payload.newName) : null;
+  const newBranch = payload.newBranch ? escapeSheetValue(payload.newBranch) : null;
   const newPassword = payload.newPassword ? sanitizePassword(payload.newPassword) : null;
   const currentPassword = payload.currentPassword ? sanitizePassword(payload.currentPassword) : null;
 
@@ -2388,10 +2388,10 @@ function handleUpdateProfile(payload) {
     writeAuditLog(employeeId, "UPDATE_PROFILE", employeeId, changedFields.join(", "));
 
     // Return updated user info (without password)
-    const updatedName   = newName   || String(data[i][1] || "").trim();
+    const updatedName = newName || String(data[i][1] || "").trim();
     const updatedBranch = newBranch || String(data[i][2] || "").trim();
-    const role          = normalizeRole(data[i][3] || "GUEST");
-    const token         = generateToken(employeeId, role, getApiKey());
+    const role = normalizeRole(data[i][3] || "GUEST");
+    const token = generateToken(employeeId, role, getApiKey());
 
     return createJsonResponse({
       success: true,
