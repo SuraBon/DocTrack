@@ -9,7 +9,8 @@ import { createPortal } from 'react-dom';
 import L from 'leaflet';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useParcelStore } from '@/hooks/useParcelStore';
-import { getBranches, getParcel } from '@/lib/parcelService';
+import { getParcel } from '@/lib/parcelService';
+import { useBranches } from '@/hooks/useBranches';
 import NativeSelect, { resolveSelectValue } from '@/components/NativeSelect';
 import { toast } from 'sonner';
 import type { DeliveryMatchStatus, Parcel } from '@/types/parcel';
@@ -106,7 +107,7 @@ export default function ConfirmReceipt({
 }) {
   const { confirmReceipt, updateParcelLocally, loadParcels } = useParcelStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const branches = getBranches();
+  const { branches } = useBranches();
 
   // Steps: 1 (Check), 2 (Photo), 3 (Confirm)
   const [currentStep, setCurrentStep] = useState(1);

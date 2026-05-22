@@ -1,29 +1,29 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Building2, Loader2, Plus, RefreshCw, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { createBranch, deleteBranch, getBranches, loadBranches } from '@/lib/parcelService';
+import { createBranch, deleteBranch } from '@/lib/parcelService';
+import { useBranches } from '@/hooks/useBranches';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const MOBILE_BATCH_SIZE = 10;
 
 export default function BranchManagement() {
-  const [branches, setBranches] = useState<string[]>(() => getBranches());
-  const [loading, setLoading] = useState(true);
+  const { branches, loading, refreshBranches } = useBranches();
   const [saving, setSaving] = useState(false);
   const [deletingName, setDeletingName] = useState<string | null>(null);
+  const [branchToDelete, setBranchToDelete] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [newBranch, setNewBranch] = useState('');
   const [visibleCount, setVisibleCount] = useState(MOBILE_BATCH_SIZE);
-
-  const refreshBranches = async () => {
-    setLoading(true);
-    const nextBranches = await loadBranches();
-    setBranches(nextBranches);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    void refreshBranches();
-  }, []);
 
   useEffect(() => {
     setVisibleCount(MOBILE_BATCH_SIZE);
@@ -57,8 +57,7 @@ export default function BranchManagement() {
     const res = await createBranch(name);
     setSaving(false);
     if (res.success) {
-      const nextBranches = res.branches ?? await loadBranches();
-      setBranches(nextBranches);
+      if (!res.branches) await refreshBranches();
       setNewBranch('');
       toast.success('เพิ่มแผนก/สาขาสำเร็จ');
     } else {
@@ -67,13 +66,12 @@ export default function BranchManagement() {
   };
 
   const handleDelete = async (name: string) => {
-    if (!window.confirm(`ลบ "${name}" ออกจากรายการแผนก/สาขา? ข้อมูลพัสดุเก่าจะไม่ถูกแก้ไข`)) return;
     setDeletingName(name);
     const res = await deleteBranch(name);
     setDeletingName(null);
     if (res.success) {
-      const nextBranches = res.branches ?? await loadBranches();
-      setBranches(nextBranches);
+      setBranchToDelete(null);
+      if (!res.branches) await refreshBranches();
       toast.success('ลบแผนก/สาขาสำเร็จ');
     } else {
       toast.error(res.error || 'ไม่สามารถลบแผนก/สาขาได้');
@@ -153,7 +151,7 @@ export default function BranchManagement() {
                   <p className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{branch}</p>
                   <button
                     type="button"
-                    onClick={() => handleDelete(branch)}
+                    onClick={() => setBranchToDelete(branch)}
                     disabled={deletingName === branch}
                     className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
                     aria-label={`ลบ ${branch}`}
@@ -179,7 +177,7 @@ export default function BranchManagement() {
                       <td className="px-5 py-4 text-right">
                         <button
                           type="button"
-                          onClick={() => handleDelete(branch)}
+                          onClick={() => setBranchToDelete(branch)}
                           disabled={deletingName === branch}
                           className="inline-flex h-9 items-center gap-2 rounded-lg px-3 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
                         >
@@ -207,6 +205,31 @@ export default function BranchManagement() {
           </>
         )}
       </div>
+
+      <AlertDialog open={!!branchToDelete} onOpenChange={(open) => !open && setBranchToDelete(null)}>
+        <AlertDialogContent className="rounded-2xl border border-outline-variant bg-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-primary">ลบแผนก/สาขา</AlertDialogTitle>
+            <AlertDialogDescription>
+              ลบ “{branchToDelete}” ออกจากรายการ master list เท่านั้น ข้อมูลพัสดุและประวัติเก่าที่ใช้ชื่อนี้จะไม่ถูกแก้ไข
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={!!deletingName} className="rounded-xl">ยกเลิก</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!branchToDelete || !!deletingName}
+              onClick={(event) => {
+                event.preventDefault();
+                if (branchToDelete) void handleDelete(branchToDelete);
+              }}
+              className="rounded-xl bg-red-600 text-white hover:bg-red-700"
+            >
+              {deletingName ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              ลบถาวร
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

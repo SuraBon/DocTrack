@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParcelStore } from '@/hooks/useParcelStore';
-import { getBranches } from '@/lib/parcelService';
+import { useBranches } from '@/hooks/useBranches';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { formatThaiDateTime } from '@/lib/dateUtils';
@@ -36,7 +36,7 @@ type CreatedParcelDetails = {
 
 export default function CreateParcel({ embedded = false }: { embedded?: boolean }) {
   const { createParcel } = useParcelStore();
-  const branches = getBranches();
+  const { branches } = useBranches();
   const { position, status: geoStatus, errorMessage: geoError, requestLocation } = useGeolocation();
   const proofInputRef = useRef<HTMLInputElement>(null);
 

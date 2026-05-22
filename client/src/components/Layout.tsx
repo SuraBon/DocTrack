@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { Parcel } from '@/types/parcel';
 import { formatThaiDateTime, getDateTime } from '@/lib/dateUtils';
 import { normalizeRole, type AppRole } from '@/lib/roles';
-import { getBranches } from '@/lib/parcelService';
+import { useBranches } from '@/hooks/useBranches';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import NativeSelect, { resolveSelectValue } from '@/components/NativeSelect';
@@ -61,6 +61,7 @@ const NavIcon = ({ icon: Icon, active = false }: { icon: LucideIcon; active?: bo
 const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }) => {
   const { parcels } = useParcelStore();
   const { user, logout, updateUserProfile } = useAuth();
+  const { branches } = useBranches();
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [profileForm, setProfileForm] = useState({ name: '', branch: '', currentPassword: '', newPassword: '', confirmPassword: '' });
@@ -378,7 +379,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
               <NativeSelect
                 value={profileForm.branch}
                 onChange={v => setProfileForm(f => ({ ...f, branch: v }))}
-                options={getBranches()}
+                options={branches}
                 placeholder="เลือกแผนก/สาขา"
                 icon="apartment"
                 disabled={profileLoading}
