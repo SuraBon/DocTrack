@@ -2399,7 +2399,7 @@ function handleEditParcel(payload) {
 
   // Validate update values
   const allowedFields = ["senderName", "senderBranch", "receiverName", "receiverBranch", "description"];
-  const fieldMap = { senderName: "ผู้ส่ง", senderBranch: "สาขาผู้ส่ง", receiverName: "ผู้รับ", receiverBranch: "สาขาผู้รับ", description: "รายละเอียดสิ่งที่ส่ง" };
+  const fieldMap = { senderName: "ผู้ส่ง", senderBranch: "สาขาผู้ส่ง", receiverName: "ผู้รับ", receiverBranch: "สาขาผู้รับ", description: "รายละเอียด" };
   for (const key of Object.keys(updates)) {
     if (!allowedFields.includes(key)) return createJsonResponse({ success: false, error: "ฟิลด์ไม่ถูกต้อง: " + key });
     if (typeof updates[key] !== 'string' || updates[key].length > 200) return createJsonResponse({ success: false, error: "ค่าไม่ถูกต้องสำหรับฟิลด์: " + key });

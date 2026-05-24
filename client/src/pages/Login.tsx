@@ -1,7 +1,19 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { CheckCircle2, PackageSearch, XCircle } from 'lucide-react';
+import {
+  ArrowRight,
+  BadgeCheck,
+  Building2,
+  CheckCircle2,
+  KeyRound,
+  Loader2,
+  PackagePlus,
+  PackageSearch,
+  ShieldCheck,
+  UserRound,
+  XCircle,
+} from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { isValidEmployeeId, normalizeEmployeeId, validatePassword, validateRequiredText } from '@/lib/validation';
 
@@ -147,117 +159,170 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen w-screen items-center justify-center overflow-x-hidden bg-[#f8fafc] p-3 sm:p-4">
-      <div className="grid w-full max-w-[390px] overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm md:max-w-4xl md:grid-cols-[0.95fr_1.05fr]">
-        <div className="hidden bg-slate-900 p-8 text-white md:flex md:flex-col md:justify-between">
+    <div className="flex min-h-dvh w-screen items-center justify-center overflow-x-hidden bg-slate-50 px-3 py-6 sm:px-4">
+      <div className="grid w-full max-w-[420px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/70 md:max-w-5xl md:grid-cols-[0.92fr_1.08fr]">
+        <section className="hidden bg-slate-950 p-8 text-white md:flex md:flex-col md:justify-between">
           <div>
-            <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10">
-              <PackageSearch className="h-6 w-6" aria-hidden="true" />
-            </div>
-            <h2 className="text-2xl font-bold leading-tight">ShipTrack</h2>
-            <p className="mt-2 text-sm leading-relaxed text-white/60">ระบบจัดการรายการส่งภายในสำหรับผู้ดูแลระบบและพนักงานส่ง</p>
-          </div>
-          <div className="space-y-3 text-xs text-white/55">
-            <div className="rounded-2xl bg-white/5 p-3">
-              <p className="font-semibold text-white">งานจัดส่ง</p>
-              <p className="mt-1">ติดตาม สร้างรายการ และบันทึกหลักฐานพร้อมตำแหน่ง GPS</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-5 sm:p-7">
-        <div className="mb-6 text-center md:text-left">
-          <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-xl bg-slate-900 text-white md:mx-0">
-            <PackageSearch className="h-7 w-7" aria-hidden="true" />
-          </div>
-          <h1 className="text-2xl font-semibold text-foreground">
-            {isSetup ? 'ตั้งค่าการเข้าใช้งาน' : 'เข้าสู่ระบบพนักงานส่ง'}
-          </h1>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            {isSetup ? 'กรุณาตั้งรหัสผ่านและข้อมูลของท่าน' : 'สำหรับผู้ดูแลระบบและพนักงานส่ง'}
-          </p>
-        </div>
-
-        <form onSubmit={handleLogin} className="mx-auto flex flex-col gap-4">
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-foreground">รหัสพนักงาน</label>
-            <input
-              type="text"
-              value={employeeId}
-              onChange={e => setEmployeeId(normalizeEmployeeId(e.target.value))}
-              disabled={isSetup || isLoginDisabled}
-              className="app-input w-full font-medium uppercase"
-              placeholder="กรอกรหัสพนักงาน"
-            />
-          </div>
-
-          {isSetup && (
-            <>
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-foreground">ชื่อ-นามสกุล</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  disabled={isLoginDisabled}
-                  className="app-input w-full"
-                  placeholder="ชื่อของท่าน"
-                />
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/10">
+                <PackageSearch className="h-6 w-6" aria-hidden="true" />
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-foreground">แผนก/สาขาประจำ</label>
-                <input
-                  type="text"
-                  value={branch}
-                  onChange={e => setBranch(e.target.value)}
-                  disabled={isLoginDisabled}
-                  className="app-input w-full"
-                  placeholder="เช่น พิบูลสงคราม"
-                />
+                <p className="text-sm font-semibold text-white/70">Internal Delivery Portal</p>
+                <h2 className="text-2xl font-bold leading-tight">ShipTrack</h2>
               </div>
-            </>
-          )}
-
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-foreground">
-              {isSetup ? 'ตั้งรหัสผ่าน' : 'รหัสผ่าน'}
-            </label>
-            <input
-              type="password"
-              value={pin}
-              onChange={e => setPin(e.target.value)}
-              disabled={isLoginDisabled}
-              className="app-input w-full font-medium"
-              placeholder="••••••••"
-            />
+            </div>
+            <p className="mt-6 max-w-sm text-sm leading-7 text-white/65">
+              ระบบจัดการรายการส่งภายในสำหรับผู้ดูแลระบบ พนักงานส่ง และการติดตามหลักฐานรับของในที่เดียว
+            </p>
           </div>
 
+          <div className="space-y-3 text-sm">
+            <div className="flex gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-4">
+              <BadgeCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300" aria-hidden="true" />
+              <div>
+                <p className="font-semibold text-white">ติดตามสถานะชัดเจน</p>
+                <p className="mt-1 text-xs leading-5 text-white/55">สร้างรายการ ค้นหา และตรวจประวัติการเคลื่อนไหวของพัสดุได้เร็ว</p>
+              </div>
+            </div>
+            <div className="flex gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-4">
+              <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-sky-300" aria-hidden="true" />
+              <div>
+                <p className="font-semibold text-white">สิทธิ์ผู้ใช้งานตามบทบาท</p>
+                <p className="mt-1 text-xs leading-5 text-white/55">แยกมุมมองผู้ดูแลระบบ พนักงานส่ง และผู้สร้างรายการทั่วไป</p>
+              </div>
+            </div>
+            <div className="flex gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-4">
+              <PackagePlus className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" aria-hidden="true" />
+              <div>
+                <p className="font-semibold text-white">หลักฐานพร้อมตำแหน่ง</p>
+                <p className="mt-1 text-xs leading-5 text-white/55">รองรับรูปยืนยันและพิกัด GPS ในขั้นตอนรับส่งสำคัญ</p>
+              </div>
+            </div>
+          </div>
+        </section>
 
-          <button
-            type="submit"
-            disabled={isLoginDisabled}
-            className="app-primary-button mt-2 w-full"
-          >
-            {isLoginDisabled ? (
-              <span className="material-symbols-outlined animate-spin text-lg">progress_activity</span>
-            ) : (
-              <span>{isSetup ? 'บันทึกข้อมูลและเข้าสู่ระบบ' : 'เข้าสู่ระบบ'}</span>
+        <main className="px-5 py-6 sm:px-8 sm:py-8 md:px-10">
+          <div className="mb-7">
+            <div className="mb-5 flex items-center gap-3 md:hidden">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-950 text-white">
+                <PackageSearch className="h-6 w-6" aria-hidden="true" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground">Internal Delivery Portal</p>
+                <p className="text-xl font-bold text-foreground">ShipTrack</p>
+              </div>
+            </div>
+
+            <p className="mb-2 text-xs font-bold uppercase text-primary">Staff access</p>
+            <h1 className="text-2xl font-semibold leading-tight text-foreground sm:text-3xl">
+              {isSetup ? 'ตั้งค่าการเข้าใช้งาน' : 'เข้าสู่ระบบพนักงานส่ง'}
+            </h1>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              {isSetup ? 'ยืนยันข้อมูลผู้ใช้งานครั้งแรกและตั้งรหัสผ่านสำหรับเข้าใช้งานครั้งต่อไป' : 'เข้าสู่ระบบสำหรับผู้ดูแลระบบและพนักงานส่ง หรือสร้างรายการแบบไม่เข้าสู่ระบบ'}
+            </p>
+          </div>
+
+          <form onSubmit={handleLogin} className="flex flex-col gap-4">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">รหัสพนักงาน</label>
+              <div className="relative">
+                <UserRound className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                <input
+                  type="text"
+                  value={employeeId}
+                  onChange={e => setEmployeeId(normalizeEmployeeId(e.target.value))}
+                  disabled={isSetup || isLoginDisabled}
+                  className="app-input w-full pl-11 font-medium uppercase"
+                  placeholder="กรอกรหัสพนักงาน"
+                  autoComplete="username"
+                />
+              </div>
+            </div>
+
+            {isSetup && (
+              <>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-foreground">ชื่อ-นามสกุล</label>
+                  <div className="relative">
+                    <BadgeCheck className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={e => setName(e.target.value)}
+                      disabled={isLoginDisabled}
+                      className="app-input w-full pl-11"
+                      placeholder="ชื่อของท่าน"
+                      autoComplete="name"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-foreground">แผนก/สาขาประจำ</label>
+                  <div className="relative">
+                    <Building2 className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                    <input
+                      type="text"
+                      value={branch}
+                      onChange={e => setBranch(e.target.value)}
+                      disabled={isLoginDisabled}
+                      className="app-input w-full pl-11"
+                      placeholder="เช่น พิบูลสงคราม"
+                      autoComplete="organization"
+                    />
+                  </div>
+                </div>
+              </>
             )}
-          </button>
-          
-          {!isSetup && (
-            <div className="mt-4 flex flex-col items-center gap-2 text-center">
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">
+                {isSetup ? 'ตั้งรหัสผ่าน' : 'รหัสผ่าน'}
+              </label>
+              <div className="relative">
+                <KeyRound className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                <input
+                  type="password"
+                  value={pin}
+                  onChange={e => setPin(e.target.value)}
+                  disabled={isLoginDisabled}
+                  className="app-input w-full pl-11 font-medium"
+                  placeholder="กรอกรหัสผ่าน"
+                  autoComplete={isSetup ? 'new-password' : 'current-password'}
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoginDisabled}
+              className="app-primary-button mt-2 flex w-full items-center justify-center gap-2"
+            >
+              {isLoginDisabled ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+                  <span>{isSetup ? 'กำลังบันทึกข้อมูล' : 'กำลังเข้าสู่ระบบ'}</span>
+                </>
+              ) : (
+                <>
+                  <span>{isSetup ? 'บันทึกข้อมูลและเข้าสู่ระบบ' : 'เข้าสู่ระบบ'}</span>
+                  <ArrowRight className="h-5 w-5" aria-hidden="true" />
+                </>
+              )}
+            </button>
+
+            {!isSetup && (
               <button
                 type="button"
                 onClick={() => { window.history.pushState({}, '', '/create'); window.dispatchEvent(new PopStateEvent('popstate')); }}
-                className="text-primary font-bold text-sm hover:underline transition-colors"
+                className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-primary transition-colors hover:bg-slate-50 active:scale-[0.99]"
               >
-                สร้างรายการแบบไม่เข้าสู่ระบบ
+                <PackagePlus className="h-5 w-5" aria-hidden="true" />
+                <span>สร้างรายการแบบไม่เข้าสู่ระบบ</span>
               </button>
-            </div>
-          )}
-        </form>
-        </div>
+            )}
+          </form>
+        </main>
       </div>
 
       <Dialog
