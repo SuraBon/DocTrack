@@ -40,7 +40,7 @@ export function useGeolocation(): UseGeolocationReturn {
   const requestLocation = useCallback(() => {
     if (!navigator.geolocation) {
       setStatus('error');
-      setErrorMessage('เบราว์เซอร์ของคุณไม่รองรับ GPS');
+      setErrorMessage('อุปกรณ์หรือเบราว์เซอร์นี้ไม่รองรับการระบุตำแหน่ง');
       return;
     }
 
@@ -73,7 +73,7 @@ export function useGeolocation(): UseGeolocationReturn {
         setErrorMessage(null);
       } else {
         setStatus('error');
-        setErrorMessage('ไม่สามารถดึงพิกัดที่แม่นยำได้ กรุณาลองใหม่');
+        setErrorMessage('ยังระบุตำแหน่งได้ไม่แม่นยำ กรุณาลองใหม่');
       }
     };
 
@@ -109,15 +109,15 @@ export function useGeolocation(): UseGeolocationReturn {
       switch (err.code) {
         case err.PERMISSION_DENIED:
           setStatus('denied');
-          setErrorMessage('กรุณาเปิด GPS (Location Services) และอนุญาตการเข้าถึงเพื่อดำเนินการต่อ');
+          setErrorMessage('กรุณาเปิดตำแหน่งและอนุญาตให้ระบบเข้าถึงตำแหน่ง');
           break;
         case err.POSITION_UNAVAILABLE:
           setStatus('error');
-          setErrorMessage('ไม่สามารถรับสัญญาณ GPS ได้ (อาจอยู่ในที่อับสัญญาณ)');
+          setErrorMessage('ไม่สามารถรับตำแหน่งได้ อาจอยู่ในที่อับสัญญาณ');
           break;
         case err.TIMEOUT:
           setStatus('error');
-          setErrorMessage('หมดเวลาในการระบุตำแหน่งสัญญาณ GPS');
+          setErrorMessage('ใช้เวลาระบุตำแหน่งนานเกินไป');
           break;
         default:
           setStatus('error');
@@ -147,7 +147,7 @@ export function useGeolocation(): UseGeolocationReturn {
           watchIdRef.current = null;
         }
         setStatus('error');
-        setErrorMessage('ไม่สามารถระบุพิกัดได้ในเวลาที่กำหนด ลองเดินออกไปในที่โล่งและลองใหม่');
+        setErrorMessage('ไม่สามารถระบุตำแหน่งได้ ลองไปที่โล่งแล้วกดใหม่');
       }
     }, 10000);
 

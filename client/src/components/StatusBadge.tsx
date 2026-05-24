@@ -1,6 +1,6 @@
 /**
  * Status Badge Component
- * แสดงสถานะของพัสดุด้วยสี
+ * แสดงสถานะของรายการส่งด้วยสี
  */
 
 import type { ParcelStatus } from '@/types/parcel';

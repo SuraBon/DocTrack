@@ -1,6 +1,6 @@
 /**
  * Create Parcel Page
- * สร้างรายการพัสดุใหม่
+ * สร้างรายการส่งใหม่
  * Design: Premium Logistics
  */
 
@@ -24,7 +24,7 @@ import {
 } from '@/lib/createParcelDraft';
 import { UI_COPY } from '@/lib/uiCopy';
 
-const DEFAULT_DOC_TYPE = 'พัสดุ';
+const DEFAULT_ITEM_TYPE = 'พัสดุ';
 
 type CreatedParcelDetails = {
   senderName: string;
@@ -110,7 +110,7 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
     senderBranch:   sanitizeTextInput(resolveSelectValue(formData.senderBranch), 100),
     receiverName:   sanitizeTextInput(formData.receiverName, 200),
     receiverBranch: sanitizeTextInput(resolveSelectValue(formData.receiverBranch), 100),
-    docType:        DEFAULT_DOC_TYPE,
+    itemType:        DEFAULT_ITEM_TYPE,
     description:    sanitizeTextInput(formData.description, 200),
     note:           sanitizeTextInput(formData.note, 2000),
   });
@@ -132,7 +132,7 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
       return;
     }
     if (!position) {
-      toast.error('กรุณาอนุญาต GPS เพื่อบันทึกพิกัดต้นทางก่อนสร้างพัสดุ');
+      toast.error('กรุณาอนุญาตตำแหน่ง GPS เพื่อบันทึกจุดรับของก่อนสร้างรายการ');
       if (geoStatus !== 'loading') requestLocation();
       return;
     }
@@ -146,7 +146,7 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
   const handleConfirmSubmit = async () => {
     if (isLoading) return;
     if (!position) {
-      toast.error('กรุณาอนุญาต GPS เพื่อบันทึกพิกัดต้นทางก่อนสร้างพัสดุ');
+      toast.error('กรุณาอนุญาตตำแหน่ง GPS เพื่อบันทึกจุดรับของก่อนสร้างรายการ');
       if (geoStatus !== 'loading') requestLocation();
       return;
     }
@@ -161,7 +161,7 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
       const result = await createParcel(
         v.senderName, v.senderBranch,
         v.receiverName, v.receiverBranch,
-        v.docType, v.description, v.note,
+        v.itemType, v.description, v.note,
         position.latitude,
         position.longitude,
         proofPhotoUrl,
@@ -190,7 +190,7 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
   const handleCopyTrackingId = () => {
     if (createdTrackingId) {
       navigator.clipboard.writeText(createdTrackingId);
-      toast.success(`คัดลอก ID เรียบร้อย`);
+      toast.success('คัดลอกหมายเลขติดตามแล้ว');
     }
   };
 
@@ -200,7 +200,7 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
       <div className={`${embedded ? 'hidden' : 'app-page-header'}`}>
         <div>
           <h1 className="app-page-title">{UI_COPY.nav.create}</h1>
-          <p className="app-page-subtitle">กรอกข้อมูลที่จำเป็น แนบรูป และบันทึกพิกัดต้นทาง</p>
+          <p className="app-page-subtitle">กรอกข้อมูลที่จำเป็น แนบรูป และบันทึกตำแหน่งจุดรับ</p>
         </div>
       </div>
 
@@ -256,17 +256,17 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
                    geoStatus === 'denied' || geoStatus === 'error' ? 'location_disabled' : 'location_searching'}
                 </span>
                 <span className="font-semibold">
-                  {geoStatus === 'success' ? 'บันทึก GPS แล้ว' :
-                   geoStatus === 'loading' ? 'กำลังอ่าน GPS' :
-                   geoStatus === 'denied' ? 'ไม่ได้รับอนุญาต GPS' :
-                   geoStatus === 'error' ? 'ยังไม่ได้ GPS' : 'รอ GPS'}
+                  {geoStatus === 'success' ? 'บันทึกตำแหน่งแล้ว' :
+                   geoStatus === 'loading' ? 'กำลังอ่านตำแหน่ง' :
+                   geoStatus === 'denied' ? 'ยังไม่ได้อนุญาตตำแหน่ง' :
+                   geoStatus === 'error' ? 'ยังไม่ได้ตำแหน่ง' : 'รอตำแหน่ง'}
                 </span>
                 {(geoStatus === 'error' || geoStatus === 'denied') && (
                   <button
                     type="button"
                     onClick={requestLocation}
                     className="font-semibold underline underline-offset-2"
-                    title={geoError || 'ลองดึง GPS อีกครั้ง'}
+                    title={geoError || 'ลองดึงตำแหน่งอีกครั้ง'}
                   >
                     ลองใหม่
                   </button>
@@ -432,7 +432,7 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
                 <div className="grid gap-2 text-xs">
                   <div className="flex items-start gap-2 rounded-xl bg-gray-50 p-3">
                     <span className="material-symbols-outlined text-base text-gray-400">inventory_2</span>
-                    <p className="min-w-0 break-words text-gray-600"><span className="font-semibold text-gray-800">พัสดุ:</span> {formData.description || '-'}</p>
+                    <p className="min-w-0 break-words text-gray-600"><span className="font-semibold text-gray-800">สิ่งที่ส่ง:</span> {formData.description || '-'}</p>
                   </div>
                   <div className="flex items-start gap-2 rounded-xl bg-orange-50/70 p-3">
                     <span className="material-symbols-outlined text-base text-orange-400">sticky_note_2</span>
@@ -440,7 +440,7 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
                   </div>
                   <div className={`flex items-center gap-2 rounded-xl p-3 ${position ? 'bg-emerald-50 text-emerald-800' : 'bg-gray-50 text-gray-500'}`}>
                     <span className="material-symbols-outlined text-base">{position ? 'my_location' : 'location_searching'}</span>
-                    <span className="font-semibold">{position ? 'บันทึก GPS ต้นทางแล้ว' : 'รอ GPS ต้นทาง'}</span>
+                    <span className="font-semibold">{position ? 'บันทึกตำแหน่งจุดรับแล้ว' : 'รอตำแหน่งจุดรับ'}</span>
                   </div>
                   <div className={`flex items-center gap-2 rounded-xl p-3 ${proofPhotoPreview ? 'bg-blue-50 text-blue-800' : 'bg-gray-50 text-gray-500'}`}>
                     <span className="material-symbols-outlined text-base">{proofPhotoPreview ? 'image' : 'add_a_photo'}</span>
@@ -530,7 +530,7 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
                 {position && (
                   <div className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">
                     <span className="material-symbols-outlined text-base">my_location</span>
-                    บันทึก GPS ต้นทางแล้ว
+                    บันทึกตำแหน่งจุดรับแล้ว
                   </div>
                 )}
 
@@ -649,12 +649,12 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
                       <html>
                       <head>
                         <meta charset="utf-8" />
-                        <title>LogiTrack Label</title>
+                        <title>ShipTrack Label</title>
                       </head>
                       <body>
                       <div style="text-align:center;font-family:sans-serif;padding:28px;border:4px solid #091426;border-radius:20px;max-width:400px;margin:auto;box-sizing:border-box;">
                         <div style="background:#091426;color:#fff;padding:15px;border-radius:12px;margin-bottom:20px;">
-                          <h2 style="margin:0;font-size:24px;">LogiTrack</h2>
+                          <h2 style="margin:0;font-size:24px;">ShipTrack</h2>
                         </div>
                         <h1 id="tracking-id" style="font-size:clamp(24px,8vw,38px);margin:10px 0;font-family:monospace;letter-spacing:1px;overflow-wrap:anywhere;line-height:1.1;"></h1>
                         <img id="qr-code" alt="QR code" style="width:180px;height:180px;margin:20px 0;" />

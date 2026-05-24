@@ -1,6 +1,6 @@
 /**
  * Confirm Receipt Page
- * ยืนยันส่งสำเร็จด้วยรูปภาพ
+ * ยืนยันส่งด้วยรูปภาพ
  * Design: Premium Stepper UI
  */
 
@@ -194,9 +194,9 @@ export default function ConfirmReceipt({
         setIsDelivered(actuallyDelivered);
 
         if (actuallyDelivered) {
-          toast.warning(`พัสดุนี้ถูกจัดส่งถึงที่หมายเรียบร้อยแล้ว`);
+          toast.warning('รายการนี้ถูกส่งถึงที่หมายเรียบร้อยแล้ว');
         } else {
-          toast.success(`พบข้อมูลพัสดุ ต้องส่งไปที่: ${p['สาขาผู้รับ']}`);
+          toast.success(`พบรายการส่ง ต้องส่งไปที่: ${p['สาขาผู้รับ']}`);
           setCurrentStep(2); // Auto move to photo step
           requestLocation(); // Request GPS automatically on step 2
           if (shouldOpenCamera) {
@@ -204,7 +204,7 @@ export default function ConfirmReceipt({
           }
         }
       } else {
-        toast.error('ไม่พบข้อมูลพัสดุ หรือหมายเลขติดตามไม่ถูกต้อง');
+        toast.error('ไม่พบรายการส่ง หรือหมายเลขติดตามไม่ถูกต้อง');
       }
     } catch {
       toast.error('เกิดข้อผิดพลาดในการตรวจสอบ');
@@ -305,8 +305,8 @@ export default function ConfirmReceipt({
 
       const validationError =
         !photoUrl ? 'กรุณาแนบรูปหลักฐาน' :
-        needsGpsOverrideReason && !safeGpsOverrideReason ? 'กรุณาระบุเหตุผลที่ยืนยันโดยไม่มี GPS' :
-        !actionPayload ? 'กรุณาตรวจสอบพัสดุก่อนยืนยัน' :
+        needsGpsOverrideReason && !safeGpsOverrideReason ? 'กรุณาระบุเหตุผลที่ยืนยันโดยไม่มีตำแหน่ง GPS' :
+        !actionPayload ? 'กรุณาตรวจสอบรายการส่งก่อนยืนยัน' :
         actionPayload.validationError || null;
 
       if (validationError) {
@@ -328,7 +328,7 @@ export default function ConfirmReceipt({
         updateParcelLocally(finalTrackingId, { 'สถานะ': newStatus });
       }
 
-      toast.success('กำลังบันทึกการจัดส่ง...');
+      toast.success('กำลังยืนยันส่ง...');
       
       const finalNote = [
         actionPayload.note,
@@ -350,7 +350,7 @@ export default function ConfirmReceipt({
       );
       
       if (response && response.success) {
-        toast.success('บันทึกการจัดส่งเรียบร้อยแล้ว');
+        toast.success('ยืนยันส่งเรียบร้อยแล้ว');
         // Reset all state
         setCurrentStep(1);
         setTrackingId('');
@@ -373,7 +373,7 @@ export default function ConfirmReceipt({
         resetGeo();
         onComplete?.();
       } else {
-        toast.error(response?.error ? `เกิดข้อผิดพลาด: ${response.error}` : 'ไม่สามารถบันทึกการจัดส่งได้ กรุณาลองใหม่');
+        toast.error(response?.error ? `ยืนยันส่งไม่สำเร็จ: ${response.error}` : 'ไม่สามารถยืนยันส่งได้ กรุณาลองใหม่');
         // Revert local update
         if (typeof loadParcels === 'function') loadParcels(undefined, true);
       }
@@ -387,7 +387,7 @@ export default function ConfirmReceipt({
       {/* Header Section */}
       <div className={`${embedded ? 'hidden' : 'app-page-header'}`}>
         <div>
-          <h1 className="app-page-title">งานส่งพัสดุ</h1>
+          <h1 className="app-page-title">งานส่ง</h1>
           <p className="app-page-subtitle">สแกนหรือกรอกหมายเลข แล้วดูต้นทาง ปลายทาง และผู้รับทันที</p>
         </div>
       </div>
@@ -399,7 +399,7 @@ export default function ConfirmReceipt({
           <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mb-4">
             <span className="material-symbols-outlined text-5xl text-primary animate-spin">progress_activity</span>
           </div>
-          <p className="text-lg font-bold text-primary font-display">กำลังบันทึกการจัดส่ง...</p>
+          <p className="text-lg font-bold text-primary font-display">กำลังยืนยันส่ง...</p>
           <p className="text-on-surface-variant text-sm">กรุณารอสักครู่ ระบบกำลังประมวลผล</p>
         </div>,
         document.body
@@ -411,7 +411,7 @@ export default function ConfirmReceipt({
             <span className="material-symbols-outlined animate-spin text-4xl">progress_activity</span>
           </div>
           <h2 className="font-display text-xl font-black text-primary">กำลังเปิดกล้อง...</h2>
-          <p className="mt-1 text-sm font-semibold text-on-surface-variant/60">ระบบกำลังตรวจสอบพัสดุและเตรียมถ่ายรูปหลักฐาน</p>
+          <p className="mt-1 text-sm font-semibold text-on-surface-variant/60">ระบบกำลังตรวจสอบรายการส่งและเตรียมถ่ายรูปหลักฐาน</p>
         </div>
       )}
 
@@ -449,8 +449,8 @@ export default function ConfirmReceipt({
                 <div className="p-4 bg-error-container/30 border border-error/10 rounded-2xl text-error text-sm flex items-start gap-3 animate-in shake duration-300">
                   <span className="material-symbols-outlined text-xl">block</span>
                   <div>
-                    <p className="font-bold">พัสดุนี้ถูกจัดส่งถึงที่หมายแล้ว</p>
-                    <p className="opacity-80">ไม่สามารถยืนยันซ้ำได้ กรุณาตรวจสอบ ID อีกครั้ง</p>
+                    <p className="font-bold">รายการนี้ถูกส่งถึงที่หมายแล้ว</p>
+                    <p className="opacity-80">ไม่สามารถยืนยันซ้ำได้ กรุณาตรวจสอบหมายเลขติดตามอีกครั้ง</p>
                   </div>
                 </div>
               )}
@@ -485,7 +485,7 @@ export default function ConfirmReceipt({
               <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>photo_camera</span>
             </div>
             <h2 className="font-display text-lg font-black text-primary">ถ่ายรูปหลักฐาน</h2>
-            <p className="mt-0.5 text-xs font-semibold text-on-surface-variant/60">ถ่ายรูปพัสดุหรือหลักฐานการจัดส่ง</p>
+            <p className="mt-0.5 text-xs font-semibold text-on-surface-variant/60">ถ่ายรูปสิ่งที่ส่งหรือหลักฐานการจัดส่ง</p>
           </div>
           <div className="space-y-4 p-4 sm:p-5">
             {checkedParcel && <ParcelJobSummary parcel={checkedParcel} />}
@@ -546,14 +546,14 @@ export default function ConfirmReceipt({
                   </div>
                   <div className="space-y-0.5">
                     <p className="font-display text-sm font-black text-primary">
-                      {effectiveGeoStatus === 'success' ? 'ระบุตำแหน่ง GPS สำเร็จ' :
-                       effectiveGeoStatus === 'loading' ? 'กำลังดึงตำแหน่ง GPS...' :
-                       'ไม่พบตำแหน่ง GPS'}
+                      {effectiveGeoStatus === 'success' ? 'ระบุตำแหน่งสำเร็จ' :
+                       effectiveGeoStatus === 'loading' ? 'กำลังดึงตำแหน่ง...' :
+                       'ไม่พบตำแหน่ง'}
                     </p>
                     <p className="text-xs text-on-surface-variant/70 font-semibold leading-normal">
                       {effectiveGeoStatus === 'success' ? `ตำแหน่งแม่นยำ ~${Math.round(position?.accuracy || 0)} เมตร` :
-                       effectiveGeoStatus === 'loading' ? 'กรุณารอสักครู่ กำลังระบุพิกัดเพื่อความถูกต้องในการส่งพัสดุ' :
-                       geoError || 'ไม่สามารถดึงตำแหน่งพิกัดได้'}
+                       effectiveGeoStatus === 'loading' ? 'กรุณารอสักครู่ กำลังระบุตำแหน่งเพื่อใช้เป็นหลักฐานการส่ง' :
+                       geoError || 'ไม่สามารถดึงตำแหน่งได้'}
                     </p>
                   </div>
                 </div>
@@ -565,7 +565,7 @@ export default function ConfirmReceipt({
                     onClick={() => setIsGpsBypassed(true)}
                     className="w-full sm:w-auto shrink-0 font-display text-xs font-black text-primary hover:text-primary/95 border border-primary/20 hover:bg-primary/5 px-3 py-2 rounded-xl transition-all active:scale-[0.98] cursor-pointer"
                   >
-                    ข้ามการค้นหาตำแหน่ง (ไม่มี GPS)
+                    ข้ามการค้นหาตำแหน่ง
                   </button>
                 )}
               </div>
@@ -574,10 +574,10 @@ export default function ConfirmReceipt({
               {needsGpsOverrideReason && (
                 <div className="space-y-2 border-t border-outline-variant/10 pt-4 animate-in slide-in-from-top-2 duration-300">
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-error px-1">
-                    ระบุเหตุผลที่ยืนยันโดยไม่มี GPS <span className="text-error font-bold">*</span>
+                    ระบุเหตุผลที่ยืนยันโดยไม่มีตำแหน่ง GPS <span className="text-error font-bold">*</span>
                   </label>
                   <textarea
-                    placeholder="เช่น สัญญาณเน็ตล่ม, อยู่ในอาคารชั้นใต้ดิน, ลูกค้ามารับนอกพิกัด..."
+                    placeholder="เช่น สัญญาณเน็ตล่ม, อยู่ในอาคารชั้นใต้ดิน, ลูกค้ามารับนอกพื้นที่..."
                     value={gpsOverrideReason}
                     onChange={(e) => setGpsOverrideReason(sanitizeTextInput(e.target.value, 300))}
                     className="min-h-[72px] w-full resize-none rounded-2xl border-2 border-error/20 bg-white px-3.5 py-2.5 font-display text-sm outline-none transition-all focus:border-error focus:ring-4 focus:ring-error/5 text-primary placeholder:text-on-surface-variant/40"
@@ -649,7 +649,7 @@ export default function ConfirmReceipt({
                     {checkedParcel?.['สาขาผู้รับ'] || '-'}
                   </p>
                   <p className="mt-1 text-xs leading-snug text-on-surface-variant/70">
-                    GPS ด้านล่างเป็นหลักฐานตำแหน่งตอนกดส่ง ไม่ได้ใช้ตัดสินอัตโนมัติว่าตรงปลายทาง
+                    ตำแหน่งด้านล่างเป็นหลักฐานตอนกดส่ง ไม่ได้ใช้ตัดสินอัตโนมัติว่าตรงปลายทาง
                   </p>
                 </div>
               </div>
@@ -660,8 +660,8 @@ export default function ConfirmReceipt({
                 <div className="flex items-start gap-2.5">
                   <span className="material-symbols-outlined mt-0.5 text-xl">task_alt</span>
                   <div>
-                    <p className="font-display text-sm font-black">ค่าเริ่มต้น: ส่งสำเร็จตามปลายทาง</p>
-                    <p className="text-xs font-semibold leading-snug opacity-75">ถ้าส่งตามงานปกติ ไม่ต้องเลือกอะไรเพิ่ม กดบันทึกผลการส่งได้เลย</p>
+                    <p className="font-display text-sm font-black">ค่าเริ่มต้น: ยืนยันส่งตามปลายทาง</p>
+                    <p className="text-xs font-semibold leading-snug opacity-75">ถ้าส่งตามงานปกติ ไม่ต้องเลือกอะไรเพิ่ม กดยืนยันส่งได้เลย</p>
                   </div>
                 </div>
               </div>
@@ -811,7 +811,7 @@ export default function ConfirmReceipt({
                   || (!isForwarding && deliveryMatchStatus === 'DELIVERED_ELSEWHERE' && !deliveryMismatchReason.trim())}
                 className="group flex h-13 min-w-0 items-center justify-center gap-2 rounded-2xl bg-primary px-3 font-display text-sm font-black text-white shadow-lg shadow-primary/20 transition-all hover:scale-[1.01] hover:bg-primary/95 active:scale-[0.98] disabled:scale-100 disabled:bg-on-surface-variant/30 disabled:shadow-none sm:text-base"
               >
-                บันทึกผลการส่ง
+                ยืนยันส่ง
                 <span className="material-symbols-outlined text-xl transition-transform group-hover:translate-x-1 sm:text-2xl">verified</span>
               </button>
             </div>
@@ -960,7 +960,7 @@ export default function ConfirmReceipt({
                 <div className="px-4 py-2 bg-surface-container-low/50 border-b border-outline-variant/20 flex items-center justify-between">
                   <div className="flex items-center gap-2 text-on-surface-variant">
                     <span className="material-symbols-outlined text-sm text-green-600">my_location</span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider">พิกัด GPS ที่บันทึก</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider">ตำแหน่ง GPS ที่บันทึก</span>
                   </div>
                   <span className="text-[10px] font-mono text-on-surface-variant/60">
                     {position.latitude.toFixed(6)}, {position.longitude.toFixed(6)}
@@ -1001,7 +1001,7 @@ export default function ConfirmReceipt({
                 <div className="flex items-start gap-3">
                   <span className="material-symbols-outlined text-xl">location_off</span>
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider opacity-70">ยืนยันโดยไม่มี GPS</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider opacity-70">ยืนยันโดยไม่มีตำแหน่ง GPS</p>
                     <p className="text-sm font-bold leading-snug">{gpsOverrideReason}</p>
                   </div>
                 </div>

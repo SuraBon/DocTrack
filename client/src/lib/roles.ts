@@ -5,7 +5,7 @@ export const SYSTEM_ROLES: SystemRole[] = ['MESSENGER', 'ADMIN'];
 
 export const ROLE_LABELS: Record<AppRole, string> = {
   MESSENGER: 'พนักงานส่ง',
-  ADMIN: 'Admin',
+  ADMIN: 'ผู้ดูแลระบบ',
   GUEST: 'Guest',
 };
 

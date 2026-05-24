@@ -4,9 +4,6 @@ import type { Parcel, ParcelSummary } from '@/types/parcel';
  * Derives the real display status of a parcel.
  *
  * Priority: use the structured `events` array when available (more reliable).
- * Fallback: parse the `หมายเหตุ` note field for legacy parcels that pre-date
- * the events system.
- *
  * A parcel marked 'ส่งสำเร็จ' in the backend may actually still be
  * 'กำลังจัดส่ง' if the last recorded action was a FORWARD, not a delivery.
  */
@@ -33,16 +30,6 @@ export function applyDerivedStatus(parcel: Parcel): Parcel {
     }
   }
 
-  // ── Fallback: parse note field (legacy parcels) ───────────────────────────
-  const note = parcel['หมายเหตุ'] || '';
-  const lastForwardIdx = note.lastIndexOf('[ส่งต่อโดย:');
-  const lastProxyIdx   = note.lastIndexOf('[รับแทนโดย:');
-  const lastNormalIdx  = note.lastIndexOf('[รับพัสดุเรียบร้อย');
-  const maxIdx = Math.max(lastForwardIdx, lastProxyIdx, lastNormalIdx);
-
-  if (maxIdx >= 0 && maxIdx === lastForwardIdx) {
-    return { ...parcel, 'สถานะ': 'กำลังจัดส่ง' };
-  }
   return parcel;
 }
 

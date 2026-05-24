@@ -80,7 +80,7 @@ export default function Track({ embedded = false }: { embedded?: boolean }) {
       if (res.success && res.parcel) {
         updateCreatedParcelHistoryFromParcel(res.parcel);
         setParcel(res.parcel); setSearchResults([]); addToRecent(res.parcel.TrackingID);
-        toast.success('พบข้อมูลพัสดุ');
+        toast.success('พบรายการส่ง');
       } else {
         const directTrackingLookup = isValidTrackingId(id);
         const lookupMiss = (res.error ?? '').includes('ไม่พบ') || (res.error ?? '').includes('รูปแบบ');
@@ -99,7 +99,7 @@ export default function Track({ embedded = false }: { embedded?: boolean }) {
           else { setSearchResults(results); setParcel(null); }
           toast.success(`พบข้อมูล ${results.length} รายการ`);
         } else {
-          setParcel(null); setSearchResults([]); toast.error(res.error && directTrackingLookup ? res.error : 'ไม่พบข้อมูลพัสดุ');
+          setParcel(null); setSearchResults([]); toast.error(res.error && directTrackingLookup ? res.error : 'ไม่พบรายการส่ง');
         }
       }
     } catch { toast.error('เกิดข้อผิดพลาดในการเชื่อมต่อ'); }
@@ -196,7 +196,7 @@ export default function Track({ embedded = false }: { embedded?: boolean }) {
         <section className="app-panel p-4">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold text-foreground">พัสดุที่สร้างจากเครื่องนี้</h2>
+              <h2 className="text-sm font-semibold text-foreground">รายการที่สร้างจากเครื่องนี้</h2>
               <p className="text-xs text-muted-foreground">บันทึกในเครื่องนี้ กดเพื่อดึงสถานะล่าสุดจากระบบ</p>
             </div>
             <span className="rounded-md bg-muted px-2.5 py-1 text-[11px] font-semibold text-foreground">{createdHistory.length}</span>
@@ -297,7 +297,7 @@ export default function Track({ embedded = false }: { embedded?: boolean }) {
                   </div>
                   <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                     <span className="material-symbols-outlined text-sm">category</span>
-                    {parcel['ประเภทเอกสาร']}
+                    {parcel['ประเภทสิ่งที่ส่ง']}
                   </div>
                 </div>
                 <div className="rounded-lg border border-border bg-background px-3 py-2">
@@ -334,7 +334,7 @@ export default function Track({ embedded = false }: { embedded?: boolean }) {
                     <div className="grid grid-cols-2 gap-4 border-t border-gray-100 pt-3">
                       <div>
                         <p className="text-[10px] font-bold text-on-surface-variant/50 uppercase tracking-wider">ประเภท</p>
-                        <p className="font-bold text-primary text-sm mt-0.5">{parcel['ประเภทเอกสาร']}</p>
+                        <p className="font-bold text-primary text-sm mt-0.5">{parcel['ประเภทสิ่งที่ส่ง']}</p>
                       </div>
                       <div>
                         <p className="text-[10px] font-bold text-on-surface-variant/50 uppercase tracking-wider">สถานะ</p>
@@ -394,8 +394,8 @@ export default function Track({ embedded = false }: { embedded?: boolean }) {
                   ) : (
                     <div className="flex h-[260px] flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/40 p-6 text-center shadow-sm">
                       <span className="material-symbols-outlined mb-3 text-4xl text-muted-foreground">map_off</span>
-                      <p className="text-sm font-semibold text-foreground">ยังไม่มีพิกัด GPS</p>
-                      <p className="mt-1 text-xs text-muted-foreground">แผนที่จะแสดงเมื่อมีพิกัดจากการสร้างรายการหรือการส่งสำเร็จ</p>
+                      <p className="text-sm font-semibold text-foreground">ยังไม่มีตำแหน่งสำหรับแผนที่</p>
+                      <p className="mt-1 text-xs text-muted-foreground">แผนที่จะแสดงเมื่อมีตำแหน่งจากการสร้างรายการหรือยืนยันส่ง</p>
                     </div>
                   )}
                 </div>
@@ -411,7 +411,7 @@ export default function Track({ embedded = false }: { embedded?: boolean }) {
           <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-lg bg-muted">
             <span className="material-symbols-outlined text-3xl text-muted-foreground">search_off</span>
           </div>
-          <h3 className="text-lg font-semibold text-foreground">ไม่พบข้อมูลพัสดุ</h3>
+          <h3 className="text-lg font-semibold text-foreground">ไม่พบรายการส่ง</h3>
           <p className="mx-auto mt-1 max-w-xs text-sm text-muted-foreground">ไม่พบรายการที่ค้นหา กรุณาตรวจสอบหมายเลขติดตามอีกครั้ง</p>
           <button onClick={() => setTrackingId('')} className="mt-4 text-sm font-semibold text-primary hover:underline">
             ล้างและค้นหาใหม่

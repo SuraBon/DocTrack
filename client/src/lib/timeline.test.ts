@@ -10,7 +10,7 @@ function createParcel(overrides: Partial<Parcel> = {}): Parcel {
     'สาขาผู้ส่ง': 'ศูนย์ใหญ่บางนา',
     'ผู้รับ': 'B',
     'สาขาผู้รับ': 'มีนบุรี',
-    'ประเภทเอกสาร': 'เอกสาร',
+    'ประเภทสิ่งที่ส่ง': 'เอกสาร',
     'สถานะ': 'กำลังจัดส่ง',
     ...overrides,
   };
@@ -19,12 +19,19 @@ function createParcel(overrides: Partial<Parcel> = {}): Parcel {
 describe('parseParcelTimeline', () => {
   it('adds forwarding and current transit step', () => {
     const parcel = createParcel({
-      'หมายเหตุ': '[ส่งต่อโดย: พนักงาน1 จากสาขา: ศูนย์ใหญ่บางนา ไปสาขา: มหาชัย เมื่อ: 1 มกราคม 2569]',
+      events: [{
+        id: 'EVT1',
+        trackingId: 'TRK1',
+        timestamp: '1 มกราคม 2569',
+        eventType: 'FORWARD',
+        location: 'ศูนย์ใหญ่บางนา',
+        destLocation: 'มหาชัย',
+        person: 'พนักงาน1',
+      }],
     });
     const events = parseParcelTimeline(parcel);
-    expect(events.map((e) => e.title)).toEqual(['สร้างรายการส่ง', 'ส่งต่อพัสดุ', 'กำลังจัดส่ง']);
-    expect(events[0].destLocation).toBe('มีนบุรี');
-    expect(events[1].destLocation).toBe('มหาชัย');
+    expect(events.map((e) => e.title)).toEqual(['ส่งต่อไปจุดถัดไป', 'กำลังจัดส่ง']);
+    expect(events[0].destLocation).toBe('มหาชัย');
   });
 
   it('keeps created event GPS so maps can start from the real origin point', () => {
@@ -110,8 +117,8 @@ describe('parseParcelTimeline', () => {
     });
     const events = parseParcelTimeline(parcel);
     expect(events[0]).toMatchObject({
-      title: 'รับพัสดุ',
-      description: 'ผู้รับพัสดุ: Messenger A',
+      title: 'รับของแล้ว',
+      description: 'ผู้รับของ: Messenger A',
       location: 'ศูนย์ใหญ่บางนา',
       destLocation: 'มีนบุรี',
       latitude: 13.7,
@@ -141,7 +148,15 @@ describe('parseParcelTimeline', () => {
   it('parses delivered proxy event', () => {
     const parcel = createParcel({
       'สถานะ': 'ส่งสำเร็จ',
-      'หมายเหตุ': '[รับแทนโดย: สมชาย เมื่อ: 1 มกราคม 2569 รูปภาพ: https://example.com/p.jpg]',
+      events: [{
+        id: 'EVT1',
+        trackingId: 'TRK1',
+        timestamp: '1 มกราคม 2569',
+        eventType: 'PROXY',
+        location: 'มีนบุรี',
+        person: 'สมชาย',
+        photoUrl: 'https://example.com/p.jpg',
+      }],
     });
     const events = parseParcelTimeline(parcel);
     expect(events[events.length - 1].description).toContain('สมชาย');

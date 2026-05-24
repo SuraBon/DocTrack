@@ -87,7 +87,7 @@ export default function BranchManagement() {
           </div>
           <div>
             <h1 className="app-page-title">จัดการแผนก/สาขา</h1>
-            <p className="app-page-subtitle">เพิ่มหรือลบ master list ที่ใช้ใน dropdown ของระบบ</p>
+            <p className="app-page-subtitle">เพิ่มหรือลบรายการตัวเลือกที่ใช้ในเมนูเลือกของระบบ</p>
           </div>
         </div>
         <button onClick={refreshBranches} disabled={loading} className="app-secondary-button h-10 px-3">
@@ -211,7 +211,7 @@ export default function BranchManagement() {
           <AlertDialogHeader>
             <AlertDialogTitle className="text-primary">ลบแผนก/สาขา</AlertDialogTitle>
             <AlertDialogDescription>
-              ลบ “{branchToDelete}” ออกจากรายการ master list เท่านั้น ข้อมูลพัสดุและประวัติเก่าที่ใช้ชื่อนี้จะไม่ถูกแก้ไข
+              ลบ “{branchToDelete}” ออกจากรายการตัวเลือกเท่านั้น ข้อมูลรายการส่งและประวัติเก่าที่ใช้ชื่อนี้จะไม่ถูกแก้ไข
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -27,7 +27,7 @@ type PendingUserAction = {
 } | null;
 
 const ROLE_CONFIG: Record<AppRole, { label: string; icon: React.ReactNode }> = {
-  ADMIN: { label: 'Admin', icon: <ShieldCheck className="h-3.5 w-3.5" /> },
+  ADMIN: { label: 'ผู้ดูแลระบบ', icon: <ShieldCheck className="h-3.5 w-3.5" /> },
   MESSENGER: { label: 'พนักงานส่ง', icon: <Truck className="h-3.5 w-3.5" /> },
   GUEST: { label: 'ไม่มีสิทธิ์พนักงาน', icon: <UserX className="h-3.5 w-3.5" /> },
 };
@@ -302,7 +302,7 @@ export default function UserManagement() {
           </div>
           <div>
             <h1 className="app-page-title">จัดการพนักงาน</h1>
-            <p className="app-page-subtitle">สร้าง แก้ไข ปิดบัญชี และกำหนดสิทธิ์ Admin/พนักงานส่ง</p>
+            <p className="app-page-subtitle">สร้าง แก้ไข ปิดบัญชี และกำหนดสิทธิ์ผู้ดูแลระบบ/พนักงานส่ง</p>
           </div>
         </div>
         <button onClick={fetchUsers} disabled={loading} className="app-secondary-button h-10 px-3">
@@ -335,7 +335,7 @@ export default function UserManagement() {
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
         {[
           { key: 'ALL' as const, label: 'ทั้งหมด', value: counts.total, icon: <Users className="h-4 w-4" /> },
-          { key: 'ADMIN' as const, label: 'Admin', value: counts.admin, icon: <ShieldCheck className="h-4 w-4" /> },
+          { key: 'ADMIN' as const, label: 'ผู้ดูแลระบบ', value: counts.admin, icon: <ShieldCheck className="h-4 w-4" /> },
           { key: 'MESSENGER' as const, label: 'พนักงานส่ง', value: counts.messenger, icon: <Truck className="h-4 w-4" /> },
           { key: 'DISABLED' as const, label: 'ปิดใช้งาน', value: counts.disabled, icon: <UserX className="h-4 w-4" /> },
         ].map(s => (
@@ -475,7 +475,7 @@ export default function UserManagement() {
         <DialogContent className="max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-md overflow-hidden rounded-xl border bg-white p-0">
           <DialogHeader className="border-b border-outline-variant/20 px-5 py-4">
             <DialogTitle className="text-lg font-semibold text-primary">แก้ไขผู้ใช้</DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">แก้ชื่อ แผนก/สาขา สิทธิ์ หรือ reset PIN/password</DialogDescription>
+            <DialogDescription className="text-xs text-muted-foreground">แก้ชื่อ แผนก/สาขา สิทธิ์ หรือเปลี่ยนรหัสผ่าน</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSaveUser} className="space-y-4 px-5 py-4">
             <div><label className="mb-1.5 block text-xs font-semibold text-muted-foreground">รหัสพนักงาน</label><input value={editingUser?.employeeId ?? ''} disabled className="app-input w-full opacity-70" /></div>

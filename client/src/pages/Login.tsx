@@ -18,7 +18,7 @@ function getLoginErrorMessage(error?: string) {
   const err = error || '';
 
   if (err.includes('บัญชีถูกล็อค')) return err;
-  if (err.includes('PIN ไม่ถูกต้อง') || err.includes('รหัสผ่านไม่ถูกต้อง') || err.includes('เหลือ')) {
+  if (err.includes('รหัสผ่านไม่ถูกต้อง') || err.includes('เหลือ')) {
     return err || DEFAULT_LOGIN_ERROR;
   }
   if (
@@ -27,7 +27,7 @@ function getLoginErrorMessage(error?: string) {
     err.includes('not found') ||
     err.includes('UNAVAILABLE')
   ) {
-    return 'ไม่พบรหัสพนักงานนี้ กรุณาตรวจสอบอีกครั้ง หรือให้ Admin เพิ่มบัญชีก่อน';
+    return 'ไม่พบรหัสพนักงานนี้ กรุณาตรวจสอบอีกครั้ง หรือให้ผู้ดูแลระบบเพิ่มบัญชีก่อน';
   }
 
   return err || 'ระบบไม่สามารถเข้าสู่ระบบได้ กรุณาลองใหม่อีกครั้ง';
@@ -93,7 +93,7 @@ export default function Login() {
           title: 'เข้าสู่ระบบสำเร็จ',
           message: 'ตั้งค่ารหัสผ่านและข้อมูลผู้ใช้เรียบร้อยแล้ว',
         });
-        toast.success('ตั้งค่า PIN สำเร็จ');
+        toast.success('ตั้งรหัสผ่านสำเร็จ');
       } else {
         const message = res.error || 'เกิดข้อผิดพลาดในการตั้งค่า กรุณาลองใหม่อีกครั้ง';
         showAuthError('ตั้งค่าการเข้าใช้งานไม่สำเร็จ', message);
@@ -129,7 +129,7 @@ export default function Login() {
             title: 'ตรวจสอบสำเร็จ',
             message: 'เข้าใช้งานครั้งแรก กรุณาตั้งค่ารหัสผ่านและข้อมูลของท่าน',
           });
-          toast.info('เข้าใช้งานครั้งแรก กรุณาตั้งค่า PIN และข้อมูลของท่าน');
+          toast.info('เข้าใช้งานครั้งแรก กรุณาตั้งรหัสผ่านและข้อมูลของท่าน');
         } else {
           setAuthDialog({
             open: true,
@@ -154,13 +154,13 @@ export default function Login() {
             <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10">
               <PackageSearch className="h-6 w-6" aria-hidden="true" />
             </div>
-            <h2 className="text-2xl font-bold leading-tight">DocTrack</h2>
-            <p className="mt-2 text-sm leading-relaxed text-white/60">ระบบจัดการพัสดุภายในสำหรับ Admin และพนักงานส่ง</p>
+            <h2 className="text-2xl font-bold leading-tight">ShipTrack</h2>
+            <p className="mt-2 text-sm leading-relaxed text-white/60">ระบบจัดการรายการส่งภายในสำหรับผู้ดูแลระบบและพนักงานส่ง</p>
           </div>
           <div className="space-y-3 text-xs text-white/55">
             <div className="rounded-2xl bg-white/5 p-3">
               <p className="font-semibold text-white">งานจัดส่ง</p>
-              <p className="mt-1">ติดตาม สร้างรายการ และบันทึกหลักฐานพร้อม GPS</p>
+              <p className="mt-1">ติดตาม สร้างรายการ และบันทึกหลักฐานพร้อมตำแหน่ง GPS</p>
             </div>
           </div>
         </div>
@@ -174,20 +174,20 @@ export default function Login() {
             {isSetup ? 'ตั้งค่าการเข้าใช้งาน' : 'เข้าสู่ระบบพนักงานส่ง'}
           </h1>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            {isSetup ? 'กรุณาตั้งรหัสผ่านและข้อมูลของท่าน' : 'สำหรับ Admin และพนักงานส่ง'}
+            {isSetup ? 'กรุณาตั้งรหัสผ่านและข้อมูลของท่าน' : 'สำหรับผู้ดูแลระบบและพนักงานส่ง'}
           </p>
         </div>
 
         <form onSubmit={handleLogin} className="mx-auto flex flex-col gap-4">
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-foreground">Username</label>
+            <label className="mb-1.5 block text-sm font-medium text-foreground">รหัสพนักงาน</label>
             <input
               type="text"
               value={employeeId}
               onChange={e => setEmployeeId(normalizeEmployeeId(e.target.value))}
               disabled={isSetup || isLoginDisabled}
               className="app-input w-full font-medium uppercase"
-              placeholder="โปรดกรอกรหัสพนักงานของท่าน"
+              placeholder="กรอกรหัสพนักงาน"
             />
           </div>
 
@@ -220,7 +220,7 @@ export default function Login() {
 
           <div>
             <label className="mb-1.5 block text-sm font-medium text-foreground">
-              {isSetup ? 'ตั้งรหัสผ่าน' : 'Password'}
+              {isSetup ? 'ตั้งรหัสผ่าน' : 'รหัสผ่าน'}
             </label>
             <input
               type="password"

@@ -19,7 +19,7 @@ export function parseParcelTimeline(parcel: Parcel): TimelineEvent[] {
   const appendDeliveryConfirmation = (description: string, evt: NonNullable<Parcel['events']>[number]) => {
     if (evt.deliveryMatchStatus === 'DELIVERED_ELSEWHERE') {
       const reason = evt.deliveryMismatchReason ? ` เหตุผล: ${evt.deliveryMismatchReason}` : '';
-      return `${description} (ส่งคนละจุด / ฝากไว้ที่อื่น)${reason}`;
+      return `${description} (ส่งคนละจุดหรือฝากไว้ที่อื่น)${reason}`;
     }
     if (evt.deliveryMatchStatus === 'MATCHED_DECLARED_DESTINATION') {
       return `${description} (ยืนยันส่งตรงตามปลายทางที่ระบุ)`;
@@ -47,7 +47,7 @@ export function parseParcelTimeline(parcel: Parcel): TimelineEvent[] {
         events.push({
           id: String(idCounter++),
           status: 'completed',
-          title: 'ส่งต่อพัสดุ',
+          title: 'ส่งต่อไปจุดถัดไป',
           description: `ส่งต่อโดย: ${evt.person || '-'} ไปยังแผนก/สาขา: ${evt.destLocation || '-'}`,
           timestamp: evt.timestamp,
           location: evt.location,
@@ -72,8 +72,8 @@ export function parseParcelTimeline(parcel: Parcel): TimelineEvent[] {
         events.push({
           id: String(idCounter++),
           status: 'completed',
-          title: 'รับพัสดุ',
-          description: `ผู้รับพัสดุ: ${evt.person || '-'}`,
+          title: 'รับของแล้ว',
+          description: `ผู้รับของ: ${evt.person || '-'}`,
           timestamp: evt.timestamp,
           location: evt.location,
           destLocation: evt.destLocation,
@@ -127,7 +127,7 @@ export function parseParcelTimeline(parcel: Parcel): TimelineEvent[] {
         id: String(idCounter++),
         status: 'current',
         title: 'กำลังจัดส่ง',
-        description: 'พัสดุอยู่ระหว่างการเดินทาง',
+        description: 'รายการนี้อยู่ระหว่างนำส่ง',
         timestamp: '',
         location: '',
       });
@@ -141,10 +141,6 @@ export function parseParcelTimeline(parcel: Parcel): TimelineEvent[] {
     return events;
   }
 
-  // ── B. Legacy Regex Parsing Fallback ──────────────────────────────────────────
-  const note = parcel['หมายเหตุ'] ?? '';
-
-  // ── 1. Creation event
   const isCreationCurrent = parcel['สถานะ'] === 'รอจัดส่ง';
   events.push({
     id: String(idCounter++),
@@ -159,72 +155,15 @@ export function parseParcelTimeline(parcel: Parcel): TimelineEvent[] {
     longitude: creationLng,
   });
 
-  // ── 2. Forward events
-  const forwardRegex =
-    /\[ส่งต่อโดย:\s*(.*?)\s*จากสาขา:\s*(.*?)\s*ไปสาขา:\s*(.*?)\s*เมื่อ:\s*(.*?)(?:\s*รูปภาพ:\s*(.*?))?(?:\s*GPS:\s*([\d.-]+),\s*([\d.-]+))?\]/g;
-
-  const forwardEvents: TimelineEvent[] = [];
-  let match: RegExpExecArray | null;
-  while ((match = forwardRegex.exec(note)) !== null) {
-    if (match[1]?.trim() && match[2]?.trim() && match[3]?.trim() && match[4]?.trim()) {
-      const fwdLat = match[6] ? parseFloat(match[6]) : undefined;
-      const fwdLng = match[7] ? parseFloat(match[7]) : undefined;
-      forwardEvents.push({
-        id: String(idCounter++),
-        status: 'completed',
-        title: 'ส่งต่อพัสดุ',
-        description: `ส่งต่อโดย: ${match[1].trim()} ไปยังแผนก/สาขา: ${match[3].trim()}`,
-        timestamp: match[4].trim(),
-        location: match[2].trim(),
-        destLocation: match[3].trim(),
-        imageUrl: match[5]?.trim() || undefined,
-        latitude: fwdLat,
-        longitude: fwdLng,
-      });
-    }
-  }
-
-  if (
-    parcel['สถานะ'] !== 'ส่งสำเร็จ' &&
-    parcel['รูปยืนยัน'] &&
-    forwardEvents.length > 0
-  ) {
-    forwardEvents[forwardEvents.length - 1].imageUrl = parcel['รูปยืนยัน'];
-  }
-
-  events.push(...forwardEvents);
-
-  // ── 3. Terminal event
   if (parcel['สถานะ'] === 'ส่งสำเร็จ') {
-    const proxyRegex =
-      /\[รับแทนโดย:\s*(.*?)\s*เมื่อ:\s*(.*?)(?:\s*รูปภาพ:\s*(.*?))?(?:\s*GPS:\s*([\d.-]+),\s*([\d.-]+))?\]/;
-    const normalRegex =
-      /\[รับพัสดุเรียบร้อย เมื่อ:\s*(.*?)(?:\s*รูปภาพ:\s*(.*?))?(?:\s*GPS:\s*([\d.-]+),\s*([\d.-]+))?\]/;
-
-    const proxyMatch  = proxyRegex.exec(note);
-    const normalMatch = normalRegex.exec(note);
-
-    let description = 'ส่งถึงปลายทางเรียบร้อย';
-    let timestamp   = parcel['วันที่รับ'] ?? '';
-    let imageUrl    = parcel['รูปยืนยัน'] ?? undefined;
-
-    if (proxyMatch) {
-      description = `รับแทนโดย: ${proxyMatch[1]}`;
-      timestamp   = proxyMatch[2];
-      if (proxyMatch[3]) imageUrl = proxyMatch[3];
-    } else if (normalMatch) {
-      timestamp = normalMatch[1];
-      if (normalMatch[2]) imageUrl = normalMatch[2];
-    }
-
     events.push({
       id: String(idCounter++),
       status: 'completed',
       title: 'ส่งสำเร็จ',
-      description,
-      timestamp,
+      description: 'ส่งถึงปลายทางเรียบร้อย',
+      timestamp: parcel['วันที่รับ'] ?? '',
       location: parcel['สาขาผู้รับ'],
-      imageUrl,
+      imageUrl: parcel['รูปยืนยัน'] ?? undefined,
       latitude: parcelLat,
       longitude: parcelLng,
     });
@@ -233,7 +172,7 @@ export function parseParcelTimeline(parcel: Parcel): TimelineEvent[] {
       id: String(idCounter++),
       status: 'current',
       title: 'กำลังจัดส่ง',
-      description: 'พัสดุอยู่ระหว่างการเดินทาง',
+      description: 'รายการนี้อยู่ระหว่างนำส่ง',
       timestamp: '',
       location: '',
     });

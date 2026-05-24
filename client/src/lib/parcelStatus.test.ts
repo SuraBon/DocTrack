@@ -9,7 +9,7 @@ const baseParcel: Parcel = {
   'สาขาผู้ส่ง': 'ศูนย์ใหญ่บางนา',
   'ผู้รับ': 'B',
   'สาขาผู้รับ': 'มีนบุรี',
-  'ประเภทเอกสาร': 'เอกสาร',
+  'ประเภทสิ่งที่ส่ง': 'เอกสาร',
   'สถานะ': 'ส่งสำเร็จ',
 };
 
@@ -17,7 +17,7 @@ describe('parcelStatus', () => {
   it('keeps delivered when final note is receive', () => {
     const parcel = applyDerivedStatus({
       ...baseParcel,
-      'หมายเหตุ': '[รับพัสดุเรียบร้อย เมื่อ: 1 มกราคม 2569]',
+      'หมายเหตุ': '',
     });
     expect(parcel['สถานะ']).toBe('ส่งสำเร็จ');
   });
@@ -25,7 +25,7 @@ describe('parcelStatus', () => {
   it('changes to transit when last note is forwarding', () => {
     const parcel = applyDerivedStatus({
       ...baseParcel,
-      'หมายเหตุ': '[รับพัสดุเรียบร้อย เมื่อ: 1 มกราคม 2569] [ส่งต่อโดย: x จากสาขา: a ไปสาขา: b เมื่อ: 2 มกราคม 2569]',
+      events: [{ id: '1', trackingId: 'TRK1', timestamp: '2 มกราคม 2569', eventType: 'FORWARD', location: 'a', destLocation: 'b' }],
     });
     expect(parcel['สถานะ']).toBe('กำลังจัดส่ง');
   });

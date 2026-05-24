@@ -1,7 +1,7 @@
 import type { Parcel, ParcelStatus } from '@/types/parcel';
 
-const DEVICE_ID_KEY = 'doc_track_device_id';
-const CREATED_PARCELS_KEY = 'doc_track_created_parcels';
+const DEVICE_ID_KEY = 'shiptrack_device_id';
+const CREATED_PARCELS_KEY = 'shiptrack_created_parcels';
 const MAX_HISTORY_ITEMS = 50;
 
 export interface CreatedParcelHistoryItem {

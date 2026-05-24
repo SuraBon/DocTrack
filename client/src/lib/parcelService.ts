@@ -26,15 +26,8 @@ import { getErrorMessage, getServerErrorMessage, isAuthErrorMessage } from './ap
 import { createIdempotencyKey } from './idempotency';
 
 // ── Status normalizer ────────────────────────────────────────────────────────
-// Backend still stores old Thai status strings. Map them to the new display values.
-const STATUS_MAP: Record<string, string> = {
-  'ส่งถึงแล้ว': 'ส่งสำเร็จ',
-};
-
 function normalizeParcelStatus(parcel: Parcel): Parcel {
-  const raw = parcel['สถานะ'] as string;
-  const mapped = STATUS_MAP[raw];
-  return mapped ? { ...parcel, 'สถานะ': mapped as Parcel['สถานะ'] } : parcel;
+  return parcel;
 }
 
 function normalizeParcels(parcels: Parcel[]): Parcel[] {
@@ -136,7 +129,7 @@ async function callAPI<T>(
     let response: Response;
     try {
       let authData = {};
-      const storedUser = includeAuth ? localStorage.getItem('doc_track_user') : null;
+      const storedUser = includeAuth ? localStorage.getItem('shiptrack_user') : null;
       if (includeAuth && storedUser) {
         try {
           const u = JSON.parse(storedUser) as Record<string, unknown>;
@@ -163,7 +156,7 @@ async function callAPI<T>(
       const isAbort = err instanceof DOMException && err.name === 'AbortError';
       lastError = new Error(isAbort
         ? 'การเชื่อมต่อใช้เวลานานเกินไป กรุณาลองใหม่อีกครั้ง'
-        : 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต');
+        : 'ไม่สามารถเชื่อมต่อระบบได้ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่');
       // Network error — retry
       continue;
     }
@@ -175,7 +168,7 @@ async function callAPI<T>(
         lastError = new Error('ระบบรับคำขอมากเกินไป กรุณารอสักครู่แล้วลองใหม่');
         continue;
       } else if (response.status >= 500) {
-        lastError = new Error('เซิร์ฟเวอร์ขัดข้อง กรุณาลองใหม่อีกครั้ง');
+        lastError = new Error('ระบบขัดข้อง กรุณาลองใหม่อีกครั้ง');
         // Server error — retry
         continue;
       }
@@ -186,11 +179,11 @@ async function callAPI<T>(
     try {
       data = await response.json() as Record<string, unknown>;
     } catch {
-      lastError = new Error('เซิร์ฟเวอร์ตอบกลับไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
+      lastError = new Error('ระบบตอบกลับไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
       continue;
     }
     if (dispatchAuthError && data && data['success'] === false) {
-      const storedUser = includeAuth ? localStorage.getItem('doc_track_user') : null;
+      const storedUser = includeAuth ? localStorage.getItem('shiptrack_user') : null;
       if (storedUser && isAuthErrorMessage(data['error'])) {
         window.dispatchEvent(new Event('auth_error'));
       }
@@ -209,7 +202,7 @@ export async function createParcel(
   senderBranch: string,
   receiverName: string,
   receiverBranch: string,
-  docType: string,
+  itemType: string,
   description?: string,
   note?: string,
   latitude?: number,
@@ -219,7 +212,7 @@ export async function createParcel(
 ): Promise<CreateParcelResponse> {
   const payload: CreateParcelPayload = {
     action: 'createParcel',
-    senderName, senderBranch, receiverName, receiverBranch, docType, description, note, latitude, longitude, photoUrl, pin,
+    senderName, senderBranch, receiverName, receiverBranch, itemType, description, note, latitude, longitude, photoUrl, pin,
     clientId: getDeviceId(),
     idempotencyKey: createIdempotencyKey('createParcel'),
   };
@@ -237,12 +230,7 @@ export async function createParcel(
 }
 
 export async function getParcels(status: string = 'ทั้งหมด', limit: number = 50, offset: number = 0): Promise<GetParcelsResponse> {
-  // Map frontend display status back to backend storage values for filtering
-  const REVERSE_STATUS_MAP: Record<string, string> = {
-    'ส่งสำเร็จ': 'ส่งถึงแล้ว',
-  };
-  const backendStatus = REVERSE_STATUS_MAP[status] ?? status;
-  const payload = { action: 'getParcels', status: backendStatus, limit, offset };
+  const payload = { action: 'getParcels', status, limit, offset };
   try {
     const res = await callAPI<GetParcelsResponse>(payload);
     if (res.success && Array.isArray(res.parcels)) {
@@ -463,7 +451,7 @@ function normalizeAuthResponse<T extends { user?: User; role?: string }>(res: T)
 // — includes brute force lockout messages
 const REAL_AUTH_ERRORS = [
   'รหัสผ่านไม่ถูกต้อง',
-  'PIN ไม่ถูกต้อง',
+  'รหัสผ่านไม่ถูกต้อง',
   'ไม่พบผู้ใช้งาน',
   'ไม่พบรหัสพนักงาน',   // not registered
   'Invalid credentials',
@@ -487,7 +475,7 @@ export async function login(employeeId: string, pin?: string): Promise<{ success
 
     return { success: false, error: res.error ?? 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ' };
   } catch {
-    return { success: false, error: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง' };
+    return { success: false, error: 'ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองใหม่อีกครั้ง' };
   }
 }
 
@@ -509,7 +497,7 @@ export async function setupPin(employeeId: string, pin: string, name: string, br
 
     return { success: false, error: 'เกิดข้อผิดพลาด กรุณาลองใหม่' };
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้' };
+    return { success: false, error: err instanceof Error ? err.message : 'ไม่สามารถเชื่อมต่อระบบได้' };
   }
 }
 

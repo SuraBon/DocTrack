@@ -1,6 +1,6 @@
 /**
  * Parcel Tracker Types
- * ประเภทข้อมูลสำหรับระบบติดตามพัสดุ
+ * ประเภทข้อมูลสำหรับระบบติดตามรายการส่ง
  */
 
 export type ParcelStatus = 'รอจัดส่ง' | 'กำลังจัดส่ง' | 'ส่งสำเร็จ';
@@ -13,7 +13,7 @@ export interface Parcel {
   'สาขาผู้ส่ง': string;
   'ผู้รับ': string;
   'สาขาผู้รับ': string;
-  'ประเภทเอกสาร': string;
+  'ประเภทสิ่งที่ส่ง': string;
   'รายละเอียด'?: string;
   'สถานะ': ParcelStatus;
   'วันที่รับ'?: string;
@@ -61,7 +61,7 @@ export interface CreateParcelPayload {
   senderBranch: string;
   receiverName: string;
   receiverBranch: string;
-  docType: string;
+  itemType: string;
   description?: string;
   note?: string;
   photoUrl?: string;

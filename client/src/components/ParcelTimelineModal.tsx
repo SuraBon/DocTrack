@@ -47,7 +47,7 @@ export default function ParcelTimelineModal({
               type="button"
               onClick={() => setIsOpen(false)}
               className="absolute right-4 top-3 grid h-7 w-7 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
-              aria-label="ปิดรายละเอียดพัสดุ"
+              aria-label="ปิดรายละเอียดรายการส่ง"
             >
               <span className="material-symbols-outlined text-sm">close</span>
             </button>
@@ -74,8 +74,8 @@ export default function ParcelTimelineModal({
                   onClick={() => hasKnownBranches && setIsMapOpen(true)}
                   disabled={!hasKnownBranches}
                   className="inline-flex h-7 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-gray-100 px-2.5 text-[10px] font-medium text-gray-600 transition-all hover:bg-gray-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-45"
-                  title={hasKnownBranches ? 'เปิดแผนที่' : 'ยังไม่มีพิกัด GPS'}
-                  aria-label={hasKnownBranches ? 'เปิดแผนที่' : 'ยังไม่มีพิกัด GPS'}
+                  title={hasKnownBranches ? 'เปิดแผนที่' : 'ยังไม่มีตำแหน่ง GPS'}
+                  aria-label={hasKnownBranches ? 'เปิดแผนที่' : 'ยังไม่มีตำแหน่ง GPS'}
                 >
                   <span className="material-symbols-outlined text-sm">{hasKnownBranches ? 'map' : 'map_off'}</span>
                   แผนที่

@@ -31,13 +31,6 @@ export function getCurrentBranchFromParcel(parcel: Parcel, branches: string[]): 
   if (forwardEvents.length > 0) {
     const lastForward = forwardEvents[forwardEvents.length - 1];
     currentBranch = lastForward.destLocation || currentBranch;
-  } else {
-    const parcelNote = parcel['หมายเหตุ'] || '';
-    const forwardRegex = /\[ส่งต่อโดย:\s*(.*?)\s*จากสาขา:\s*(.*?)\s*ไปสาขา:\s*(.*?)\s*เมื่อ:\s*(.*?)\]/g;
-    let match: RegExpExecArray | null;
-    while ((match = forwardRegex.exec(parcelNote)) !== null) {
-      currentBranch = match[3];
-    }
   }
   return branches.includes(currentBranch) ? currentBranch : OTHER_VALUE;
 }
@@ -53,12 +46,7 @@ export function isParcelTrulyDelivered(parcel: Parcel): boolean {
     return actionEvents.length === 0 || actionEvents[actionEvents.length - 1].eventType !== 'FORWARD';
   }
 
-  const note = String(parcel['หมายเหตุ'] || '');
-  const lastForwardIdx = note.lastIndexOf('[ส่งต่อโดย:');
-  const lastProxyIdx = note.lastIndexOf('[รับแทนโดย:');
-  const lastNormalIdx = note.lastIndexOf('[รับพัสดุเรียบร้อย');
-  const maxIdx = Math.max(lastForwardIdx, lastProxyIdx, lastNormalIdx);
-  return !(maxIdx >= 0 && maxIdx === lastForwardIdx);
+  return delivered;
 }
 
 export function buildDeliveryActionPayload(

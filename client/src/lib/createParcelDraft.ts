@@ -1,11 +1,11 @@
-const CREATE_PARCEL_DRAFT_KEY = 'doc_track_create_parcel_draft';
+const CREATE_PARCEL_DRAFT_KEY = 'shiptrack_create_parcel_draft';
 
 export type CreateParcelDraft = {
   senderName: string;
   senderBranch: string;
   receiverName: string;
   receiverBranch: string;
-  docType: string;
+  itemType: string;
   description: string;
   note: string;
 };
@@ -15,7 +15,7 @@ export const EMPTY_CREATE_PARCEL_DRAFT: CreateParcelDraft = {
   senderBranch: '',
   receiverName: '',
   receiverBranch: '',
-  docType: '',
+  itemType: '',
   description: '',
   note: '',
 };
@@ -31,7 +31,7 @@ export function loadCreateParcelDraft(): CreateParcelDraft {
       senderBranch: String(parsed.senderBranch || ''),
       receiverName: String(parsed.receiverName || ''),
       receiverBranch: String(parsed.receiverBranch || ''),
-      docType: String(parsed.docType || ''),
+      itemType: String(parsed.itemType || ''),
       description: String(parsed.description || ''),
       note: String(parsed.note || ''),
     };

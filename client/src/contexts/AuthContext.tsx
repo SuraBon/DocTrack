@@ -14,7 +14,7 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-const SESSION_KEY = 'doc_track_user';
+const SESSION_KEY = 'shiptrack_user';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);

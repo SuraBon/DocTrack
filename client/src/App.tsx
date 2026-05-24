@@ -48,7 +48,7 @@ const AppLoading = ({ fullScreen = false }: { fullScreen?: boolean }) => (
         <span className="material-symbols-outlined text-2xl">inventory_2</span>
       </div>
       <div className="mt-4">
-        <p className="font-display text-base font-black leading-tight text-primary">DocTrack</p>
+        <p className="font-display text-base font-black leading-tight text-primary">ShipTrack</p>
         <p className="mt-1 text-xs font-semibold text-on-surface-variant/55">กำลังเตรียมข้อมูล</p>
       </div>
       <div className="mt-5 flex items-center gap-1.5">

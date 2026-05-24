@@ -1,5 +1,5 @@
 export const UI_COPY = {
-  appName: 'DocTrack',
+  appName: 'ShipTrack',
   nav: {
     adminDashboard: 'ภาพรวมรายการส่ง',
     messengerDashboard: 'งานจัดส่ง',
@@ -24,8 +24,8 @@ export const UI_COPY = {
     search: 'ค้นหา',
     track: 'ติดตามสถานะ',
     acceptJob: 'รับงาน',
-    completeDelivery: 'ส่งสำเร็จ',
-    confirmCompleteDelivery: 'ยืนยันส่งสำเร็จ',
+    completeDelivery: 'ยืนยันส่ง',
+    confirmCompleteDelivery: 'ยืนยันการส่ง',
     releaseJob: 'คืนงาน',
     history: 'ประวัติ',
     retakePhoto: 'ถ่ายใหม่',

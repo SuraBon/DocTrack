@@ -266,7 +266,7 @@ const ParcelInfoStrip = ({ parcel }: { parcel: Parcel }) => {
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
       <div className="rounded-xl bg-surface-container-lowest px-3 py-2 ring-1 ring-outline-variant/10">
         <p className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/45">{UI_COPY.parcel.itemType}</p>
-        <p className="mt-0.5 truncate text-xs font-black text-primary">{parcel['ประเภทเอกสาร'] || '-'}</p>
+        <p className="mt-0.5 truncate text-xs font-black text-primary">{parcel['ประเภทสิ่งที่ส่ง'] || '-'}</p>
       </div>
       <div className="rounded-xl bg-surface-container-lowest px-3 py-2 ring-1 ring-outline-variant/10">
         <p className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/45">รายละเอียด</p>
@@ -372,12 +372,6 @@ const DashboardActionButton = ({
     )}
     {children}
   </button>
-);
-
-const ActionGroup = ({ children, compact = false }: { children: ReactNode; compact?: boolean }) => (
-  <div className={`flex flex-col gap-2 sm:flex-row sm:items-center ${compact ? 'sm:justify-end' : ''}`}>
-    {children}
-  </div>
 );
 
 const RoleSectionHeader = ({
@@ -554,34 +548,44 @@ const CardActions = ({
   detailLabel?: string;
   compactDetail?: boolean;
 }) => (
-  <ActionGroup>
+  <div className="grid gap-2">
     {canConfirm && parcel['สถานะ'] !== 'ส่งสำเร็จ' && (
-      <DashboardActionButton
-        icon="add_a_photo"
+      <button
+        type="button"
         onClick={onConfirm}
-        variant="primary"
+        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white shadow-sm transition-all hover:bg-slate-800 active:scale-[0.98]"
       >
-        บันทึกผลการส่ง
-      </DashboardActionButton>
+        <Camera className="h-4 w-4 shrink-0" aria-hidden="true" />
+        ยืนยันส่ง
+      </button>
     )}
-    <DashboardActionButton
-      icon="history"
-      onClick={onOpen}
-      variant="secondary"
-      compact={compactDetail}
-    >
-      {detailLabel}
-    </DashboardActionButton>
-    {canDelete && onDelete && (
-      <DashboardActionButton
-        icon="delete"
-        onClick={onDelete}
-        variant="danger"
+    <div className={canDelete && onDelete ? 'grid grid-cols-[minmax(0,1fr)_auto] gap-2' : 'grid'}>
+      <button
+        type="button"
+        onClick={onOpen}
+        className={`inline-flex min-w-0 items-center justify-center gap-2 rounded-xl border border-slate-100 bg-white px-3 font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98] ${
+          compactDetail ? 'h-10 text-xs' : 'h-11 text-sm'
+        }`}
       >
-        ลบ
-      </DashboardActionButton>
-    )}
-  </ActionGroup>
+        <History className="h-4 w-4 shrink-0" aria-hidden="true" />
+        <span className="truncate">{detailLabel}</span>
+      </button>
+      {canDelete && onDelete && (
+        <button
+          type="button"
+          onClick={onDelete}
+          className={`inline-flex items-center justify-center gap-2 rounded-xl border border-red-100 bg-red-50 px-3 font-semibold text-red-600 shadow-sm transition-all hover:bg-red-100 active:scale-[0.98] ${
+            compactDetail ? 'h-10 text-xs' : 'h-11 text-sm'
+          }`}
+          aria-label="ลบรายการ"
+          title="ลบรายการ"
+        >
+          <Trash2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span className="hidden sm:inline">ลบ</span>
+        </button>
+      )}
+    </div>
+  </div>
 );
 
 const MessengerDeliveryCard = ({
@@ -615,7 +619,7 @@ const MessengerDeliveryCard = ({
   const actionLabel = canStartDelivery
     ? (isStartingDelivery ? 'กำลังรับงาน' : 'รับงาน')
     : canConfirmDelivery
-      ? 'ส่งสำเร็จ'
+      ? 'ยืนยันส่ง'
       : '';
 
   let cardStyles = 'border-slate-100 bg-white shadow-[0_4px_20px_rgba(15,23,42,0.04)]';
@@ -702,7 +706,7 @@ const MessengerDeliveryCard = ({
                 <div className="flex min-w-0 items-start gap-2">
                   <Package className="mt-0.5 h-3 w-3 shrink-0 text-slate-400" aria-hidden="true" />
                   <p className="min-w-0 truncate text-[11px] text-slate-600">
-                    <span className="font-semibold text-slate-800">พัสดุ:</span> {parcel['รายละเอียด']}
+                    <span className="font-semibold text-slate-800">สิ่งที่ส่ง:</span> {parcel['รายละเอียด']}
                   </p>
                 </div>
               )}
@@ -823,7 +827,7 @@ const AdminParcelManagementCard = ({
                   <div className="flex min-w-0 items-start gap-2">
                     <Package className="mt-0.5 h-3 w-3 shrink-0 text-slate-400" aria-hidden="true" />
                     <p className="min-w-0 truncate text-[11px] text-slate-600">
-                      <span className="font-semibold text-slate-800">พัสดุ:</span> {parcel['รายละเอียด']}
+                      <span className="font-semibold text-slate-800">สิ่งที่ส่ง:</span> {parcel['รายละเอียด']}
                     </p>
                   </div>
                 )}
@@ -1020,6 +1024,14 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
     const end = Math.min(currentPage * pageSize, adminSortedParcels.length);
     return { totalPages: total, paginatedParcels: paginated, startIndex: start, endIndex: end };
   }, [adminSortedParcels, currentPage, pageSize, backendTotalPages]);
+  const adminNeedsAttentionIds = useMemo(
+    () => new Set(adminNeedsAttentionParcels.map(parcel => parcel.TrackingID)),
+    [adminNeedsAttentionParcels],
+  );
+  const adminRegularParcels = useMemo(
+    () => paginatedParcels.filter(parcel => !adminNeedsAttentionIds.has(parcel.TrackingID)),
+    [paginatedParcels, adminNeedsAttentionIds],
+  );
 
   // Reset page when filter changes
   useEffect(() => { setCurrentPage(1); }, [statusFilter, debouncedSearch, adminSort, pageSize]);
@@ -1137,7 +1149,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
       events: nextEvents,
     });
     setMessengerView('mine');
-    toast.success(res.autoPickedUp ? 'รับงานและรับพัสดุอัตโนมัติแล้ว' : (res.alreadyStarted ? 'งานนี้อยู่ในรายการที่ต้องส่งแล้ว' : 'รับงานสำเร็จ'));
+    toast.success(res.autoPickedUp ? 'รับงานและบันทึกรับของแล้ว' : (res.alreadyStarted ? 'งานนี้อยู่ในรายการที่ต้องส่งแล้ว' : 'รับงานสำเร็จ'));
     loadParcels(undefined, true).catch(() => {});
   };
 
@@ -1357,7 +1369,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
           <div className="p-3 sm:p-4">
             <EmptyState
               icon="search_off"
-              title="ไม่พบข้อมูลพัสดุ"
+              title="ไม่พบรายการส่ง"
               description="ลองปรับคำค้นหาหรือล้างตัวกรอง"
               action={hasFilters && !isMessengerDashboard ? (
                 <DashboardActionButton icon="filter_alt_off" onClick={clearFilters} variant="secondary" compact>
@@ -1373,7 +1385,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
                 <MessengerViewBanner
                   icon="inventory_2"
                   title="งานรอกดรับ"
-                  subtitle="รายการพัสดุที่ว่างอยู่ สามารถกดปุ่มรับงานเพื่อเริ่มนำส่งพัสดุได้"
+                  subtitle="รายการที่ยังไม่มีพนักงานรับงาน กดรับงานเพื่อเริ่มนำส่ง"
                   count={messengerWaitingParcels.length}
                   tone="amber"
                 />
@@ -1406,7 +1418,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
                   )}
                   </>
                 ) : (
-                  <EmptyState icon="task_alt" title="ไม่มีงานให้รับในตอนนี้" description="เมื่อมีพัสดุใหม่ในระบบ งานจะแสดงที่นี่" tone="emerald" />
+                  <EmptyState icon="task_alt" title="ไม่มีงานให้รับในตอนนี้" description="เมื่อมีรายการส่งใหม่ งานจะแสดงที่นี่" tone="emerald" />
                 )}
               </div>
             )}
@@ -1416,7 +1428,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
                 <MessengerViewBanner
                   icon="local_shipping"
                   title="งานที่ต้องส่ง"
-                  subtitle="รายการพัสดุที่คุณกำลังนำส่งในขณะนี้ กรุณาบันทึกผลการส่งเมื่อจัดส่งเสร็จสิ้น"
+                  subtitle="งานที่คุณกำลังนำส่งในขณะนี้ กรุณายืนยันส่งเมื่อจัดส่งเสร็จ"
                   count={messengerMineParcels.length}
                   tone="blue"
                 />
@@ -1455,7 +1467,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
                   <EmptyState 
                     icon="local_shipping" 
                     title="ไม่มีงานค้างส่งในขณะนี้" 
-                    description="สามารถไปรับงานส่งพัสดุได้ที่แท็บ 'งานรอกดรับ'" 
+                    description="สามารถไปรับงานใหม่ได้ที่แท็บ 'งานรอรับ'" 
                   />
                 )}
               </div>
@@ -1466,7 +1478,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
                 <MessengerViewBanner
                   icon="done_all"
                   title="ส่งสำเร็จแล้ว"
-                  subtitle="ประวัติพัสดุทั้งหมดที่คุณได้ทำการจัดส่งสำเร็จเสร็จสิ้นแล้ว"
+                  subtitle="ประวัติงานทั้งหมดที่คุณยืนยันส่งสำเร็จแล้ว"
                   count={messengerDoneParcels.length}
                   tone="emerald"
                 />
@@ -1499,7 +1511,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
                   )}
                   </>
                 ) : (
-                  <EmptyState icon="inventory_2" title="ยังไม่มีประวัติการส่งสำเร็จ" description="ประวัติงานส่งพัสดุที่สำเร็จของคุณจะแสดงที่นี่" />
+                  <EmptyState icon="inventory_2" title="ยังไม่มีประวัติการส่งสำเร็จ" description="ประวัติงานที่คุณยืนยันส่งแล้วจะแสดงที่นี่" />
                 )}
               </div>
             )}
@@ -1587,24 +1599,33 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
             )}
             <MessengerViewBanner
               icon="view_agenda"
-              title="รายการทั้งหมด"
-              subtitle="แสดงตามตัวกรองปัจจุบัน"
-              count={paginatedParcels.length}
+              title="รายการอื่น"
+              subtitle="รายการที่ไม่ได้อยู่ในกลุ่มต้องจัดการ"
+              count={adminRegularParcels.length}
             />
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {paginatedParcels.map(parcel => (
-                <AdminParcelManagementCard
-                  key={parcel.TrackingID}
-                  parcel={parcel}
-                  assignment={getActiveDeliveryAssignment(parcel)}
-                  onOpen={() => { setSelectedParcel(parcel); setIsTimelineOpen(true); }}
-                  onConfirm={() => openConfirmFlow(parcel.TrackingID)}
-                  onDelete={() => { setSelectedParcel(parcel); setIsDeleteConfirmOpen(true); }}
-                  onReleaseDelivery={() => handleReleaseDelivery(parcel)}
-                  isReleasingDelivery={releasingDeliveryId === parcel.TrackingID}
-                />
-              ))}
-            </div>
+            {adminRegularParcels.length ? (
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {adminRegularParcels.map(parcel => (
+                  <AdminParcelManagementCard
+                    key={parcel.TrackingID}
+                    parcel={parcel}
+                    assignment={getActiveDeliveryAssignment(parcel)}
+                    onOpen={() => { setSelectedParcel(parcel); setIsTimelineOpen(true); }}
+                    onConfirm={() => openConfirmFlow(parcel.TrackingID)}
+                    onDelete={() => { setSelectedParcel(parcel); setIsDeleteConfirmOpen(true); }}
+                    onReleaseDelivery={() => handleReleaseDelivery(parcel)}
+                    isReleasingDelivery={releasingDeliveryId === parcel.TrackingID}
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                icon="task_alt"
+                title="ไม่มีรายการอื่นในหน้านี้"
+                description="รายการที่ต้องจัดการถูกแสดงไว้ด้านบนแล้ว"
+                tone="emerald"
+              />
+            )}
           </div>
         )}
 
@@ -1691,19 +1712,19 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
           showCloseButton={false}
           className="max-h-[92vh] w-[calc(100vw-1rem)] max-w-2xl overflow-hidden rounded-3xl border-none bg-transparent p-0 shadow-none"
         >
-          <DialogTitle className="sr-only">บันทึกผลการจัดส่ง</DialogTitle>
+          <DialogTitle className="sr-only">ยืนยันการส่ง</DialogTitle>
           <div className="modal-scroll relative max-h-[92vh] overflow-y-auto p-4 sm:p-6">
             {!isConfirmPreparingCamera && (
               <button
                 type="button"
                 onClick={() => setIsConfirmFlowOpen(false)}
                 className="absolute right-6 top-6 z-20 grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 active:scale-95"
-                aria-label="ปิดหน้าบันทึกการจัดส่ง"
+                aria-label="ปิดหน้ายืนยันส่ง"
               >
                 <span className="material-symbols-outlined text-2xl">close</span>
               </button>
             )}
-            <Suspense fallback={<LazyPanelFallback label="กำลังโหลดหน้าบันทึกผล..." />}>
+            <Suspense fallback={<LazyPanelFallback label="กำลังโหลดหน้ายืนยันส่ง..." />}>
               <ConfirmReceipt
                 key={confirmTrackingId ?? 'confirm-flow'}
                 initialTrackingId={confirmTrackingId}

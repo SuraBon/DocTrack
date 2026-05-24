@@ -1,7 +1,7 @@
 const SHEET_NAME = "Parcels";
 const API_KEY_PROPERTY = "API_KEY";
 const ADMIN_INITIAL_PIN_PROPERTY = "ADMIN_INITIAL_PIN";
-const DOC_TRACK_FOLDER_ID_PROPERTY = "DOC_TRACK_FOLDER_ID";
+const SHIPTRACK_FOLDER_ID_PROPERTY = "SHIPTRACK_FOLDER_ID";
 const VALID_ROLES = ["MESSENGER", "ADMIN"];
 // Fallback key (ใช้กรณีไม่อยากตั้ง Script Properties)
 // ตั้งค่านี้ให้ตรงกับ VITE_GAS_API_KEY แล้ว Deploy ใหม่
@@ -16,9 +16,9 @@ const VALID_EVENT_TYPES = ["FORWARD", "PROXY", "DELIVERED"];
 const VALID_DELIVERY_MATCH_STATUSES = ["MATCHED_DECLARED_DESTINATION", "DELIVERED_ELSEWHERE"];
 
 const SHEET_URL = "https://docs.google.com/spreadsheets/d/1EiIWLpHupOzkrh_Oft74U21XTeAc2KSah8H1t0ufNoQ/edit?gid=454662424#gid=454662424";
-const DOC_TRACK_FOLDER_ID = "19OGCWa52JD6nFSBYcesfx51i7KjuAOT-";
+const SHIPTRACK_FOLDER_ID = "19OGCWa52JD6nFSBYcesfx51i7KjuAOT-";
 const YEAR_SPREADSHEETS_PROPERTY = "YEAR_SPREADSHEETS";
-const YEAR_SPREADSHEET_PREFIX = "DocTrack";
+const YEAR_SPREADSHEET_PREFIX = "ShipTrack";
 const LEGACY_PARCEL_SHEET_NAME = SHEET_NAME;
 const PARCEL_SHEET_PREFIX = "Parcels_";
 const PARCEL_HEADERS = [
@@ -28,7 +28,7 @@ const PARCEL_HEADERS = [
   "สาขาผู้ส่ง",
   "ผู้รับ",
   "สาขาผู้รับ",
-  "ประเภทเอกสาร",
+  "ประเภทสิ่งที่ส่ง",
   "รายละเอียด",
   "หมายเหตุ",
   "สถานะ",
@@ -72,8 +72,8 @@ function getSpreadsheet() {
   }
 }
 
-function getDocTrackFolder() {
-  const folderId = PropertiesService.getScriptProperties().getProperty(DOC_TRACK_FOLDER_ID_PROPERTY) || DOC_TRACK_FOLDER_ID;
+function getShipTrackFolder() {
+  const folderId = PropertiesService.getScriptProperties().getProperty(SHIPTRACK_FOLDER_ID_PROPERTY) || SHIPTRACK_FOLDER_ID;
   if (!folderId) return null;
   try {
     return DriveApp.getFolderById(folderId);
@@ -233,7 +233,7 @@ function getYearSpreadsheet(year, createIfMissing) {
     }
 
     try {
-      const configuredFolder = getDocTrackFolder();
+      const configuredFolder = getShipTrackFolder();
       const parentFolders = DriveApp.getFileById(masterId).getParents();
       const folder = configuredFolder || (parentFolders.hasNext() ? parentFolders.next() : null);
       if (folder) {
@@ -491,7 +491,7 @@ function redactParcelForGuest(parcel) {
     "สาขาผู้ส่ง",
     "ผู้รับ",
     "สาขาผู้รับ",
-    "ประเภทเอกสาร",
+    "ประเภทสิ่งที่ส่ง",
     "สถานะ",
     "วันที่รับ",
     "Latitude",
@@ -526,18 +526,18 @@ function saveImagePayloadToDrive(imageValue, trackingId) {
   let finalPhotoUrl = String(imageValue || "").trim();
   if (!finalPhotoUrl || !finalPhotoUrl.startsWith('data:image')) return finalPhotoUrl;
 
-  // ค้นหาหรือสร้างโฟลเดอร์หลักชื่อ DocTrack_Images
-  const systemFolder = getDocTrackFolder();
+  // ค้นหาหรือสร้างโฟลเดอร์หลักชื่อ ShipTrack_Images
+  const systemFolder = getShipTrackFolder();
   let rootFolder;
   const rootFolderIterator = systemFolder
-    ? systemFolder.getFoldersByName("DocTrack_Images")
-    : DriveApp.getFoldersByName("DocTrack_Images");
+    ? systemFolder.getFoldersByName("ShipTrack_Images")
+    : DriveApp.getFoldersByName("ShipTrack_Images");
   if (rootFolderIterator.hasNext()) {
     rootFolder = rootFolderIterator.next();
   } else {
     rootFolder = systemFolder
-      ? systemFolder.createFolder("DocTrack_Images")
-      : DriveApp.createFolder("DocTrack_Images");
+      ? systemFolder.createFolder("ShipTrack_Images")
+      : DriveApp.createFolder("ShipTrack_Images");
     try {
       rootFolder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     } catch (e) { }
@@ -574,7 +574,7 @@ function saveImagePayloadToDrive(imageValue, trackingId) {
 }
 
 function authorizeDrive() {
-  var dummy = DriveApp.createFolder("DocTrack_Auth_Check");
+  var dummy = DriveApp.createFolder("ShipTrack_Auth_Check");
   dummy.setTrashed(true);
   getSpreadsheet();
 }
@@ -866,7 +866,7 @@ function handleCreateParcel(payload) {
   if (!rl.allowed) {
     return createJsonResponse({ success: false, error: "ส่งคำขอบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่" });
   }
-  if (!payload.senderName || !payload.senderBranch || !payload.receiverName || !payload.receiverBranch || !payload.docType) {
+  if (!payload.senderName || !payload.senderBranch || !payload.receiverName || !payload.receiverBranch || !payload.itemType) {
     return createJsonResponse({ success: false, error: "กรุณากรอกข้อมูลให้ครบถ้วน" });
   }
 
@@ -875,13 +875,13 @@ function handleCreateParcel(payload) {
   const receiverName = escapeSheetValue(payload.receiverName);
   const senderBranch = escapeSheetValue(payload.senderBranch);
   const receiverBranch = escapeSheetValue(payload.receiverBranch);
-  const docType = escapeSheetValue(payload.docType);
+  const itemType = escapeSheetValue(payload.itemType);
   const description = escapeSheetValue(payload.description || '');
   const note = escapeSheetValue(payload.note || '');
   const originLatitude = sanitizeCoordinate(payload.latitude, -90, 90);
   const originLongitude = sanitizeCoordinate(payload.longitude, -180, 180);
 
-  if (!senderName || !receiverName || !senderBranch || !receiverBranch || !docType) {
+  if (!senderName || !receiverName || !senderBranch || !receiverBranch || !itemType) {
     return createJsonResponse({ success: false, error: "ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง" });
   }
 
@@ -890,7 +890,7 @@ function handleCreateParcel(payload) {
   if (receiverName.length > 200) return createJsonResponse({ success: false, error: "ชื่อผู้รับยาวเกินไป" });
   if (senderBranch.length > 100) return createJsonResponse({ success: false, error: "ชื่อสาขาผู้ส่งยาวเกินไป" });
   if (receiverBranch.length > 100) return createJsonResponse({ success: false, error: "ชื่อสาขาผู้รับยาวเกินไป" });
-  if (docType.length > 100) return createJsonResponse({ success: false, error: "ประเภทพัสดุยาวเกินไป" });
+  if (itemType.length > 100) return createJsonResponse({ success: false, error: "ประเภทสิ่งที่ส่งยาวเกินไป" });
   if (note.length > MAX_NOTE_LENGTH) return createJsonResponse({ success: false, error: "หมายเหตุยาวเกินไป" });
   const imageValidation = validateImagePayload(payload.photoUrl);
   if (!imageValidation.ok) {
@@ -923,7 +923,7 @@ function handleCreateParcel(payload) {
     normalizeBranchName(senderBranch),
     receiverName,
     normalizeBranchName(receiverBranch),
-    docType,
+    itemType,
     description,
     note,
     "รอจัดส่ง",
@@ -1172,7 +1172,7 @@ function handleExportSummary(payload) {
       total++;
 
       // Apply derived status: if last event was FORWARD, treat as กำลังจัดส่ง
-      if (status === "ส่งถึงแล้ว") {
+      if (status === "ส่งสำเร็จ") {
         const events = eventsMap[trackingID] || [];
         const actionEvents = events.filter(function (e) {
           return e.eventType === 'FORWARD' || e.eventType === 'START_DELIVERY' || e.eventType === 'PICKUP' || e.eventType === 'RELEASE_DELIVERY' || e.eventType === 'DELIVERED' || e.eventType === 'PROXY';
@@ -1189,7 +1189,7 @@ function handleExportSummary(payload) {
 
       if (status === "รอจัดส่ง") pending++;
       else if (status === "กำลังจัดส่ง") transit++;
-      else if (status === "ส่งถึงแล้ว") delivered++;
+      else if (status === "ส่งสำเร็จ") delivered++;
     }
   });
 
@@ -1284,25 +1284,25 @@ function handleConfirmReceipt(payload) {
         });
       }
 
-      let isActuallyDelivered = currentStatus === "ส่งถึงแล้ว";
+      let isActuallyDelivered = currentStatus === "ส่งสำเร็จ";
 
       // ── State Machine Validation ──────────────────────────────────────────
       // Valid transitions:
       //   รอจัดส่ง    → กำลังจัดส่ง  (FORWARD)
       //   กำลังจัดส่ง → กำลังจัดส่ง  (FORWARD)
-      //   รอจัดส่ง    → ส่งถึงแล้ว   (DELIVERED / PROXY)
-      //   กำลังจัดส่ง → ส่งถึงแล้ว   (DELIVERED / PROXY)
-      //   ส่งถึงแล้ว  → ❌ ห้ามเปลี่ยน
+      //   รอจัดส่ง    → ส่งสำเร็จ   (DELIVERED / PROXY)
+      //   กำลังจัดส่ง → ส่งสำเร็จ   (DELIVERED / PROXY)
+      //   ส่งสำเร็จ  → ❌ ห้ามเปลี่ยน
       if (isActuallyDelivered) {
-        return createJsonResponse({ success: false, error: "พัสดุนี้ถูกจัดส่งถึงที่หมายแล้ว ไม่สามารถเปลี่ยนสถานะได้" });
+        return createJsonResponse({ success: false, error: "รายการนี้ถูกส่งสำเร็จแล้ว ไม่สามารถเปลี่ยนสถานะได้" });
       }
 
       let newStatus = currentStatus;
       if (payload.eventType === 'DELIVERED' || payload.eventType === 'PROXY') {
-        newStatus = "ส่งถึงแล้ว";
+        newStatus = "ส่งสำเร็จ";
       } else if (payload.eventType === 'FORWARD') {
-        if (currentStatus === "ส่งถึงแล้ว") {
-          return createJsonResponse({ success: false, error: "ไม่สามารถส่งต่อพัสดุที่ถึงที่หมายแล้ว" });
+        if (currentStatus === "ส่งสำเร็จ") {
+          return createJsonResponse({ success: false, error: "ไม่สามารถส่งต่อรายการที่ส่งสำเร็จแล้ว" });
         }
         newStatus = "กำลังจัดส่ง";
       }
@@ -1316,18 +1316,18 @@ function handleConfirmReceipt(payload) {
 
       if (finalPhotoUrl && finalPhotoUrl.startsWith('data:image')) {
         try {
-          // ค้นหาหรือสร้างโฟลเดอร์หลักชื่อ DocTrack_Images
-          const systemFolder = getDocTrackFolder();
+          // ค้นหาหรือสร้างโฟลเดอร์หลักชื่อ ShipTrack_Images
+          const systemFolder = getShipTrackFolder();
           let rootFolder;
           const rootFolderIterator = systemFolder
-            ? systemFolder.getFoldersByName("DocTrack_Images")
-            : DriveApp.getFoldersByName("DocTrack_Images");
+            ? systemFolder.getFoldersByName("ShipTrack_Images")
+            : DriveApp.getFoldersByName("ShipTrack_Images");
           if (rootFolderIterator.hasNext()) {
             rootFolder = rootFolderIterator.next();
           } else {
             rootFolder = systemFolder
-              ? systemFolder.createFolder("DocTrack_Images")
-              : DriveApp.createFolder("DocTrack_Images");
+              ? systemFolder.createFolder("ShipTrack_Images")
+              : DriveApp.createFolder("ShipTrack_Images");
             try {
               rootFolder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
             } catch (e) { }
@@ -1452,8 +1452,8 @@ function handleStartDelivery(payload) {
       const activeAssignment = getActiveDeliveryAssignmentFromEvents(events);
       const currentEmployeeId = normalizeEmployeeId(payload.employeeId);
 
-      if (currentStatus === "ส่งถึงแล้ว") {
-        return createJsonResponse({ success: false, error: "พัสดุนี้ส่งสำเร็จแล้ว ไม่สามารถรับงานซ้ำได้" });
+      if (currentStatus === "ส่งสำเร็จ") {
+        return createJsonResponse({ success: false, error: "รายการนี้ส่งสำเร็จแล้ว ไม่สามารถรับงานซ้ำได้" });
       }
 
       if (activeAssignment && activeAssignment.assignedToId && activeAssignment.assignedToId !== currentEmployeeId) {
@@ -1574,8 +1574,8 @@ function handleReleaseDelivery(payload) {
       const currentEmployeeId = normalizeEmployeeId(payload.employeeId);
       const isAdmin = normalizeRole(payload.role) === "ADMIN";
 
-      if (currentStatus === "ส่งถึงแล้ว") {
-        return createJsonResponse({ success: false, error: "พัสดุนี้ส่งสำเร็จแล้ว ไม่สามารถคืนงานได้" });
+      if (currentStatus === "ส่งสำเร็จ") {
+        return createJsonResponse({ success: false, error: "รายการนี้ส่งสำเร็จแล้ว ไม่สามารถคืนงานได้" });
       }
 
       if (!activeAssignment) {
@@ -1588,7 +1588,7 @@ function handleReleaseDelivery(payload) {
       if (!isAdmin && activeAssignment.assignedToId && activeAssignment.assignedToId !== currentEmployeeId) {
         return createJsonResponse({
           success: false,
-          error: "คืนงานได้เฉพาะคนที่รับงานไว้หรือ Admin",
+          error: "คืนงานได้เฉพาะคนที่รับงานไว้หรือผู้ดูแลระบบ",
           assignedToId: activeAssignment.assignedToId,
           assignedToName: activeAssignment.assignedToName
         });
@@ -1915,8 +1915,8 @@ function handleLogin(payload) {
         recordFailedLogin(employeeId);
         const remaining = rateLimit.remaining - 1;
         const msg = remaining > 0
-          ? "รหัส PIN ไม่ถูกต้อง (เหลือ " + remaining + " ครั้ง)"
-          : "รหัส PIN ไม่ถูกต้อง บัญชีจะถูกล็อค";
+          ? "รหัสผ่านไม่ถูกต้อง (เหลือ " + remaining + " ครั้ง)"
+          : "รหัสผ่านไม่ถูกต้อง บัญชีจะถูกล็อค";
         return createJsonResponse({ success: false, error: msg });
       }
 
@@ -1930,7 +1930,7 @@ function handleLogin(payload) {
   }
 
   // User not found — do NOT auto-create; require registration via setupPin
-  return createJsonResponse({ success: false, error: "ไม่พบรหัสพนักงานนี้ในระบบ กรุณาให้ Admin เพิ่มบัญชีก่อน" });
+  return createJsonResponse({ success: false, error: "ไม่พบรหัสพนักงานนี้ในระบบ กรุณาให้ผู้ดูแลระบบเพิ่มบัญชีก่อน" });
 }
 
 function handleSetupPin(payload) {
@@ -1976,12 +1976,12 @@ function handleSetupPin(payload) {
     }
   }
 
-  return createJsonResponse({ success: false, error: "ไม่พบรหัสพนักงานนี้ในระบบ กรุณาให้ Admin เพิ่มบัญชีก่อน" });
+  return createJsonResponse({ success: false, error: "ไม่พบรหัสพนักงานนี้ในระบบ กรุณาให้ผู้ดูแลระบบเพิ่มบัญชีก่อน" });
 }
 
 function handleGetUsers(payload) {
   if (normalizeRole(payload.role) !== 'ADMIN') {
-    return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง (เฉพาะ Admin)" });
+    return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง (เฉพาะผู้ดูแลระบบ)" });
   }
   const sheet = getUsersSheet();
   const data = sheet.getDataRange().getValues();
@@ -2006,7 +2006,7 @@ function handleGetUsers(payload) {
 
 function handleCreateUser(payload) {
   if (normalizeRole(payload.role) !== 'ADMIN') {
-    return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง (เฉพาะ Admin)" });
+    return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง (เฉพาะผู้ดูแลระบบ)" });
   }
 
   const employeeId = normalizeEmployeeId(payload.targetId);
@@ -2055,7 +2055,7 @@ function handleCreateUser(payload) {
 
 function handleUpdateUserRole(payload) {
   if (normalizeRole(payload.role) !== 'ADMIN') {
-    return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง (เฉพาะ Admin)" });
+    return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง (เฉพาะผู้ดูแลระบบ)" });
   }
 
   const targetId = normalizeEmployeeId(payload.targetId);
@@ -2074,7 +2074,7 @@ function handleUpdateUserRole(payload) {
   for (let i = 1; i < data.length; i++) {
     if (normalizeEmployeeId(data[i][0]) === targetId) {
       if (normalizeRole(data[i][3] || "GUEST") === "ADMIN" && newRole !== "ADMIN" && countActiveAdmins(data) <= 1) {
-        return createJsonResponse({ success: false, error: "ต้องมี Admin อย่างน้อย 1 คน" });
+        return createJsonResponse({ success: false, error: "ต้องมีผู้ดูแลระบบอย่างน้อย 1 คน" });
       }
       sheet.getRange(i + 1, 4).setValue(newRole);
       sheet.getRange(i + 1, 8).setValue(formatThaiDateForSheet(new Date()));
@@ -2110,7 +2110,7 @@ function buildUserRowResponse(row) {
 
 function handleUpdateUser(payload) {
   if (normalizeRole(payload.role) !== 'ADMIN') {
-    return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง (เฉพาะ Admin)" });
+    return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง (เฉพาะผู้ดูแลระบบ)" });
   }
 
   const targetId = normalizeEmployeeId(payload.targetId);
@@ -2135,7 +2135,7 @@ function handleUpdateUser(payload) {
         return createJsonResponse({ success: false, error: "ไม่สามารถลดสิทธิ์ของตัวเองได้" });
       }
       if (normalizeRole(data[i][3] || "GUEST") === "ADMIN" && newRole !== "ADMIN" && countActiveAdmins(data) <= 1) {
-        return createJsonResponse({ success: false, error: "ต้องมี Admin อย่างน้อย 1 คน" });
+        return createJsonResponse({ success: false, error: "ต้องมีผู้ดูแลระบบอย่างน้อย 1 คน" });
       }
       const updatedAt = formatThaiDateForSheet(new Date());
       sheet.getRange(i + 1, 2).setValue(name);
@@ -2156,7 +2156,7 @@ function handleUpdateUser(payload) {
 
 function handleDisableUser(payload) {
   if (normalizeRole(payload.role) !== 'ADMIN') {
-    return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง (เฉพาะ Admin)" });
+    return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง (เฉพาะผู้ดูแลระบบ)" });
   }
   const targetId = normalizeEmployeeId(payload.targetId);
   if (!targetId || !validateEmployeeId(targetId)) return createJsonResponse({ success: false, error: "รหัสพนักงานไม่ถูกต้อง" });
@@ -2167,7 +2167,7 @@ function handleDisableUser(payload) {
   for (let i = 1; i < data.length; i++) {
     if (normalizeEmployeeId(data[i][0]) === targetId) {
       if (normalizeRole(data[i][3] || "GUEST") === "ADMIN" && countActiveAdmins(data) <= 1) {
-        return createJsonResponse({ success: false, error: "ต้องมี Admin อย่างน้อย 1 คน" });
+        return createJsonResponse({ success: false, error: "ต้องมีผู้ดูแลระบบอย่างน้อย 1 คน" });
       }
       const updatedAt = formatThaiDateForSheet(new Date());
       sheet.getRange(i + 1, 7).setValue("DISABLED");
@@ -2183,7 +2183,7 @@ function handleDisableUser(payload) {
 
 function handleDeleteUser(payload) {
   if (normalizeRole(payload.role) !== 'ADMIN') {
-    return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง (เฉพาะ Admin)" });
+    return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง (เฉพาะผู้ดูแลระบบ)" });
   }
   const targetId = normalizeEmployeeId(payload.targetId);
   if (!targetId || !validateEmployeeId(targetId)) return createJsonResponse({ success: false, error: "รหัสพนักงานไม่ถูกต้อง" });
@@ -2194,7 +2194,7 @@ function handleDeleteUser(payload) {
   for (let i = 1; i < data.length; i++) {
     if (normalizeEmployeeId(data[i][0]) === targetId) {
       if (normalizeRole(data[i][3] || "GUEST") === "ADMIN" && countActiveAdmins(data) <= 1) {
-        return createJsonResponse({ success: false, error: "ต้องมี Admin อย่างน้อย 1 คน" });
+        return createJsonResponse({ success: false, error: "ต้องมีผู้ดูแลระบบอย่างน้อย 1 คน" });
       }
       sheet.deleteRow(i + 1);
       setActiveSessionId(targetId, "");
@@ -2214,7 +2214,7 @@ function handleGetBranches(payload) {
 
 function handleCreateBranch(payload) {
   if (normalizeRole(payload.role) !== 'ADMIN') {
-    return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง (เฉพาะ Admin)" });
+    return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง (เฉพาะผู้ดูแลระบบ)" });
   }
   const name = escapeSheetValue(payload.name || "");
   if (!name) return createJsonResponse({ success: false, error: "กรุณากรอกชื่อแผนก/สาขา" });
@@ -2234,7 +2234,7 @@ function handleCreateBranch(payload) {
 
 function handleDeleteBranch(payload) {
   if (normalizeRole(payload.role) !== 'ADMIN') {
-    return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง (เฉพาะ Admin)" });
+    return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง (เฉพาะผู้ดูแลระบบ)" });
   }
   const name = String(payload.name || "").trim();
   if (!name) return createJsonResponse({ success: false, error: "กรุณาระบุแผนก/สาขา" });
@@ -2253,7 +2253,7 @@ function handleDeleteBranch(payload) {
 
 function handleDeleteParcel(payload) {
   if (normalizeRole(payload.role) !== 'ADMIN') {
-    return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง (เฉพาะ Admin)" });
+    return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง (เฉพาะผู้ดูแลระบบ)" });
   }
 
   const trackingID = String(payload.trackingID || "").trim();
@@ -2261,7 +2261,7 @@ function handleDeleteParcel(payload) {
   if (!validateTrackingID(trackingID)) return createJsonResponse({ success: false, error: "รูปแบบหมายเลขติดตามไม่ถูกต้อง" });
 
   const storage = getParcelStorageByTrackingId(trackingID);
-  if (!storage) return createJsonResponse({ success: false, error: "ไม่พบพัสดุที่ระบุ" });
+  if (!storage) return createJsonResponse({ success: false, error: "ไม่พบรายการส่งที่ระบุ" });
   const sheet = storage.sheet;
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
@@ -2281,12 +2281,12 @@ function handleDeleteParcel(payload) {
       return createJsonResponse({ success: true });
     }
   }
-  return createJsonResponse({ success: false, error: "ไม่พบพัสดุที่ระบุ" });
+  return createJsonResponse({ success: false, error: "ไม่พบรายการส่งที่ระบุ" });
 }
 
 function handleEditParcel(payload) {
   if (normalizeRole(payload.role) !== 'ADMIN') {
-    return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง (เฉพาะ Admin)" });
+    return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง (เฉพาะผู้ดูแลระบบ)" });
   }
 
   const trackingID = String(payload.trackingID || "").trim();
@@ -2295,8 +2295,8 @@ function handleEditParcel(payload) {
   if (!validateTrackingID(trackingID)) return createJsonResponse({ success: false, error: "รูปแบบหมายเลขติดตามไม่ถูกต้อง" });
 
   // Validate update values
-  const allowedFields = ["senderName", "senderBranch", "receiverName", "receiverBranch", "docType", "description"];
-  const fieldMap = { senderName: "ผู้ส่ง", senderBranch: "สาขาผู้ส่ง", receiverName: "ผู้รับ", receiverBranch: "สาขาผู้รับ", docType: "ประเภทเอกสาร", description: "รายละเอียด" };
+  const allowedFields = ["senderName", "senderBranch", "receiverName", "receiverBranch", "itemType", "description"];
+  const fieldMap = { senderName: "ผู้ส่ง", senderBranch: "สาขาผู้ส่ง", receiverName: "ผู้รับ", receiverBranch: "สาขาผู้รับ", itemType: "ประเภทสิ่งที่ส่ง", description: "รายละเอียด" };
   for (const key of Object.keys(updates)) {
     if (!allowedFields.includes(key)) return createJsonResponse({ success: false, error: "ฟิลด์ไม่ถูกต้อง: " + key });
     if (typeof updates[key] !== 'string' || updates[key].length > 200) return createJsonResponse({ success: false, error: "ค่าไม่ถูกต้องสำหรับฟิลด์: " + key });
@@ -2304,7 +2304,7 @@ function handleEditParcel(payload) {
   }
 
   const storage = getParcelStorageByTrackingId(trackingID);
-  if (!storage) return createJsonResponse({ success: false, error: "ไม่พบพัสดุที่ระบุ" });
+  if (!storage) return createJsonResponse({ success: false, error: "ไม่พบรายการส่งที่ระบุ" });
   const sheet = storage.sheet;
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
@@ -2327,7 +2327,7 @@ function handleEditParcel(payload) {
       return createJsonResponse({ success: true });
     }
   }
-  return createJsonResponse({ success: false, error: "ไม่พบพัสดุที่ระบุ" });
+  return createJsonResponse({ success: false, error: "ไม่พบรายการส่งที่ระบุ" });
 }
 
 function handleUpdateProfile(payload) {

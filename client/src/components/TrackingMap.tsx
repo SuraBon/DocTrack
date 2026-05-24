@@ -158,9 +158,9 @@ function TrackingMap({ events, className = '', mapClassName = 'h-[250px] sm:h-[3
       const sub = document.createElement('div');
       sub.style.cssText = 'color:#61646b;margin-top:8px;font-size:12px;font-weight:700;line-height:1.45';
       if (isGps) {
-        sub.textContent = `พิกัด GPS: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+        sub.textContent = `ตำแหน่ง GPS: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
       } else {
-        sub.textContent = isLast ? 'จุดล่าสุดของพัสดุ' : 'จุดแวะพักระหว่างทาง';
+        sub.textContent = isLast ? 'จุดล่าสุดของรายการนี้' : 'จุดแวะพักระหว่างทาง';
       }
 
       popupEl.append(badge, title, sub);
@@ -243,19 +243,19 @@ function TrackingMap({ events, className = '', mapClassName = 'h-[250px] sm:h-[3
       {!hasRouteData && (
         <div className="flex items-center gap-2 border-b border-gray-100 bg-blue-50 px-4 py-2.5 text-[11px] font-semibold text-blue-700">
           <span className="material-symbols-outlined text-base">info</span>
-          ยังไม่มีข้อมูล GPS — แผนที่จะแสดงเมื่อมีการสร้างรายการหรือยืนยันส่งสำเร็จ
+          ยังไม่มีตำแหน่ง GPS — แผนที่จะแสดงเมื่อมีการสร้างรายการหรือยืนยันส่ง
         </div>
       )}
       {hasRouteData && hasUnresolved && (
         <div className="flex items-center gap-2 border-b border-amber-100 bg-amber-50 px-4 py-2.5 text-[11px] font-semibold text-amber-700">
           <span className="material-symbols-outlined text-base">warning</span>
-          บางจุดไม่มีข้อมูล GPS จึงไม่แสดงบนแผนที่
+          บางจุดไม่มีตำแหน่ง GPS จึงไม่แสดงบนแผนที่
         </div>
       )}
       {hasRouteData && (
         <div className="pointer-events-none absolute left-3 top-3 z-[500] rounded-xl border border-white/80 bg-white/95 px-3 py-2 shadow-sm backdrop-blur">
           <p className="text-xs font-semibold leading-none text-slate-800">แผนที่การจัดส่ง</p>
-          <p className="mt-1 text-[10px] font-medium text-slate-400">{pathEntries.length} จุด GPS</p>
+          <p className="mt-1 text-[10px] font-medium text-slate-400">{pathEntries.length} จุดตำแหน่ง</p>
         </div>
       )}
       <MapView
@@ -276,7 +276,7 @@ function TrackingMap({ events, className = '', mapClassName = 'h-[250px] sm:h-[3
             <span className="h-2 w-2 rounded-full bg-green-600" /> ปลายทาง
           </span>
         </div>
-        <span className="hidden text-slate-300 sm:inline">DocTrack Maps</span>
+        <span className="hidden text-slate-300 sm:inline">ShipTrack Maps</span>
       </div>
     </div>
   );

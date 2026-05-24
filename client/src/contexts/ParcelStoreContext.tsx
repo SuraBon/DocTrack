@@ -28,7 +28,7 @@ interface ParcelStoreValue {
     senderBranch: string,
     receiverName: string,
     receiverBranch: string,
-    docType: string,
+    itemType: string,
     description?: string,
     note?: string,
     latitude?: number,
@@ -114,11 +114,11 @@ export function ParcelStoreProvider({ children }: { children: ReactNode }) {
   }, [hasMore, loading, currentStatus, loadParcels]);
 
   const createParcel = useCallback<ParcelStoreValue['createParcel']>(
-    async (senderName, senderBranch, receiverName, receiverBranch, docType, description, note, latitude, longitude, photoUrl, pin) => {
+    async (senderName, senderBranch, receiverName, receiverBranch, itemType, description, note, latitude, longitude, photoUrl, pin) => {
       setError(null);
       try {
         const res = await parcelService.createParcel(
-          senderName, senderBranch, receiverName, receiverBranch, docType, description, note, latitude, longitude, photoUrl, pin
+          senderName, senderBranch, receiverName, receiverBranch, itemType, description, note, latitude, longitude, photoUrl, pin
         );
         if (!res.success) {
           const message = res.error ?? 'ไม่สามารถสร้างรายการได้';
@@ -157,7 +157,7 @@ export function ParcelStoreProvider({ children }: { children: ReactNode }) {
           // Only do a background refresh — don't block the UI.
           loadParcels().catch(() => {});
         } else {
-          setError(res.error ?? 'ไม่สามารถยืนยันการรับได้');
+          setError(res.error ?? 'ไม่สามารถยืนยันส่งได้');
         }
         return res;
       } catch (err) {
