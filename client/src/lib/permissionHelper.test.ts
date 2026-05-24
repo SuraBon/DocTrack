@@ -18,10 +18,13 @@ describe('permissionHelper', () => {
     expect(canAccessPage('dashboard', 'MESSENGER')).toBe(true);
     expect(canAccessPage('create', 'MESSENGER')).toBe(false);
     expect(canAccessPage('track', 'MESSENGER')).toBe(false);
-    expect(canAccessPage('create', 'ADMIN')).toBe(false);
+    expect(canAccessPage('create', 'ADMIN')).toBe(true);
     expect(canAccessPage('track', 'ADMIN')).toBe(false);
+    expect(canAccessPage('auditLogs', 'ADMIN')).toBe(true);
+    expect(canAccessPage('parcelActivity', 'ADMIN')).toBe(true);
+    expect(canAccessPage('auditLogs', 'MESSENGER')).toBe(false);
     expect(canAccessPage('users', 'ADMIN')).toBe(true);
     expect(getVisiblePage('users', 'MESSENGER')).toBe('dashboard');
-    expect(getVisiblePage('create', 'ADMIN')).toBe('dashboard');
+    expect(getVisiblePage('create', 'ADMIN')).toBe('create');
   });
 });

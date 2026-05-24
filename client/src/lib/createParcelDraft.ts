@@ -5,7 +5,6 @@ export type CreateParcelDraft = {
   senderBranch: string;
   receiverName: string;
   receiverBranch: string;
-  itemType: string;
   description: string;
   note: string;
 };
@@ -15,7 +14,6 @@ export const EMPTY_CREATE_PARCEL_DRAFT: CreateParcelDraft = {
   senderBranch: '',
   receiverName: '',
   receiverBranch: '',
-  itemType: '',
   description: '',
   note: '',
 };
@@ -31,7 +29,6 @@ export function loadCreateParcelDraft(): CreateParcelDraft {
       senderBranch: String(parsed.senderBranch || ''),
       receiverName: String(parsed.receiverName || ''),
       receiverBranch: String(parsed.receiverBranch || ''),
-      itemType: String(parsed.itemType || ''),
       description: String(parsed.description || ''),
       note: String(parsed.note || ''),
     };
@@ -47,4 +44,3 @@ export function saveCreateParcelDraft(draft: CreateParcelDraft): void {
 export function clearCreateParcelDraft(): void {
   localStorage.removeItem(CREATE_PARCEL_DRAFT_KEY);
 }
-

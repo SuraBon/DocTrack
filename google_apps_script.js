@@ -28,7 +28,6 @@ const PARCEL_HEADERS = [
   "สาขาผู้ส่ง",
   "ผู้รับ",
   "สาขาผู้รับ",
-  "ประเภทสิ่งที่ส่ง",
   "รายละเอียด",
   "หมายเหตุ",
   "สถานะ",
@@ -491,7 +490,6 @@ function redactParcelForGuest(parcel) {
     "สาขาผู้ส่ง",
     "ผู้รับ",
     "สาขาผู้รับ",
-    "ประเภทสิ่งที่ส่ง",
     "สถานะ",
     "วันที่รับ",
     "Latitude",
@@ -746,7 +744,7 @@ function doPost(e) {
     }
 
     // --- Token Signature Verification ---
-    const protectedActions = ['confirmReceipt', 'startDelivery', 'releaseDelivery', 'getParcels', 'exportSummary', 'getUsers', 'createUser', 'updateUserRole', 'updateUser', 'disableUser', 'deleteUser', 'createBranch', 'deleteBranch', 'deleteParcel', 'editParcel', 'updateProfile'];
+    const protectedActions = ['confirmReceipt', 'startDelivery', 'releaseDelivery', 'getParcels', 'exportSummary', 'getUsers', 'createUser', 'updateUserRole', 'updateUser', 'disableUser', 'deleteUser', 'createBranch', 'deleteBranch', 'deleteParcel', 'editParcel', 'updateProfile', 'getAuditLogs', 'getParcelActivityLogs'];
     if (payload.token) {
       const parts = String(payload.token).split('|');
       if (parts.length === 5) {
@@ -843,6 +841,8 @@ function routeAction(action, payload) {
   if (action === 'getBranches') return handleGetBranches(payload);
   if (action === 'createBranch') return handleCreateBranch(payload);
   if (action === 'deleteBranch') return handleDeleteBranch(payload);
+  if (action === 'getAuditLogs') return handleGetAuditLogs(payload);
+  if (action === 'getParcelActivityLogs') return handleGetParcelActivityLogs(payload);
   if (action === 'deleteParcel') return handleDeleteParcel(payload);
   if (action === 'editParcel') return handleEditParcel(payload);
   if (action === 'updateProfile') return handleUpdateProfile(payload);
@@ -866,7 +866,7 @@ function handleCreateParcel(payload) {
   if (!rl.allowed) {
     return createJsonResponse({ success: false, error: "ส่งคำขอบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่" });
   }
-  if (!payload.senderName || !payload.senderBranch || !payload.receiverName || !payload.receiverBranch || !payload.itemType) {
+  if (!payload.senderName || !payload.senderBranch || !payload.receiverName || !payload.receiverBranch || !payload.description) {
     return createJsonResponse({ success: false, error: "กรุณากรอกข้อมูลให้ครบถ้วน" });
   }
 
@@ -875,13 +875,12 @@ function handleCreateParcel(payload) {
   const receiverName = escapeSheetValue(payload.receiverName);
   const senderBranch = escapeSheetValue(payload.senderBranch);
   const receiverBranch = escapeSheetValue(payload.receiverBranch);
-  const itemType = escapeSheetValue(payload.itemType);
   const description = escapeSheetValue(payload.description || '');
   const note = escapeSheetValue(payload.note || '');
   const originLatitude = sanitizeCoordinate(payload.latitude, -90, 90);
   const originLongitude = sanitizeCoordinate(payload.longitude, -180, 180);
 
-  if (!senderName || !receiverName || !senderBranch || !receiverBranch || !itemType) {
+  if (!senderName || !receiverName || !senderBranch || !receiverBranch || !description) {
     return createJsonResponse({ success: false, error: "ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง" });
   }
 
@@ -890,7 +889,7 @@ function handleCreateParcel(payload) {
   if (receiverName.length > 200) return createJsonResponse({ success: false, error: "ชื่อผู้รับยาวเกินไป" });
   if (senderBranch.length > 100) return createJsonResponse({ success: false, error: "ชื่อสาขาผู้ส่งยาวเกินไป" });
   if (receiverBranch.length > 100) return createJsonResponse({ success: false, error: "ชื่อสาขาผู้รับยาวเกินไป" });
-  if (itemType.length > 100) return createJsonResponse({ success: false, error: "ประเภทสิ่งที่ส่งยาวเกินไป" });
+  if (description.length > 200) return createJsonResponse({ success: false, error: "รายละเอียดสิ่งที่ส่งยาวเกินไป" });
   if (note.length > MAX_NOTE_LENGTH) return createJsonResponse({ success: false, error: "หมายเหตุยาวเกินไป" });
   const imageValidation = validateImagePayload(payload.photoUrl);
   if (!imageValidation.ok) {
@@ -923,7 +922,6 @@ function handleCreateParcel(payload) {
     normalizeBranchName(senderBranch),
     receiverName,
     normalizeBranchName(receiverBranch),
-    itemType,
     description,
     note,
     "รอจัดส่ง",
@@ -1049,6 +1047,109 @@ function getActiveDeliveryAssignmentFromEvents(events) {
   return active;
 }
 
+function normalizeLogLimit(value) {
+  return Math.min(Math.max(parseInt(value) || 50, 1), 100);
+}
+
+function includesLogQuery(values, query) {
+  const q = String(query || "").trim().toLowerCase();
+  if (!q) return true;
+  for (let i = 0; i < values.length; i++) {
+    if (String(values[i] || "").toLowerCase().indexOf(q) !== -1) return true;
+  }
+  return false;
+}
+
+function paginateLogs(rows, limit, offset) {
+  const totalCount = rows.length;
+  return {
+    rows: rows.slice(offset, offset + limit),
+    totalCount: totalCount,
+    hasMore: offset + limit < totalCount
+  };
+}
+
+function handleGetAuditLogs(payload) {
+  if (normalizeRole(payload.role) !== 'ADMIN') {
+    return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง (เฉพาะผู้ดูแลระบบ)" });
+  }
+
+  const limit = normalizeLogLimit(payload.limit);
+  const offset = Math.max(parseInt(payload.offset) || 0, 0);
+  const query = String(payload.query || "").trim();
+  const actionFilter = String(payload.actionFilter || "").trim().toLowerCase();
+  const actorFilter = String(payload.actorId || "").trim().toLowerCase();
+  const targetFilter = String(payload.targetId || "").trim().toLowerCase();
+  const ss = getSpreadsheet();
+  const auditSheet = ss.getSheetByName("AuditLog");
+  if (!auditSheet || auditSheet.getLastRow() <= 1) {
+    return createJsonResponse({ success: true, logs: [], totalCount: 0, hasMore: false });
+  }
+
+  const data = auditSheet.getRange(2, 1, auditSheet.getLastRow() - 1, 5).getValues();
+  const logs = [];
+  for (let i = data.length - 1; i >= 0; i--) {
+    const row = data[i];
+    const log = {
+      timestamp: formatSheetDateValue(row[0]),
+      actorId: String(row[1] || ""),
+      action: String(row[2] || ""),
+      targetId: String(row[3] || ""),
+      details: String(row[4] || "")
+    };
+    if (actionFilter && log.action.toLowerCase().indexOf(actionFilter) === -1) continue;
+    if (actorFilter && log.actorId.toLowerCase().indexOf(actorFilter) === -1) continue;
+    if (targetFilter && log.targetId.toLowerCase().indexOf(targetFilter) === -1) continue;
+    if (!includesLogQuery([log.timestamp, log.actorId, log.action, log.targetId, log.details], query)) continue;
+    logs.push(log);
+  }
+
+  const page = paginateLogs(logs, limit, offset);
+  return createJsonResponse({ success: true, logs: page.rows, totalCount: page.totalCount, hasMore: page.hasMore });
+}
+
+function handleGetParcelActivityLogs(payload) {
+  if (normalizeRole(payload.role) !== 'ADMIN') {
+    return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง (เฉพาะผู้ดูแลระบบ)" });
+  }
+
+  const limit = normalizeLogLimit(payload.limit);
+  const offset = Math.max(parseInt(payload.offset) || 0, 0);
+  const query = String(payload.query || "").trim();
+  const eventTypeFilter = String(payload.eventType || "").trim().toUpperCase();
+  const trackingFilter = String(payload.trackingId || "").trim().toLowerCase();
+  const activities = [];
+
+  getYearSpreadsheetsForRead().forEach(function (entry) {
+    const eventSheet = entry.spreadsheet.getSheetByName("ParcelEvents");
+    if (!eventSheet || eventSheet.getLastRow() <= 1) return;
+    const data = eventSheet.getRange(2, 1, eventSheet.getLastRow() - 1, EVENT_HEADERS.length).getValues();
+    for (let i = data.length - 1; i >= 0; i--) {
+      const activity = parseEventRow(data[i]);
+      const eventType = String(activity.eventType || "").toUpperCase();
+      const trackingId = String(activity.trackingId || "");
+      if (eventTypeFilter && eventType !== eventTypeFilter) continue;
+      if (trackingFilter && trackingId.toLowerCase().indexOf(trackingFilter) === -1) continue;
+      if (!includesLogQuery([
+        activity.id,
+        activity.trackingId,
+        activity.timestamp,
+        activity.eventType,
+        activity.location,
+        activity.destLocation,
+        activity.person,
+        activity.note,
+        activity.deliveryMatchStatus,
+        activity.deliveryMismatchReason
+      ], query)) continue;
+      activities.push(activity);
+    }
+  });
+
+  const page = paginateLogs(activities, limit, offset);
+  return createJsonResponse({ success: true, activities: page.rows, totalCount: page.totalCount, hasMore: page.hasMore });
+}
+
 function handleGetParcels(payload) {
   const limit = Math.min(Math.max(parseInt(payload.limit) || 50, 1), 100);
   const offset = Math.max(parseInt(payload.offset) || 0, 0);
@@ -1074,7 +1175,7 @@ function handleGetParcels(payload) {
       const row = data[i];
 
       if (payload.status && payload.status !== "ทั้งหมด") {
-        if (row[9] !== payload.status) {
+        if (row[8] !== payload.status) {
           continue;
         }
       }
@@ -1167,7 +1268,7 @@ function handleExportSummary(payload) {
     const data = entry.sheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
-      let status = String(row[9] || "");
+      let status = String(row[8] || "");
       const trackingID = String(row[0] || "");
       total++;
 
@@ -1267,8 +1368,8 @@ function handleConfirmReceipt(payload) {
     const row = data[i];
     if (row[0] === payload.trackingID) {
       const rowIndex = i + 1;
-      const currentStatus = row[9];
-      const noteStr = String(row[8] || "");
+      const currentStatus = row[8];
+      const noteStr = String(row[7] || "");
       const activeAssignment = getActiveDeliveryAssignmentFromEvents(getParcelEventsForSpreadsheet(storage.spreadsheet, payload.trackingID));
       if (
         activeAssignment &&
@@ -1309,7 +1410,7 @@ function handleConfirmReceipt(payload) {
 
       // Only update main status if it changed
       if (newStatus !== currentStatus) {
-        sheet.getRange(rowIndex, 10).setValue(newStatus);
+        sheet.getRange(rowIndex, 9).setValue(newStatus);
       }
 
       let finalPhotoUrl = imageValidation.value;
@@ -1368,12 +1469,12 @@ function handleConfirmReceipt(payload) {
 
       // Update main sheet's photo if delivered, or leave it. Actually, update it if it's the latest proof.
       if (finalPhotoUrl) {
-        sheet.getRange(rowIndex, 11).setValue(finalPhotoUrl);
+        sheet.getRange(rowIndex, 10).setValue(finalPhotoUrl);
       }
 
       if (sanitizedNote) {
-        const existingNote = sheet.getRange(rowIndex, 9).getValue();
-        sheet.getRange(rowIndex, 9).setValue(existingNote ? existingNote + "\n" + sanitizedNote : sanitizedNote);
+        const existingNote = sheet.getRange(rowIndex, 8).getValue();
+        sheet.getRange(rowIndex, 8).setValue(existingNote ? existingNote + "\n" + sanitizedNote : sanitizedNote);
       }
 
       const eventLatitude = sanitizeCoordinate(payload.latitude, -90, 90);
@@ -1381,8 +1482,8 @@ function handleConfirmReceipt(payload) {
 
       // Save sanitized coordinates into main tracking columns (if provided)
       if (eventLatitude !== "" && eventLongitude !== "") {
-        sheet.getRange(rowIndex, 12).setValue(eventLatitude);
-        sheet.getRange(rowIndex, 13).setValue(eventLongitude);
+        sheet.getRange(rowIndex, 11).setValue(eventLatitude);
+        sheet.getRange(rowIndex, 12).setValue(eventLongitude);
       }
 
       // Insert structured event into ParcelEvents
@@ -1447,7 +1548,7 @@ function handleStartDelivery(payload) {
       }
 
       const rowIndex = i + 1;
-      const currentStatus = String(row[9] || "");
+      const currentStatus = String(row[8] || "");
       const events = getParcelEventsForSpreadsheet(storage.spreadsheet, payload.trackingID);
       const activeAssignment = getActiveDeliveryAssignmentFromEvents(events);
       const currentEmployeeId = normalizeEmployeeId(payload.employeeId);
@@ -1475,13 +1576,13 @@ function handleStartDelivery(payload) {
       }
 
       if (currentStatus !== "กำลังจัดส่ง") {
-        sheet.getRange(rowIndex, 10).setValue("กำลังจัดส่ง");
+        sheet.getRange(rowIndex, 9).setValue("กำลังจัดส่ง");
       }
 
       const startLatitude = sanitizeCoordinate(payload.latitude, -90, 90);
       const startLongitude = sanitizeCoordinate(payload.longitude, -180, 180);
-      const originLatitude = sanitizeCoordinate(row[14], -90, 90);
-      const originLongitude = sanitizeCoordinate(row[15], -180, 180);
+      const originLatitude = sanitizeCoordinate(row[13], -90, 90);
+      const originLongitude = sanitizeCoordinate(row[14], -180, 180);
       const pickupDistance = getDistanceMeters(startLatitude, startLongitude, originLatitude, originLongitude);
       const autoPickedUp = pickupDistance !== null && pickupDistance <= AUTO_PICKUP_RADIUS_METERS;
 
@@ -1568,7 +1669,7 @@ function handleReleaseDelivery(payload) {
       }
 
       const rowIndex = i + 1;
-      const currentStatus = String(row[9] || "");
+      const currentStatus = String(row[8] || "");
       const events = getParcelEventsForSpreadsheet(storage.spreadsheet, payload.trackingID);
       const activeAssignment = getActiveDeliveryAssignmentFromEvents(events);
       const currentEmployeeId = normalizeEmployeeId(payload.employeeId);
@@ -1580,7 +1681,7 @@ function handleReleaseDelivery(payload) {
 
       if (!activeAssignment) {
         if (currentStatus !== "รอจัดส่ง") {
-          sheet.getRange(rowIndex, 10).setValue("รอจัดส่ง");
+          sheet.getRange(rowIndex, 9).setValue("รอจัดส่ง");
         }
         return createJsonResponse({ success: true, alreadyReleased: true });
       }
@@ -1594,7 +1695,7 @@ function handleReleaseDelivery(payload) {
         });
       }
 
-      sheet.getRange(rowIndex, 10).setValue("รอจัดส่ง");
+      sheet.getRange(rowIndex, 9).setValue("รอจัดส่ง");
 
       const eventSheet = getEventSheetForSpreadsheet(storage.spreadsheet);
       if (eventSheet) {
@@ -1673,12 +1774,14 @@ function handleSearchParcels(payload) {
       const tracking = String(row[0] || "").toLowerCase();
       const sender = String(row[2] || "").toLowerCase();
       const receiver = String(row[4] || "").toLowerCase();
+      const destination = String(row[5] || "").toLowerCase();
+      const description = String(row[6] || "").toLowerCase();
 
       if (isGuest) {
         if (tracking !== queryLower && receiver.indexOf(queryLower) === -1) continue;
       } else {
         if (!canReadParcelRow(payload, row)) continue;
-        if (tracking.indexOf(queryLower) === -1 && sender.indexOf(queryLower) === -1 && receiver.indexOf(queryLower) === -1) {
+        if (tracking.indexOf(queryLower) === -1 && sender.indexOf(queryLower) === -1 && receiver.indexOf(queryLower) === -1 && destination.indexOf(queryLower) === -1 && description.indexOf(queryLower) === -1) {
           continue;
         }
       }
@@ -2295,8 +2398,8 @@ function handleEditParcel(payload) {
   if (!validateTrackingID(trackingID)) return createJsonResponse({ success: false, error: "รูปแบบหมายเลขติดตามไม่ถูกต้อง" });
 
   // Validate update values
-  const allowedFields = ["senderName", "senderBranch", "receiverName", "receiverBranch", "itemType", "description"];
-  const fieldMap = { senderName: "ผู้ส่ง", senderBranch: "สาขาผู้ส่ง", receiverName: "ผู้รับ", receiverBranch: "สาขาผู้รับ", itemType: "ประเภทสิ่งที่ส่ง", description: "รายละเอียด" };
+  const allowedFields = ["senderName", "senderBranch", "receiverName", "receiverBranch", "description"];
+  const fieldMap = { senderName: "ผู้ส่ง", senderBranch: "สาขาผู้ส่ง", receiverName: "ผู้รับ", receiverBranch: "สาขาผู้รับ", description: "รายละเอียดสิ่งที่ส่ง" };
   for (const key of Object.keys(updates)) {
     if (!allowedFields.includes(key)) return createJsonResponse({ success: false, error: "ฟิลด์ไม่ถูกต้อง: " + key });
     if (typeof updates[key] !== 'string' || updates[key].length > 200) return createJsonResponse({ success: false, error: "ค่าไม่ถูกต้องสำหรับฟิลด์: " + key });

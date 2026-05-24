@@ -296,8 +296,8 @@ export default function Track({ embedded = false }: { embedded?: boolean }) {
                     </button>
                   </div>
                   <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                    <span className="material-symbols-outlined text-sm">category</span>
-                    {parcel['ประเภทสิ่งที่ส่ง']}
+                    <span className="material-symbols-outlined text-sm">description</span>
+                    {parcel['รายละเอียด'] || 'ไม่มีรายละเอียดสิ่งที่ส่ง'}
                   </div>
                 </div>
                 <div className="rounded-lg border border-border bg-background px-3 py-2">
@@ -333,8 +333,8 @@ export default function Track({ embedded = false }: { embedded?: boolean }) {
                     </div>
                     <div className="grid grid-cols-2 gap-4 border-t border-gray-100 pt-3">
                       <div>
-                        <p className="text-[10px] font-bold text-on-surface-variant/50 uppercase tracking-wider">ประเภท</p>
-                        <p className="font-bold text-primary text-sm mt-0.5">{parcel['ประเภทสิ่งที่ส่ง']}</p>
+                        <p className="text-[10px] font-bold text-on-surface-variant/50 uppercase tracking-wider">รายละเอียดสิ่งที่ส่ง</p>
+                        <p className="font-bold text-primary text-sm mt-0.5">{parcel['รายละเอียด'] || '-'}</p>
                       </div>
                       <div>
                         <p className="text-[10px] font-bold text-on-surface-variant/50 uppercase tracking-wider">สถานะ</p>

@@ -263,13 +263,9 @@ const StaleBadge = ({ parcel }: { parcel: Parcel }) => {
 const ParcelInfoStrip = ({ parcel }: { parcel: Parcel }) => {
   const note = getCleanNote(parcel);
   return (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
       <div className="rounded-xl bg-surface-container-lowest px-3 py-2 ring-1 ring-outline-variant/10">
-        <p className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/45">{UI_COPY.parcel.itemType}</p>
-        <p className="mt-0.5 truncate text-xs font-black text-primary">{parcel['ประเภทสิ่งที่ส่ง'] || '-'}</p>
-      </div>
-      <div className="rounded-xl bg-surface-container-lowest px-3 py-2 ring-1 ring-outline-variant/10">
-        <p className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/45">รายละเอียด</p>
+        <p className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/45">{UI_COPY.parcel.itemDetail}</p>
         <p className="mt-0.5 truncate text-xs font-bold text-primary">{parcel['รายละเอียด'] || '-'}</p>
       </div>
       <div className="rounded-xl bg-surface-container-lowest px-3 py-2 ring-1 ring-outline-variant/10">
@@ -879,6 +875,104 @@ const AdminParcelManagementCard = ({
     </article>
   );
 };
+
+const AdminParcelManagementTable = ({
+  parcels,
+  onOpen,
+  onConfirm,
+  onDelete,
+  onReleaseDelivery,
+  releasingDeliveryId,
+}: {
+  parcels: Parcel[];
+  onOpen: (parcel: Parcel) => void;
+  onConfirm: (parcel: Parcel) => void;
+  onDelete: (parcel: Parcel) => void;
+  onReleaseDelivery: (parcel: Parcel) => void;
+  releasingDeliveryId: string | null;
+}) => (
+  <div className="hidden overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm md:block">
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[980px] text-left">
+        <thead>
+          <tr className="border-b border-gray-100 bg-gray-50">
+            <th className="px-4 py-3 text-[11px] font-black uppercase tracking-widest text-muted-foreground">Tracking</th>
+            <th className="px-4 py-3 text-[11px] font-black uppercase tracking-widest text-muted-foreground">เส้นทาง</th>
+            <th className="px-4 py-3 text-[11px] font-black uppercase tracking-widest text-muted-foreground">ผู้รับ</th>
+            <th className="px-4 py-3 text-[11px] font-black uppercase tracking-widest text-muted-foreground">สถานะ</th>
+            <th className="px-4 py-3 text-[11px] font-black uppercase tracking-widest text-muted-foreground">ล่าสุด</th>
+            <th className="px-4 py-3 text-right text-[11px] font-black uppercase tracking-widest text-muted-foreground">จัดการ</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-outline-variant/10">
+          {parcels.map(parcel => {
+            const assignment = getActiveDeliveryAssignment(parcel);
+            const isDone = parcel['สถานะ'] === 'ส่งสำเร็จ';
+            const isReleasing = releasingDeliveryId === parcel.TrackingID;
+            return (
+              <tr key={parcel.TrackingID} className={`${isParcelStale(parcel) ? 'bg-amber-50/30' : ''} transition-colors hover:bg-surface-container-lowest/70`}>
+                <td className="px-4 py-3 align-top">
+                  <code className="block max-w-[150px] break-all font-mono text-xs font-black text-primary">{parcel.TrackingID}</code>
+                  <p className="mt-1 text-[11px] text-muted-foreground">{formatThaiDateTime(parcel['วันที่สร้าง'])}</p>
+                </td>
+                <td className="px-4 py-3 align-top">
+                  <div className="max-w-[220px] space-y-1 text-xs">
+                    <p className="truncate font-semibold text-slate-800">{parcel['สาขาผู้ส่ง'] || '-'}</p>
+                    <p className="truncate text-muted-foreground">→ {parcel['สาขาผู้รับ'] || '-'}</p>
+                  </div>
+                </td>
+                <td className="px-4 py-3 align-top">
+                  <div className="max-w-[190px]">
+                    <p className="truncate text-sm font-semibold text-foreground">{parcel['ผู้รับ'] || '-'}</p>
+                    <p className="mt-1 truncate text-xs text-muted-foreground">{parcel['รายละเอียด'] || getCleanNote(parcel) || '-'}</p>
+                  </div>
+                </td>
+                <td className="px-4 py-3 align-top">
+                  <div className="space-y-2">
+                    <StatusBadge status={parcel['สถานะ']} />
+                    {isParcelStale(parcel) && (
+                      <span className="inline-flex rounded-lg bg-amber-100 px-2 py-1 text-[11px] font-semibold text-amber-700">ค้างนาน</span>
+                    )}
+                    {assignment && !isDone && (
+                      <p className="max-w-[180px] truncate text-[11px] font-semibold text-blue-700">ผู้รับงาน: {assignment.assignedToName}</p>
+                    )}
+                  </div>
+                </td>
+                <td className="px-4 py-3 align-top">
+                  <p className="max-w-[240px] line-clamp-2 text-xs font-medium leading-relaxed text-slate-700">{getLatestTimelineSummary(parcel)}</p>
+                </td>
+                <td className="px-4 py-3 align-top">
+                  <div className="flex justify-end gap-1.5">
+                    <button type="button" onClick={() => onOpen(parcel)} className="app-secondary-button h-9 px-2.5 text-xs">
+                      <History className="h-3.5 w-3.5" aria-hidden="true" />
+                      รายละเอียด
+                    </button>
+                    {!isDone && (
+                      <button type="button" onClick={() => onConfirm(parcel)} className="app-primary-button h-9 px-2.5 text-xs">
+                        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                        ยืนยันส่ง
+                      </button>
+                    )}
+                    {assignment && !isDone && (
+                      <button type="button" onClick={() => onReleaseDelivery(parcel)} disabled={isReleasing} className="app-secondary-button h-9 px-2.5 text-xs text-amber-700">
+                        {isReleasing ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Undo2 className="h-3.5 w-3.5" aria-hidden="true" />}
+                        คืนงาน
+                      </button>
+                    )}
+                    <button type="button" onClick={() => onDelete(parcel)} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-red-100 bg-red-50 px-2.5 text-xs font-semibold text-red-600 shadow-sm transition-colors hover:bg-red-100">
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                      ลบ
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  </div>
+);
 
 export default function Dashboard({ isConfigured }: DashboardProps) {
   const { user } = useAuth();
@@ -1581,7 +1675,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
                   count={adminNeedsAttentionParcels.length}
                   tone="amber"
                 />
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                <div className="grid grid-cols-1 gap-3 md:hidden">
                   {adminNeedsAttentionParcels.map(parcel => (
                     <AdminParcelManagementCard
                       key={`attention-${parcel.TrackingID}`}
@@ -1595,6 +1689,14 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
                     />
                   ))}
                 </div>
+                <AdminParcelManagementTable
+                  parcels={adminNeedsAttentionParcels}
+                  onOpen={(parcel) => { setSelectedParcel(parcel); setIsTimelineOpen(true); }}
+                  onConfirm={(parcel) => openConfirmFlow(parcel.TrackingID)}
+                  onDelete={(parcel) => { setSelectedParcel(parcel); setIsDeleteConfirmOpen(true); }}
+                  onReleaseDelivery={handleReleaseDelivery}
+                  releasingDeliveryId={releasingDeliveryId}
+                />
               </div>
             )}
             <MessengerViewBanner
@@ -1604,7 +1706,8 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
               count={adminRegularParcels.length}
             />
             {adminRegularParcels.length ? (
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+              <>
+              <div className="grid grid-cols-1 gap-3 md:hidden">
                 {adminRegularParcels.map(parcel => (
                   <AdminParcelManagementCard
                     key={parcel.TrackingID}
@@ -1618,6 +1721,15 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
                   />
                 ))}
               </div>
+              <AdminParcelManagementTable
+                parcels={adminRegularParcels}
+                onOpen={(parcel) => { setSelectedParcel(parcel); setIsTimelineOpen(true); }}
+                onConfirm={(parcel) => openConfirmFlow(parcel.TrackingID)}
+                onDelete={(parcel) => { setSelectedParcel(parcel); setIsDeleteConfirmOpen(true); }}
+                onReleaseDelivery={handleReleaseDelivery}
+                releasingDeliveryId={releasingDeliveryId}
+              />
+              </>
             ) : (
               <EmptyState
                 icon="task_alt"

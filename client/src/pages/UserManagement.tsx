@@ -508,7 +508,7 @@ export default function UserManagement() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {pendingUserAction?.type === 'delete'
-                ? `ลบผู้ใช้ ${pendingUserAction.user.employeeId} ถาวร ข้อมูล mock/test user นี้จะถูกลบออกจาก Users sheet`
+                ? `ลบผู้ใช้ ${pendingUserAction.user.employeeId} ถาวร บัญชีนี้จะถูกลบออกจาก Users sheet และไม่สามารถเข้าสู่ระบบได้อีก`
                 : `ปิดบัญชี ${pendingUserAction?.user.employeeId} ผู้ใช้นี้จะเข้าสู่ระบบไม่ได้จนกว่าจะเปิดใช้งานในอนาคต`}
             </AlertDialogDescription>
           </AlertDialogHeader>

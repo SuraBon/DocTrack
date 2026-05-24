@@ -13,6 +13,8 @@ import { canAccessPage, getVisiblePage, type PageId } from "./lib/permissionHelp
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const CreateParcel = lazy(() => import("./pages/CreateParcel"));
 const Track = lazy(() => import("./pages/Track"));
+const ParcelActivityLog = lazy(() => import("./pages/ParcelActivityLog"));
+const AuditLog = lazy(() => import("./pages/AuditLog"));
 const UserManagement = lazy(() => import("./pages/UserManagement"));
 const BranchManagement = lazy(() => import("./pages/BranchManagement"));
 
@@ -20,6 +22,8 @@ const pagePaths: Record<PageId, string> = {
   dashboard: "/dashboard",
   create: "/create",
   track: "/track",
+  parcelActivity: "/parcel-activity",
+  auditLogs: "/audit-logs",
   users: "/users",
   branches: "/branches",
   login: "/login",
@@ -30,6 +34,8 @@ const pathPages: Record<string, PageId> = {
   "/dashboard": "dashboard",
   "/create": "create",
   "/track": "track",
+  "/parcel-activity": "parcelActivity",
+  "/audit-logs": "auditLogs",
   "/users": "users",
   "/branches": "branches",
   "/login": "login",
@@ -137,6 +143,10 @@ function App() {
         return <ErrorBoundary><Dashboard isConfigured={isConfiguredState} /></ErrorBoundary>;
       case "create":
         return <ErrorBoundary><CreateParcel /></ErrorBoundary>;
+      case "parcelActivity":
+        return <ErrorBoundary><ParcelActivityLog /></ErrorBoundary>;
+      case "auditLogs":
+        return <ErrorBoundary><AuditLog /></ErrorBoundary>;
       case "users":
         return <ErrorBoundary><UserManagement /></ErrorBoundary>;
       case "branches":

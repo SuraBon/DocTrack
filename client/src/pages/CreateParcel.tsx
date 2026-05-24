@@ -24,8 +24,6 @@ import {
 } from '@/lib/createParcelDraft';
 import { UI_COPY } from '@/lib/uiCopy';
 
-const DEFAULT_ITEM_TYPE = 'พัสดุ';
-
 type CreatedParcelDetails = {
   senderName: string;
   senderBranch: string;
@@ -110,7 +108,6 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
     senderBranch:   sanitizeTextInput(resolveSelectValue(formData.senderBranch), 100),
     receiverName:   sanitizeTextInput(formData.receiverName, 200),
     receiverBranch: sanitizeTextInput(resolveSelectValue(formData.receiverBranch), 100),
-    itemType:        DEFAULT_ITEM_TYPE,
     description:    sanitizeTextInput(formData.description, 200),
     note:           sanitizeTextInput(formData.note, 2000),
   });
@@ -125,7 +122,7 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
       validateRequiredText(v.senderBranch, 'แผนก/สาขาผู้ส่ง', 1, 100) ||
       validateRequiredText(v.receiverName, 'ชื่อผู้รับหรือชื่อสถานที่ปลายทาง', 2, 200) ||
       validateRequiredText(v.receiverBranch, 'จุดหมายปลายทาง', 1, 100) ||
-      (v.description && validateRequiredText(v.description, 'รายละเอียด', 0, 200)) ||
+      validateRequiredText(v.description, 'รายละเอียดสิ่งที่ส่ง', 1, 200) ||
       (v.note && validateRequiredText(v.note, 'หมายเหตุปลายทาง', 0, 2000));
     if (validationError) {
       toast.error(validationError);
@@ -161,7 +158,7 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
       const result = await createParcel(
         v.senderName, v.senderBranch,
         v.receiverName, v.receiverBranch,
-        v.itemType, v.description, v.note,
+        v.description, v.note,
         position.latitude,
         position.longitude,
         proofPhotoUrl,
@@ -341,7 +338,7 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
           <div className="grid grid-cols-1 gap-4 p-4 sm:p-5 lg:grid-cols-[1fr_1.15fr]">
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="px-1 text-sm font-medium text-foreground">รายละเอียดสิ่งที่ส่ง</label>
+                <label className="px-1 text-sm font-medium text-foreground">รายละเอียดสิ่งที่ส่ง *</label>
                 <div className="relative">
                   <input
                     name="description"

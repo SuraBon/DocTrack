@@ -1,11 +1,13 @@
 import { normalizeRole, type AppRole } from './roles';
 
-export type PageId = 'dashboard' | 'create' | 'track' | 'users' | 'branches' | 'login';
+export type PageId = 'dashboard' | 'create' | 'track' | 'parcelActivity' | 'auditLogs' | 'users' | 'branches' | 'login';
 
 const PAGE_ROLES: Record<PageId, AppRole[]> = {
   dashboard: ['ADMIN', 'MESSENGER'],
-  create: ['GUEST'],
+  create: ['ADMIN', 'GUEST'],
   track: ['GUEST'],
+  parcelActivity: ['ADMIN'],
+  auditLogs: ['ADMIN'],
   users: ['ADMIN'],
   branches: ['ADMIN'],
   login: ['GUEST'],

@@ -202,7 +202,6 @@ export async function createParcel(
   senderBranch: string,
   receiverName: string,
   receiverBranch: string,
-  itemType: string,
   description?: string,
   note?: string,
   latitude?: number,
@@ -212,7 +211,7 @@ export async function createParcel(
 ): Promise<CreateParcelResponse> {
   const payload: CreateParcelPayload = {
     action: 'createParcel',
-    senderName, senderBranch, receiverName, receiverBranch, itemType, description, note, latitude, longitude, photoUrl, pin,
+    senderName, senderBranch, receiverName, receiverBranch, description, note, latitude, longitude, photoUrl, pin,
     clientId: getDeviceId(),
     idempotencyKey: createIdempotencyKey('createParcel'),
   };
@@ -398,6 +397,37 @@ export async function deleteBranch(name: string): Promise<{ success: boolean; br
   }
 }
 
+export async function getAuditLogs(input: LogQueryInput = {}): Promise<{ success: boolean; logs?: AuditLogRow[]; totalCount?: number; hasMore?: boolean; error?: string }> {
+  try {
+    return await callAPI<{ success: boolean; logs?: AuditLogRow[]; totalCount?: number; hasMore?: boolean; error?: string }>({
+      action: 'getAuditLogs',
+      limit: input.limit,
+      offset: input.offset,
+      query: input.query,
+      actionFilter: input.action,
+      actorId: input.actorId,
+      targetId: input.targetId,
+    });
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'เกิดข้อผิดพลาด' };
+  }
+}
+
+export async function getParcelActivityLogs(input: LogQueryInput = {}): Promise<{ success: boolean; activities?: ParcelActivityLogRow[]; totalCount?: number; hasMore?: boolean; error?: string }> {
+  try {
+    return await callAPI<{ success: boolean; activities?: ParcelActivityLogRow[]; totalCount?: number; hasMore?: boolean; error?: string }>({
+      action: 'getParcelActivityLogs',
+      limit: input.limit,
+      offset: input.offset,
+      query: input.query,
+      eventType: input.eventType,
+      trackingId: input.trackingId,
+    });
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'เกิดข้อผิดพลาด' };
+  }
+}
+
 // --- Users & RBAC ---
 
 export interface User {
@@ -435,6 +465,40 @@ export interface BranchRow {
   name: string;
   createdAt?: string;
   createdBy?: string;
+}
+
+export interface AuditLogRow {
+  timestamp: string;
+  actorId: string;
+  action: string;
+  targetId: string;
+  details: string;
+}
+
+export interface ParcelActivityLogRow {
+  id: string;
+  trackingId: string;
+  timestamp: string;
+  eventType: string;
+  location: string;
+  destLocation?: string;
+  person?: string;
+  note?: string;
+  latitude?: number;
+  longitude?: number;
+  deliveryMatchStatus?: string;
+  deliveryMismatchReason?: string;
+}
+
+export interface LogQueryInput {
+  limit?: number;
+  offset?: number;
+  query?: string;
+  action?: string;
+  actorId?: string;
+  targetId?: string;
+  eventType?: string;
+  trackingId?: string;
 }
 
 function normalizeUser(user: User): User {

@@ -13,7 +13,7 @@ export interface Parcel {
   'สาขาผู้ส่ง': string;
   'ผู้รับ': string;
   'สาขาผู้รับ': string;
-  'ประเภทสิ่งที่ส่ง': string;
+  'ประเภทสิ่งที่ส่ง'?: string;
   'รายละเอียด'?: string;
   'สถานะ': ParcelStatus;
   'วันที่รับ'?: string;
@@ -61,7 +61,6 @@ export interface CreateParcelPayload {
   senderBranch: string;
   receiverName: string;
   receiverBranch: string;
-  itemType: string;
   description?: string;
   note?: string;
   photoUrl?: string;
