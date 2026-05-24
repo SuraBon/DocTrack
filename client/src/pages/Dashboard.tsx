@@ -784,11 +784,7 @@ const AdminParcelManagementCard = ({
       ? 'bg-blue-50 text-blue-500'
       : 'bg-amber-50 text-amber-600';
   const iconName = isDone ? 'check_circle' : isInTransit ? 'local_shipping' : 'inventory_2';
-  const dateLabel = parcel['วันที่รับ']
-    ? new Date(parcel['วันที่รับ']).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' })
-    : parcel['วันที่สร้าง']
-      ? new Date(parcel['วันที่สร้าง']).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' })
-      : 'ยังไม่มีวันที่';
+  const dateLabel = formatThaiDateTime(parcel['วันที่รับ'] || parcel['วันที่สร้าง']);
 
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[0_4px_20px_rgba(15,23,42,0.04)] transition-all duration-200 hover:shadow-md">
