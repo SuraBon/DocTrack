@@ -1,6 +1,7 @@
 const SHEET_NAME = "Parcels";
 const API_KEY_PROPERTY = "API_KEY";
 const ADMIN_INITIAL_PIN_PROPERTY = "ADMIN_INITIAL_PIN";
+const DEFAULT_ADMIN_PIN = "1234";
 const SHIPTRACK_FOLDER_ID_PROPERTY = "SHIPTRACK_FOLDER_ID";
 const VALID_ROLES = ["MESSENGER", "ADMIN"];
 // Fallback key (ใช้กรณีไม่อยากตั้ง Script Properties)
@@ -396,12 +397,8 @@ function getApiKey() {
 
 function getInitialAdminPin() {
   const props = PropertiesService.getScriptProperties();
-  let pin = props.getProperty(ADMIN_INITIAL_PIN_PROPERTY);
-  if (!pin) {
-    pin = "1234";
-    props.setProperty(ADMIN_INITIAL_PIN_PROPERTY, pin);
-  }
-  return pin;
+  props.setProperty(ADMIN_INITIAL_PIN_PROPERTY, DEFAULT_ADMIN_PIN);
+  return DEFAULT_ADMIN_PIN;
 }
 
 function normalizeBranchName(branch) {
@@ -688,6 +685,31 @@ function setup() {
   }
 
   getBranchesSheet();
+}
+
+function resetDefaultAdminPassword() {
+  const sheet = getUsersSheet();
+  const now = formatThaiDateForSheet(new Date());
+  const adminPinHash = encodePassword(getInitialAdminPin());
+  const data = sheet.getDataRange().getValues();
+
+  for (let i = 1; i < data.length; i++) {
+    if (normalizeEmployeeId(data[i][0]) === "ADMIN") {
+      sheet.getRange(i + 1, 1, 1, USER_HEADERS.length).setValues([[
+        "ADMIN",
+        String(data[i][1] || "").trim() || "Admin",
+        "ADMIN",
+        adminPinHash,
+        formatSheetDateValue(data[i][4]) || now,
+        "ACTIVE",
+        now
+      ]]);
+      return { success: true, employeeId: "ADMIN", pin: DEFAULT_ADMIN_PIN, updated: true };
+    }
+  }
+
+  sheet.appendRow(["ADMIN", "Admin", "ADMIN", adminPinHash, now, "ACTIVE", now]);
+  return { success: true, employeeId: "ADMIN", pin: DEFAULT_ADMIN_PIN, created: true };
 }
 
 function ensureUsersSheetSchema(sheet) {
