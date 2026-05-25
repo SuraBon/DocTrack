@@ -23,6 +23,7 @@ export function isAuthErrorMessage(message: unknown): boolean {
     'Invalid token signature',
     'Malformed token',
     'Token expired',
+    'Session expired',
     'Session replaced',
   ].some(error => text.includes(error));
 }

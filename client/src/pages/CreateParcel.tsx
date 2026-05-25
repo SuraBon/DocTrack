@@ -661,48 +661,67 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
                     try {
                       printQrSrc = await QRCode.toDataURL(trackingId, { width: 200, margin: 1 });
                     } catch { /* fallback: no QR */ }
-                    printWindow.document.write(`
-                      <!doctype html>
-                      <html>
-                      <head>
-                        <meta charset="utf-8" />
-                        <title>ShipTrack Label</title>
-                      </head>
-                      <body>
-                      <div style="text-align:center;font-family:sans-serif;padding:28px;border:4px solid #091426;border-radius:20px;max-width:400px;margin:auto;box-sizing:border-box;">
-                        <div style="background:#091426;color:#fff;padding:15px;border-radius:12px;margin-bottom:20px;">
-                          <h2 style="margin:0;font-size:24px;">ShipTrack</h2>
-                        </div>
-                        <h1 id="tracking-id" style="font-size:clamp(24px,8vw,38px);margin:10px 0;font-family:monospace;letter-spacing:1px;overflow-wrap:anywhere;line-height:1.1;"></h1>
-                        <img id="qr-code" alt="QR code" style="width:180px;height:180px;margin:20px 0;" />
-                        <div style="margin-top:20px;text-align:left;border-top:2px solid #eee;padding-top:20px;">
-                          <div style="margin-bottom:10px;">
-                            <p style="margin:0;font-size:10px;color:#666;text-transform:uppercase;font-weight:bold;">ผู้ส่ง</p>
-                            <p id="sender-info" style="margin:0;font-weight:bold;"></p>
-                          </div>
-                          <div>
-                            <p style="margin:0;font-size:10px;color:#666;text-transform:uppercase;font-weight:bold;">ผู้รับ</p>
-                            <p id="receiver-info" style="margin:0;font-weight:bold;"></p>
-                          </div>
-                        </div>
-                        <p id="created-at" style="margin-top:30px;font-size:10px;color:#999;font-style:italic;"></p>
-                      </div>
-                      </body>
-                      </html>
-                    `);
                     const doc = printWindow.document;
-                    doc.getElementById('tracking-id')!.textContent = trackingId;
-                    doc.getElementById('sender-info')!.textContent = `${labelDetails.senderName} (${labelDetails.senderBranch})`;
-                    doc.getElementById('receiver-info')!.textContent = `${labelDetails.receiverName} (${labelDetails.receiverBranch})`;
-                    doc.getElementById('created-at')!.textContent = `สร้างเมื่อ: ${formatThaiDateTime(labelDetails.createdAt)}`;
+                    doc.title = 'ShipTrack Label';
+                    const meta = doc.createElement('meta');
+                    meta.setAttribute('charset', 'utf-8');
+                    doc.head.appendChild(meta);
+                    doc.body.style.margin = '0';
+                    doc.body.style.padding = '16px';
+
+                    const label = doc.createElement('div');
+                    label.style.cssText = 'text-align:center;font-family:sans-serif;padding:28px;border:4px solid #091426;border-radius:20px;max-width:400px;margin:auto;box-sizing:border-box;';
+
+                    const header = doc.createElement('div');
+                    header.style.cssText = 'background:#091426;color:#fff;padding:15px;border-radius:12px;margin-bottom:20px;';
+                    const title = doc.createElement('h2');
+                    title.style.cssText = 'margin:0;font-size:24px;';
+                    title.textContent = 'ShipTrack';
+                    header.appendChild(title);
+
+                    const trackingHeading = doc.createElement('h1');
+                    trackingHeading.style.cssText = 'font-size:clamp(24px,8vw,38px);margin:10px 0;font-family:monospace;letter-spacing:1px;overflow-wrap:anywhere;line-height:1.1;';
+                    trackingHeading.textContent = trackingId;
+
+                    const qrImg = doc.createElement('img');
+                    qrImg.alt = 'QR code';
+                    qrImg.style.cssText = 'width:180px;height:180px;margin:20px 0;';
                     if (printQrSrc) {
-                      doc.getElementById('qr-code')!.setAttribute('src', printQrSrc);
+                      qrImg.src = printQrSrc;
                     }
-                    printWindow.document.close();
-                    printWindow.onload = () => {
+
+                    const details = doc.createElement('div');
+                    details.style.cssText = 'margin-top:20px;text-align:left;border-top:2px solid #eee;padding-top:20px;';
+                    const sender = doc.createElement('div');
+                    sender.style.marginBottom = '10px';
+                    const senderLabel = doc.createElement('p');
+                    senderLabel.style.cssText = 'margin:0;font-size:10px;color:#666;text-transform:uppercase;font-weight:bold;';
+                    senderLabel.textContent = 'ผู้ส่ง';
+                    const senderInfo = doc.createElement('p');
+                    senderInfo.style.cssText = 'margin:0;font-weight:bold;';
+                    senderInfo.textContent = `${labelDetails.senderName} (${labelDetails.senderBranch})`;
+                    sender.append(senderLabel, senderInfo);
+
+                    const receiver = doc.createElement('div');
+                    const receiverLabel = doc.createElement('p');
+                    receiverLabel.style.cssText = 'margin:0;font-size:10px;color:#666;text-transform:uppercase;font-weight:bold;';
+                    receiverLabel.textContent = 'ผู้รับ';
+                    const receiverInfo = doc.createElement('p');
+                    receiverInfo.style.cssText = 'margin:0;font-weight:bold;';
+                    receiverInfo.textContent = `${labelDetails.receiverName} (${labelDetails.receiverBranch})`;
+                    receiver.append(receiverLabel, receiverInfo);
+                    details.append(sender, receiver);
+
+                    const createdAt = doc.createElement('p');
+                    createdAt.style.cssText = 'margin-top:30px;font-size:10px;color:#999;font-style:italic;';
+                    createdAt.textContent = `สร้างเมื่อ: ${formatThaiDateTime(labelDetails.createdAt)}`;
+
+                    label.append(header, trackingHeading, qrImg, details, createdAt);
+                    doc.body.replaceChildren(label);
+                    printWindow.setTimeout(() => {
                       printWindow.print();
                       printWindow.close();
-                    };
+                    }, 150);
                   }
                 }}
                 className="flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-slate-950 text-sm font-bold text-white shadow-lg shadow-slate-200 transition-colors hover:bg-slate-900"

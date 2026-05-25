@@ -4,12 +4,12 @@ const ADMIN_INITIAL_PIN_PROPERTY = "ADMIN_INITIAL_PIN";
 const DEFAULT_ADMIN_PIN = "1234";
 const SHIPTRACK_FOLDER_ID_PROPERTY = "SHIPTRACK_FOLDER_ID";
 const VALID_ROLES = ["MESSENGER", "ADMIN"];
-// Fallback key (ใช้กรณีไม่อยากตั้ง Script Properties)
-// ตั้งค่านี้ให้ตรงกับ VITE_GAS_API_KEY แล้ว Deploy ใหม่
-// แนะนำ: อย่า commit ค่า key ลง git ถ้า repo เป็น public
-const SCRIPT_API_KEY = "mtrk_2026_05_22__X9vA7cR2pL4qT8uY1wE5sB0z";
+const TOKEN_MAX_AGE_MS = 12 * 60 * 60 * 1000; // 12 hours
+// Do not hardcode the API key here. Set Script Properties: API_KEY.
+const SCRIPT_API_KEY = "";
 const MAX_NOTE_LENGTH = 2000;
 const MAX_BASE64_LENGTH = 6 * 1024 * 1024;
+const MAX_REQUEST_LENGTH = 7 * 1024 * 1024;
 const TRACKING_ID_REGEX = /^TRK\d{8}\d{4,}$/;
 const EMPLOYEE_ID_REGEX = /^[A-Z0-9_]{1,50}$/;
 const SAFE_PASSWORD_REGEX = /^[A-Za-z0-9!@#$%^&*()_\-+=.?]{4,100}$/;
@@ -806,7 +806,11 @@ function hasAnyRole(payload, roles) {
 
 function doPost(e) {
   try {
-    const payload = JSON.parse(e.postData.contents);
+    const rawBody = e && e.postData && e.postData.contents ? String(e.postData.contents) : "";
+    if (!rawBody || rawBody.length > MAX_REQUEST_LENGTH) {
+      return createJsonResponse({ success: false, error: "Invalid request size" });
+    }
+    const payload = JSON.parse(rawBody);
     const action = payload.action;
     const configuredKey = getApiKey();
     if (!configuredKey) {
@@ -824,6 +828,9 @@ function doPost(e) {
         const issuedAt = Number(parts[2]);
         if (isNaN(issuedAt)) {
           return createJsonResponse({ success: false, error: "Malformed token" });
+        }
+        if (Date.now() - issuedAt > TOKEN_MAX_AGE_MS) {
+          return createJsonResponse({ success: false, error: "Session expired" });
         }
         const sessionId = String(parts[3] || "");
         const payloadStr = parts[0] + "|" + parts[1] + "|" + parts[2] + "|" + sessionId;

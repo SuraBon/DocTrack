@@ -963,9 +963,21 @@ export default function ConfirmReceipt({
             {/* Photo preview */}
             {photoPreview && (
               <div className="group relative h-52 overflow-hidden rounded-2xl border border-gray-100 bg-slate-50 shadow-sm transition-all hover:border-slate-300 sm:h-64" onClick={() => {
-                // If user wants to see popup, we can open it in a new window or just rely on object-contain
                 const w = window.open();
-                if(w) w.document.write(`<body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;height:100vh;"><img src="${photoPreview}" style="max-width:100%;max-height:100%;object-fit:contain;" /></body>`);
+                if (!w) return;
+                w.document.body.style.margin = '0';
+                w.document.body.style.background = '#000';
+                w.document.body.style.display = 'flex';
+                w.document.body.style.alignItems = 'center';
+                w.document.body.style.justifyContent = 'center';
+                w.document.body.style.height = '100vh';
+                const img = w.document.createElement('img');
+                img.src = photoPreview;
+                img.alt = 'หลักฐานการส่ง';
+                img.style.maxWidth = '100%';
+                img.style.maxHeight = '100%';
+                img.style.objectFit = 'contain';
+                w.document.body.appendChild(img);
               }}>
                 <img src={photoPreview} alt="หลักฐาน" className="w-full h-full object-contain" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />

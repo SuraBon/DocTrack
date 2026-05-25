@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 
 // Format: { THEME_NAME: CSS_SELECTOR }
 const THEMES = { light: "", dark: ".dark" } as const;
+const SAFE_CSS_NAME = /^[a-zA-Z_][a-zA-Z0-9_-]*$/;
+const SAFE_CSS_COLOR = /^(#[0-9a-fA-F]{3,8}|hsl[a]?\([^)]+\)|rgb[a]?\([^)]+\)|var\(--[a-zA-Z0-9_-]+\)|[a-zA-Z]+)$/;
 
 export type ChartConfig = {
   [k in string]: {
@@ -76,19 +78,26 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     return null;
   }
 
+  const safeId = id.replace(/[^a-zA-Z0-9_-]/g, "");
+  if (!safeId) return null;
+
   return (
     <style
       dangerouslySetInnerHTML={{
         __html: Object.entries(THEMES)
           .map(
             ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
+${prefix} [data-chart=${safeId}] {
 ${colorConfig
   .map(([key, itemConfig]) => {
+    if (!SAFE_CSS_NAME.test(key)) return null;
     const color =
       itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
       itemConfig.color;
-    return color ? `  --color-${key}: ${color};` : null;
+    if (!color) return null;
+    const safeColor = color.trim();
+    if (!SAFE_CSS_COLOR.test(safeColor) || /[;{}<>]/.test(safeColor)) return null;
+    return `  --color-${key}: ${safeColor};`;
   })
   .join("\n")}
 }
