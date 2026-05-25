@@ -165,20 +165,23 @@ const LazyPanelFallback = ({ label = 'กำลังโหลด...' }: { label
 const MessengerRouteSummary = ({ parcel, compact = false }: { parcel: Parcel; compact?: boolean }) => (
   <div className={`rounded-xl bg-slate-50 ${compact ? 'p-2.5' : 'p-3'}`}>
     <div className="space-y-2">
-      <div className="flex min-w-0 items-center gap-3">
-        <span className="h-2 w-2 shrink-0 rounded-full bg-blue-500 shadow-[0_0_0_3px_rgba(59,130,246,0.18)]" />
-        <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
-          <p className="min-w-0 truncate text-xs font-semibold text-slate-700">
+      <div className="flex min-w-0 items-start gap-3">
+        <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-blue-500 shadow-[0_0_0_4px_rgba(59,130,246,0.14)]" />
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-black leading-none text-slate-400">รับจาก</p>
+          <p className="mt-1 min-w-0 truncate text-xs font-semibold text-slate-600">
             {parcel['สาขาผู้ส่ง'] || '-'} <span className="font-medium text-slate-500">({parcel['ผู้ส่ง'] || '-'})</span>
           </p>
-          <span className="material-symbols-outlined shrink-0 text-[14px] text-slate-300">arrow_forward</span>
         </div>
       </div>
-      <div className="flex min-w-0 items-center gap-3">
-        <span className="h-2 w-2 shrink-0 rounded-full bg-red-400 shadow-[0_0_0_3px_rgba(248,113,113,0.18)]" />
-        <p className="min-w-0 truncate text-xs font-semibold text-slate-700">
-          {parcel['สาขาผู้รับ'] || '-'} <span className="font-medium text-slate-500">({parcel['ผู้รับ'] || '-'})</span>
-        </p>
+      <div className="flex min-w-0 items-start gap-3 rounded-lg bg-red-50/70 px-2.5 py-2">
+        <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-red-500 shadow-[0_0_0_4px_rgba(248,113,113,0.14)]" />
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-black leading-none text-red-500">ต้องไปส่ง</p>
+          <p className="mt-1 min-w-0 truncate text-sm font-black text-slate-800">
+            {parcel['สาขาผู้รับ'] || '-'} <span className="font-semibold text-slate-600">({parcel['ผู้รับ'] || '-'})</span>
+          </p>
+        </div>
       </div>
     </div>
     {compact && (
@@ -698,20 +701,27 @@ const MessengerDeliveryCard = ({
 
           {(parcel['รายละเอียด'] || note || isParcelStale(parcel)) && (
             <div className="space-y-2">
-              {parcel['รายละเอียด'] && (
-                <div className="flex min-w-0 items-start gap-2">
-                  <Package className="mt-0.5 h-3 w-3 shrink-0 text-slate-400" aria-hidden="true" />
-                  <p className="min-w-0 truncate text-[11px] text-slate-600">
-                    <span className="font-semibold text-slate-800">สิ่งที่ส่ง:</span> {parcel['รายละเอียด']}
-                  </p>
-                </div>
-              )}
-              {note && (
-                <div className="flex min-w-0 items-start gap-2">
-                  <span className="material-symbols-outlined mt-0.5 shrink-0 text-[13px] text-orange-400">sticky_note_2</span>
-                  <p className="min-w-0 truncate text-[11px] text-slate-600">
-                    <span className="font-semibold text-orange-600">หมายเหตุ:</span> {note}
-                  </p>
+              {(parcel['รายละเอียด'] || note) && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className={`flex min-w-0 items-start gap-2.5 rounded-lg bg-slate-50 px-2.5 py-2 ${parcel['รายละเอียด'] ? '' : 'opacity-40'}`}>
+                    <Package className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-bold leading-none text-slate-500">สิ่งที่ส่ง</p>
+                      <p className="mt-1 min-w-0 truncate text-xs font-semibold leading-5 text-slate-800">
+                        {parcel['รายละเอียด'] || '-'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className={`flex min-w-0 items-start gap-2.5 rounded-lg bg-orange-50/70 px-2.5 py-2 ${note ? '' : 'opacity-40'}`}>
+                    <span className="material-symbols-outlined mt-0.5 shrink-0 text-base leading-none text-orange-500">sticky_note_2</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-bold leading-none text-orange-600">หมายเหตุ</p>
+                      <p className="mt-1 min-w-0 truncate text-xs font-semibold leading-5 text-slate-800">
+                        {note || '-'}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
               <StaleBadge parcel={parcel} />
@@ -818,24 +828,27 @@ const AdminParcelManagementCard = ({
 
           <div className="space-y-2">
             {(parcel['รายละเอียด'] || note) && (
-              <>
-                {parcel['รายละเอียด'] && (
-                  <div className="flex min-w-0 items-start gap-2">
-                    <Package className="mt-0.5 h-3 w-3 shrink-0 text-slate-400" aria-hidden="true" />
-                    <p className="min-w-0 truncate text-[11px] text-slate-600">
-                      <span className="font-semibold text-slate-800">สิ่งที่ส่ง:</span> {parcel['รายละเอียด']}
+              <div className="grid grid-cols-2 gap-2">
+                <div className={`flex min-w-0 items-start gap-2.5 rounded-lg bg-slate-50 px-2.5 py-2 ${parcel['รายละเอียด'] ? '' : 'opacity-40'}`}>
+                  <Package className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-bold leading-none text-slate-500">สิ่งที่ส่ง</p>
+                    <p className="mt-1 min-w-0 truncate text-xs font-semibold leading-5 text-slate-800">
+                      {parcel['รายละเอียด'] || '-'}
                     </p>
                   </div>
-                )}
-                {note && (
-                  <div className="flex min-w-0 items-start gap-2">
-                    <span className="material-symbols-outlined mt-0.5 shrink-0 text-[13px] text-orange-400">sticky_note_2</span>
-                    <p className="min-w-0 truncate text-[11px] text-slate-600">
-                      <span className="font-semibold text-orange-600">หมายเหตุ:</span> {note}
+                </div>
+
+                <div className={`flex min-w-0 items-start gap-2.5 rounded-lg bg-orange-50/70 px-2.5 py-2 ${note ? '' : 'opacity-40'}`}>
+                  <span className="material-symbols-outlined mt-0.5 shrink-0 text-base leading-none text-orange-500">sticky_note_2</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-bold leading-none text-orange-600">หมายเหตุ</p>
+                    <p className="mt-1 min-w-0 truncate text-xs font-semibold leading-5 text-slate-800">
+                      {note || '-'}
                     </p>
                   </div>
-                )}
-              </>
+                </div>
+              </div>
             )}
             <StaleBadge parcel={parcel} />
           </div>

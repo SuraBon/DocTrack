@@ -9,8 +9,6 @@ import {
   KeyRound,
   Loader2,
   PackagePlus,
-  PackageSearch,
-  ShieldCheck,
   UserRound,
   XCircle,
 } from 'lucide-react';
@@ -160,60 +158,9 @@ export default function Login() {
 
   return (
     <div className="flex min-h-dvh w-screen items-center justify-center overflow-x-hidden bg-slate-50 px-3 py-6 sm:px-4">
-      <div className="grid w-full max-w-[420px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/70 md:max-w-5xl md:grid-cols-[0.92fr_1.08fr]">
-        <section className="hidden bg-slate-950 p-8 text-white md:flex md:flex-col md:justify-between">
-          <div>
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/10">
-                <PackageSearch className="h-6 w-6" aria-hidden="true" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-white/70">Internal Delivery Portal</p>
-                <h2 className="text-2xl font-bold leading-tight">ShipTrack</h2>
-              </div>
-            </div>
-            <p className="mt-6 max-w-sm text-sm leading-7 text-white/65">
-              ระบบจัดการรายการส่งภายในสำหรับผู้ดูแลระบบ พนักงานส่ง และการติดตามหลักฐานรับของในที่เดียว
-            </p>
-          </div>
-
-          <div className="space-y-3 text-sm">
-            <div className="flex gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-4">
-              <BadgeCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300" aria-hidden="true" />
-              <div>
-                <p className="font-semibold text-white">ติดตามสถานะชัดเจน</p>
-                <p className="mt-1 text-xs leading-5 text-white/55">สร้างรายการ ค้นหา และตรวจประวัติการเคลื่อนไหวของพัสดุได้เร็ว</p>
-              </div>
-            </div>
-            <div className="flex gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-4">
-              <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-sky-300" aria-hidden="true" />
-              <div>
-                <p className="font-semibold text-white">สิทธิ์ผู้ใช้งานตามบทบาท</p>
-                <p className="mt-1 text-xs leading-5 text-white/55">แยกมุมมองผู้ดูแลระบบ พนักงานส่ง และผู้สร้างรายการทั่วไป</p>
-              </div>
-            </div>
-            <div className="flex gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-4">
-              <PackagePlus className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" aria-hidden="true" />
-              <div>
-                <p className="font-semibold text-white">หลักฐานพร้อมตำแหน่ง</p>
-                <p className="mt-1 text-xs leading-5 text-white/55">รองรับรูปยืนยันและพิกัด GPS ในขั้นตอนรับส่งสำคัญ</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
+      <div className="w-full max-w-[420px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/70">
         <main className="px-5 py-6 sm:px-8 sm:py-8 md:px-10">
           <div className="mb-7">
-            <div className="mb-5 flex items-center gap-3 md:hidden">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-950 text-white">
-                <PackageSearch className="h-6 w-6" aria-hidden="true" />
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground">Internal Delivery Portal</p>
-                <p className="text-xl font-bold text-foreground">ShipTrack</p>
-              </div>
-            </div>
-
             <p className="mb-2 text-xs font-bold uppercase text-primary">Staff access</p>
             <h1 className="text-2xl font-semibold leading-tight text-foreground sm:text-3xl">
               {isSetup ? 'ตั้งค่าการเข้าใช้งาน' : 'เข้าสู่ระบบพนักงานส่ง'}

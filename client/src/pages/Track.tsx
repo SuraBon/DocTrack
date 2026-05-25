@@ -131,65 +131,81 @@ export default function Track({ embedded = false }: { embedded?: boolean }) {
 
       {/* Header */}
       <section className={`${embedded ? 'hidden' : 'app-page-header'}`}>
-        <div className="flex items-start gap-4">
-          <div className="hidden size-10 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm md:flex">
-            <span className="material-symbols-outlined text-[24px]" style={{ fontVariationSettings: "'FILL' 1" }}>location_searching</span>
-          </div>
-          <div>
-            <h1 className="app-page-title">{UI_COPY.nav.track}</h1>
-            <p className="app-page-subtitle">ค้นหาด้วยหมายเลขติดตาม ผู้รับ หรือปลายทาง</p>
-          </div>
+        <div>
+          <h1 className="app-page-title">{UI_COPY.nav.track}</h1>
+          <p className="app-page-subtitle">ค้นหาด้วยหมายเลขติดตาม ผู้รับ หรือปลายทาง</p>
         </div>
       </section>
 
       {/* Search box */}
-      <div className="app-toolbar">
-        <form onSubmit={handleSearch} className="flex flex-col gap-3 sm:flex-row">
-          <div className="relative flex-1 group">
-            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-xl text-muted-foreground transition-colors group-focus-within:text-primary">search</span>
-            <input
-              placeholder="กรอกหมายเลขติดตาม ผู้รับ หรือปลายทาง..."
-              value={trackingId}
-              onChange={e => setTrackingId(sanitizeTextInput(e.target.value, 100).toUpperCase())}
-              autoFocus
-              className="app-input h-12 w-full pl-11 pr-12 text-base font-semibold sm:h-12"
-            />
-            <button type="button" onClick={handlePaste}
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground transition-all hover:bg-muted hover:text-foreground"
-              title="วางจากคลิปบอร์ด">
-              <span className="material-symbols-outlined text-xl">content_paste</span>
+      <div className="app-card overflow-hidden">
+        <div className="app-panel-header">
+          <div className="flex items-center gap-3">
+            <div className="flex size-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+              <span className="material-symbols-outlined text-base">travel_explore</span>
+            </div>
+            <div>
+              <h2 className="app-section-title">ค้นหารายการส่ง</h2>
+              <p className="text-xs text-muted-foreground">ตรวจสถานะ ปลายทาง และประวัติการเคลื่อนไหว</p>
+            </div>
+          </div>
+        </div>
+        <div className="p-4 sm:p-5">
+          <form onSubmit={handleSearch} className="flex flex-col gap-3 sm:flex-row">
+            <div className="group relative flex-1">
+              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-xl text-muted-foreground transition-colors group-focus-within:text-primary">search</span>
+              <input
+                placeholder="กรอกหมายเลขติดตาม ผู้รับ หรือปลายทาง..."
+                value={trackingId}
+                onChange={e => setTrackingId(sanitizeTextInput(e.target.value, 100).toUpperCase())}
+                autoFocus
+                className="app-input h-12 w-full pl-11 pr-12 text-base font-semibold"
+              />
+              <button type="button" onClick={handlePaste}
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground transition-all hover:bg-muted hover:text-foreground"
+                title="วางจากคลิปบอร์ด">
+                <span className="material-symbols-outlined text-xl">content_paste</span>
+              </button>
+            </div>
+            <button type="submit" disabled={isLoading}
+              className="app-primary-button h-12 sm:px-8">
+              {isLoading ? (
+                <>
+                  <span className="material-symbols-outlined animate-spin text-xl">progress_activity</span>
+                  กำลังค้นหา...
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-xl">search</span>
+                  ดูสถานะ
+                </>
+              )}
             </button>
-          </div>
-          <button type="submit" disabled={isLoading}
-            className="app-primary-button h-12 sm:px-8">
-            {isLoading
-              ? <span className="material-symbols-outlined animate-spin text-xl">progress_activity</span>
-              : 'ดูสถานะ'}
-          </button>
-        </form>
+          </form>
 
-        {recentSearches.length > 0 && (
-          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
-            <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
-              <span className="material-symbols-outlined text-sm">history</span>ประวัติค้นหา:
-            </span>
-            {recentSearches.map(id => (
-              <div key={id} className="flex items-center gap-0.5 rounded-lg bg-muted p-0.5 ring-1 ring-border">
-                <button onClick={() => { setTrackingId(id); handleSearch(undefined, id); }}
-                  className="rounded-md px-3 py-1.5 font-mono text-xs font-semibold text-foreground transition-all active:scale-95 hover:bg-background">
-                  {id}
-                </button>
-                <button
-                  onClick={() => removeFromRecent(id)}
-                  className="rounded-md px-1.5 py-1.5 text-muted-foreground transition-all hover:bg-destructive/10 hover:text-destructive"
-                  title="ลบออกจากประวัติ"
-                >
-                  <span className="material-symbols-outlined text-sm">close</span>
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+          {recentSearches.length > 0 && (
+            <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
+              <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                <span className="material-symbols-outlined text-sm">history</span>ประวัติค้นหา:
+              </span>
+              {recentSearches.map(id => (
+                <div key={id} className="flex items-center gap-0.5 rounded-lg bg-gray-50 p-0.5 ring-1 ring-gray-100">
+                  <button onClick={() => { setTrackingId(id); handleSearch(undefined, id); }}
+                    className="rounded-md px-3 py-1.5 font-mono text-xs font-semibold text-foreground transition-all hover:bg-white active:scale-95">
+                    {id}
+                  </button>
+                  <button
+                    onClick={() => removeFromRecent(id)}
+                    className="rounded-md px-1.5 py-1.5 text-muted-foreground transition-all hover:bg-destructive/10 hover:text-destructive"
+                    title="ลบออกจากประวัติ"
+                  >
+                    <span className="material-symbols-outlined text-sm">close</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {createdHistory.length > 0 && !embedded && (
