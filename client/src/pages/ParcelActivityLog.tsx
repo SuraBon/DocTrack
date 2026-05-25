@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FileClock, FilterX, Loader2, MapPin, RefreshCw, Search } from 'lucide-react';
+import { FileClock, FilterX, Loader2, MapPin, PackageCheck, RefreshCw, Route, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { getParcelActivityLogs, type ParcelActivityLogRow } from '@/lib/parcelService';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -41,8 +41,8 @@ function ActivityCard({ activity }: { activity: ParcelActivityLogRow }) {
           </div>
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
-          <div className="min-w-0 rounded-xl bg-gray-50 p-3">
-            <p className="text-[11px] font-semibold text-muted-foreground">ผู้เกี่ยวข้อง</p>
+        <div className="min-w-0 rounded-xl bg-gray-50 p-3">
+            <p className="text-[11px] font-semibold text-muted-foreground">ผู้ทำเหตุการณ์ / ผู้เกี่ยวข้อง</p>
             <p className="mt-1 break-words text-xs font-medium text-foreground">{activity.person || '-'}</p>
           </div>
           <div className="min-w-0 rounded-xl bg-gray-50 p-3">
@@ -125,8 +125,8 @@ export default function ParcelActivityLog() {
             <FileClock className="h-5 w-5" aria-hidden="true" />
           </div>
           <div>
-            <h1 className="app-page-title">ประวัติรายการส่ง</h1>
-            <p className="app-page-subtitle">ประวัติ movement ของรายการส่งทั้งหมด แยกจาก Log ระบบ</p>
+            <h1 className="app-page-title">ประวัติพัสดุ</h1>
+            <p className="app-page-subtitle">ดูเส้นทางและเหตุการณ์ของพัสดุแต่ละเลข Tracking เช่น สร้างรายการ รับงาน ส่งต่อ และส่งสำเร็จ</p>
           </div>
         </div>
         <button type="button" onClick={fetchActivities} disabled={loading} className="app-secondary-button h-10 px-3">
@@ -135,13 +135,37 @@ export default function ParcelActivityLog() {
         </button>
       </div>
 
+      <div className="grid gap-3 md:grid-cols-3">
+        <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
+          <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-white text-blue-700">
+            <Route className="h-4 w-4" aria-hidden="true" />
+          </div>
+          <p className="text-sm font-black text-blue-950">ใช้ดูเส้นทางพัสดุ</p>
+          <p className="mt-1 text-xs leading-relaxed text-blue-900/70">ตอบคำถามว่าพัสดุผ่านจุดไหน ใครรับช่วงต่อ และสถานะล่าสุดเกิดจากเหตุการณ์ใด</p>
+        </div>
+        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
+          <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-white text-emerald-700">
+            <PackageCheck className="h-4 w-4" aria-hidden="true" />
+          </div>
+          <p className="text-sm font-black text-emerald-950">ผูกกับเลข Tracking</p>
+          <p className="mt-1 text-xs leading-relaxed text-emerald-900/70">เหมาะสำหรับค้นประวัติของพัสดุหนึ่งรายการ หรือกรองเฉพาะเหตุการณ์การจัดส่ง</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+            <FileClock className="h-4 w-4" aria-hidden="true" />
+          </div>
+          <p className="text-sm font-black text-slate-950">ไม่ใช่บันทึกผู้ดูแลระบบ</p>
+          <p className="mt-1 text-xs leading-relaxed text-slate-500">ถ้าต้องดูการลบ แก้ไขผู้ใช้ หรือการตั้งค่าระบบ ให้ไปที่หน้า “บันทึกระบบ”</p>
+        </div>
+      </div>
+
       <div className="app-toolbar grid gap-3 lg:grid-cols-[1.4fr_1fr_1fr_auto]">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          <input value={query} onChange={event => setQuery(event.target.value)} placeholder="ค้นหาสถานที่ ผู้เกี่ยวข้อง หรือหมายเหตุ..." className="app-input w-full pl-10" />
+          <input value={query} onChange={event => setQuery(event.target.value)} placeholder="ค้นหาสถานที่ ผู้ทำเหตุการณ์ หรือหมายเหตุ..." className="app-input w-full pl-10" />
         </div>
         <select value={eventType} onChange={event => setEventType(event.target.value)} className="app-input w-full">
-          {EVENT_TYPES.map(type => <option key={type || 'ALL'} value={type}>{type ? EVENT_LABELS[type] || type : 'ทุก event'}</option>)}
+          {EVENT_TYPES.map(type => <option key={type || 'ALL'} value={type}>{type ? EVENT_LABELS[type] || type : 'ทุกเหตุการณ์พัสดุ'}</option>)}
         </select>
         <input value={trackingId} onChange={event => setTrackingId(event.target.value.toUpperCase())} placeholder="Tracking ID" className="app-input w-full font-mono uppercase" />
         {hasFilters && (
@@ -156,7 +180,7 @@ export default function ParcelActivityLog() {
         <div className="flex items-center justify-between gap-3 border-b border-outline-variant/10 bg-surface-container-lowest/50 px-4 py-3">
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
             <FileClock className="h-4 w-4" aria-hidden="true" />
-            {totalCount} รายการ
+            พบ {totalCount} เหตุการณ์พัสดุ
           </div>
           <span className="text-xs text-muted-foreground">หน้า {page}/{totalPages}</span>
         </div>
@@ -169,7 +193,7 @@ export default function ParcelActivityLog() {
         ) : activities.length === 0 ? (
           <div className="grid place-items-center gap-2 py-16 text-center text-sm text-muted-foreground">
             <FileClock className="h-10 w-10 opacity-30" aria-hidden="true" />
-            ไม่พบประวัติรายการส่ง
+            ไม่พบประวัติพัสดุที่ตรงกับเงื่อนไข
           </div>
         ) : (
           <>

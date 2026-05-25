@@ -807,7 +807,7 @@ export default function ConfirmReceipt({
                           onChange={setForwardToBranch}
                           options={branches}
                           placeholder="ส่งต่อไปที่"
-                          icon="flight_land"
+                          icon="fork_right"
                           otherLabel="อื่นๆ"
                           otherPlaceholder="ระบุจุดหมายถัดไป"
                         />

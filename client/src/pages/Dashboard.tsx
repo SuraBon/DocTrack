@@ -38,17 +38,21 @@ import {
   Camera,
   CheckCircle2,
   ClipboardList,
+  ClipboardCheck,
   FilterX,
   History,
   Loader2,
   Map,
   Package,
   PackageCheck,
+  PackageOpen,
   RotateCcw,
+  Search,
   SearchX,
   Trash2,
   Truck,
   Undo2,
+  UserCheck,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -59,9 +63,9 @@ const ConfirmReceipt = lazy(() => import('@/pages/ConfirmReceipt'));
 
 const STATS = [
   { key: 'total',     filter: 'ทั้งหมด',     label: 'ทั้งหมด',  icon: 'inventory_2',     iconBg: 'bg-slate-100',    iconText: 'text-primary' },
-  { key: 'pending',   filter: 'รอจัดส่ง',    label: 'รอจัดส่ง', icon: 'inventory_2', iconBg: 'bg-amber-50',    iconText: 'text-amber-600' },
+  { key: 'pending',   filter: 'รอจัดส่ง',    label: 'รอจัดส่ง', icon: 'package_open', iconBg: 'bg-amber-50',    iconText: 'text-amber-600' },
   { key: 'transit',   filter: 'กำลังจัดส่ง', label: 'กำลังจัดส่ง', icon: 'local_shipping', iconBg: 'bg-blue-50',     iconText: 'text-blue-600' },
-  { key: 'delivered', filter: 'ส่งสำเร็จ',   label: 'ส่งสำเร็จ', icon: 'task_alt',       iconBg: 'bg-emerald-50',  iconText: 'text-emerald-600' },
+  { key: 'delivered', filter: 'ส่งสำเร็จ',   label: 'ส่งสำเร็จ', icon: 'check_circle',       iconBg: 'bg-emerald-50',  iconText: 'text-emerald-600' },
 ] as const;
 
 const STALE_DAYS = 2;
@@ -69,6 +73,35 @@ type MessengerView = 'waiting' | 'mine' | 'done';
 type AdminSortMode = 'newest' | 'oldest' | 'stale' | 'status';
 
 const MESSENGER_BATCH_SIZE = 10;
+
+const dashboardIconMap: Record<string, LucideIcon> = {
+  add_a_photo: Camera,
+  assignment_turned_in: ClipboardCheck,
+  check_circle: CheckCircle2,
+  delete: Trash2,
+  done_all: PackageCheck,
+  filter_alt_off: FilterX,
+  history: History,
+  inventory_2: Package,
+  local_shipping: Truck,
+  map: Map,
+  package_check: PackageCheck,
+  package_open: PackageOpen,
+  person_pin_circle: UserCheck,
+  priority_high: AlertTriangle,
+  progress_activity: Loader2,
+  search: Search,
+  search_off: SearchX,
+  task_alt: CheckCircle2,
+  undo: Undo2,
+  view_agenda: ClipboardList,
+};
+
+const DashboardIcon = ({ icon, className = '' }: { icon: string; className?: string }) => {
+  const Icon = dashboardIconMap[icon];
+  if (Icon) return <Icon className={className || 'h-4 w-4'} aria-hidden="true" />;
+  return <span className={`material-symbols-outlined ${className}`}>{icon}</span>;
+};
 
 const sortAdminParcels = (items: Parcel[], mode: AdminSortMode) => {
   const sorted = [...items];
@@ -126,7 +159,7 @@ const StatsCard = ({
   >
     <div className="flex min-w-0 items-center gap-4">
       <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${iconBg}`}>
-        <span className={`material-symbols-outlined text-2xl ${iconText}`} style={{ fontVariationSettings: "'FILL' 0" }}>{icon}</span>
+        <DashboardIcon icon={icon} className={`h-6 w-6 ${iconText}`} />
       </div>
       <div className="min-w-0">
         <p className="text-3xl font-black leading-none text-primary font-display">{count}</p>
@@ -273,29 +306,6 @@ const actionVariantClass: Record<DashboardActionVariant, string> = {
   warning: 'border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100',
   danger: 'border border-error/20 bg-error/8 text-error hover:bg-error hover:text-white',
   ghost: 'bg-surface-container-lowest text-primary ring-1 ring-outline-variant/10 hover:bg-surface-container',
-};
-
-const dashboardIconMap: Record<string, LucideIcon> = {
-  add_a_photo: Camera,
-  delete: Trash2,
-  done_all: PackageCheck,
-  filter_alt_off: FilterX,
-  history: History,
-  inventory_2: Package,
-  local_shipping: Truck,
-  map: Map,
-  priority_high: AlertTriangle,
-  progress_activity: Loader2,
-  search_off: SearchX,
-  task_alt: CheckCircle2,
-  undo: Undo2,
-  view_agenda: ClipboardList,
-};
-
-const DashboardIcon = ({ icon, className = '' }: { icon: string; className?: string }) => {
-  const Icon = dashboardIconMap[icon];
-  if (Icon) return <Icon className={className || 'h-4 w-4'} aria-hidden="true" />;
-  return <span className={`material-symbols-outlined ${className}`}>{icon}</span>;
 };
 
 const sectionToneClass: Record<SectionTone, { shell: string; icon: string; count: string }> = {
@@ -457,7 +467,7 @@ const AssignmentBadge = ({
   }`}>
     <span className="inline-flex min-w-0 items-center gap-2">
       <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white/80">
-        <span className="material-symbols-outlined text-base">person_pin_circle</span>
+        <DashboardIcon icon="person_pin_circle" className="h-4 w-4" />
       </span>
       <span className="min-w-0 truncate">
         {isMine ? 'คุณรับงานนี้แล้ว' : `คุณ ${assignment.assignedToName} กำลังส่งอยู่`}
@@ -504,7 +514,7 @@ const CardActions = ({
         onClick={onConfirm}
         className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white shadow-sm transition-all hover:bg-slate-800 active:scale-[0.98]"
       >
-        <Camera className="h-4 w-4 shrink-0" aria-hidden="true" />
+        <PackageCheck className="h-4 w-4 shrink-0" aria-hidden="true" />
         ยืนยันส่ง
       </button>
     )}
@@ -516,7 +526,7 @@ const CardActions = ({
           compactDetail ? 'h-10 text-xs' : 'h-11 text-sm'
         }`}
       >
-        <History className="h-4 w-4 shrink-0" aria-hidden="true" />
+        <ClipboardList className="h-4 w-4 shrink-0" aria-hidden="true" />
         <span className="truncate">{detailLabel}</span>
       </button>
       {canDelete && onDelete && (
@@ -634,7 +644,7 @@ const MessengerDeliveryCard = ({
 
             {!isDone && (canStartDelivery || canConfirmDelivery) && (
               <DashboardActionButton
-                icon={canStartDelivery ? 'task_alt' : 'task_alt'}
+                icon={canStartDelivery ? 'assignment_turned_in' : 'package_check'}
                 onClick={canStartDelivery ? onStartDelivery : onConfirm}
                 loading={canStartDelivery ? isStartingDelivery : false}
                 variant="blue"
@@ -968,12 +978,12 @@ const AdminParcelManagementTable = ({
                   <td className="px-4 py-3 align-top">
                     <div className="flex justify-end gap-1.5">
                       <button type="button" onClick={() => onOpen(parcel)} className="app-secondary-button h-9 px-2.5 text-xs">
-                        <History className="h-3.5 w-3.5" aria-hidden="true" />
+                        <ClipboardList className="h-3.5 w-3.5" aria-hidden="true" />
                         รายละเอียด
                       </button>
                       {!isDone && (
                         <button type="button" onClick={() => onConfirm(parcel)} className="app-primary-button h-9 px-2.5 text-xs">
-                          <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                          <PackageCheck className="h-3.5 w-3.5" aria-hidden="true" />
                           ยืนยันส่ง
                       </button>
                       )}
@@ -1370,7 +1380,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
               >
                 <div className="flex items-center gap-2.5">
                   <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${s.iconBg}`}>
-                    <span className={`material-symbols-outlined text-lg ${s.iconText}`}>{s.icon}</span>
+                    <DashboardIcon icon={s.icon} className={`h-5 w-5 ${s.iconText}`} />
                   </div>
                   <div className="min-w-0">
                     <p className="text-xl font-black leading-none text-primary">{s.count}</p>
@@ -1500,7 +1510,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
             {messengerView === 'waiting' && (
               <div>
                 <MessengerViewBanner
-                  icon="inventory_2"
+                  icon="package_open"
                   title="งานรอกดรับ"
                   subtitle="รายการที่ยังไม่มีพนักงานรับงาน กดรับงานเพื่อเริ่มนำส่ง"
                   count={messengerWaitingParcels.length}
@@ -1593,7 +1603,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
             {messengerView === 'done' && (
               <div>
                 <MessengerViewBanner
-                  icon="done_all"
+                  icon="check_circle"
                   title="ส่งสำเร็จแล้ว"
                   subtitle="ประวัติงานทั้งหมดที่คุณยืนยันส่งสำเร็จแล้ว"
                   count={messengerDoneParcels.length}
@@ -1628,16 +1638,16 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
                   )}
                   </>
                 ) : (
-                  <EmptyState icon="inventory_2" title="ยังไม่มีประวัติการส่งสำเร็จ" description="ประวัติงานที่คุณยืนยันส่งแล้วจะแสดงที่นี่" />
+                  <EmptyState icon="history" title="ยังไม่มีประวัติการส่งสำเร็จ" description="ประวัติงานที่คุณยืนยันส่งแล้วจะแสดงที่นี่" />
                 )}
               </div>
             )}
             <div className="fixed inset-x-0 bottom-0 z-50 border-t border-gray-100 bg-white/95 px-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur md:hidden">
               <div className="mx-auto grid max-w-[390px] grid-cols-3 gap-1">
                 {[
-                  { id: 'waiting' as const, label: 'งานรอรับ', icon: 'inventory_2', count: messengerWaitingParcels.length },
+                  { id: 'waiting' as const, label: 'งานรอรับ', icon: 'package_open', count: messengerWaitingParcels.length },
                   { id: 'mine' as const, label: 'งานที่ต้องส่ง', icon: 'local_shipping', count: messengerMineParcels.length },
-                  { id: 'done' as const, label: 'ส่งสำเร็จ', icon: 'done_all', count: messengerDoneParcels.length },
+                  { id: 'done' as const, label: 'ส่งสำเร็จ', icon: 'check_circle', count: messengerDoneParcels.length },
                 ].map(item => {
                   const active = messengerView === item.id;
                   return (
@@ -1664,9 +1674,9 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
             </div>
             <div className="sticky bottom-3 z-20 hidden gap-2 rounded-2xl border border-gray-100 bg-white/95 p-1 shadow-lg backdrop-blur md:grid md:grid-cols-3 xl:mx-auto xl:max-w-3xl">
               {[
-                { id: 'waiting' as const, label: 'งานรอรับ', icon: 'inventory_2', count: messengerWaitingParcels.length },
+                { id: 'waiting' as const, label: 'งานรอรับ', icon: 'package_open', count: messengerWaitingParcels.length },
                 { id: 'mine' as const, label: 'งานที่ต้องส่ง', icon: 'local_shipping', count: messengerMineParcels.length },
-                { id: 'done' as const, label: 'ส่งสำเร็จ', icon: 'done_all', count: messengerDoneParcels.length },
+                { id: 'done' as const, label: 'ส่งสำเร็จ', icon: 'check_circle', count: messengerDoneParcels.length },
               ].map(item => {
                 const active = messengerView === item.id;
                 return (
@@ -1735,9 +1745,9 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
             {adminNeedsAttentionParcels.length > 0 && (
               <div>
                 <MessengerViewBanner
-                  icon="priority_high"
-                  title="ต้องจัดการ"
-                  subtitle="งานที่ยังไม่สำเร็จหรือค้างนาน แสดงก่อนเพื่อไม่ต้องไล่หาเอง"
+                  icon="package_check"
+                  title="รอยืนยันส่ง"
+                  subtitle="รายการที่ยังไม่ส่งสำเร็จหรือค้างนาน กดยืนยันส่งเมื่อปิดงานแล้ว"
                   count={adminNeedsAttentionParcels.length}
                   tone="amber"
                 />
@@ -1766,9 +1776,9 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
               </div>
             )}
             <MessengerViewBanner
-              icon="view_agenda"
-              title="รายการอื่น"
-              subtitle="รายการที่ไม่ได้อยู่ในกลุ่มต้องจัดการ"
+              icon="check_circle"
+              title="ส่งสำเร็จแล้ว"
+              subtitle="รายการที่ปิดงานแล้ว ดูรายละเอียดหรือประวัติการส่งได้จากปุ่มรายละเอียด"
               count={adminRegularParcels.length}
             />
             {adminRegularParcels.length ? (
@@ -1798,9 +1808,9 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
               </>
             ) : (
               <EmptyState
-                icon="task_alt"
-                title="ไม่มีรายการอื่นในหน้านี้"
-                description="รายการที่ต้องจัดการถูกแสดงไว้ด้านบนแล้ว"
+                icon="check_circle"
+                title="ยังไม่มีรายการส่งสำเร็จในหน้านี้"
+                description="รายการที่ยังต้องยืนยันส่งแสดงอยู่ด้านบนแล้ว"
                 tone="emerald"
               />
             )}

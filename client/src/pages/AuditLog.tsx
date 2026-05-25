@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ClipboardList, FilterX, Loader2, RefreshCw, Search, ShieldCheck } from 'lucide-react';
+import { ClipboardList, FilterX, Fingerprint, Loader2, RefreshCw, Search, ShieldCheck, UserRoundCog } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAuditLogs, type AuditLogRow } from '@/lib/parcelService';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -34,16 +34,17 @@ function AuditLogCard({ log }: { log: AuditLogRow }) {
           <p className="mt-1 text-xs text-muted-foreground">{log.timestamp || '-'}</p>
         </div>
         <span className="shrink-0 rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+          ผู้ทำ: {' '}
           {log.actorId || '-'}
         </span>
       </div>
       <div className="grid gap-2 text-sm sm:grid-cols-[0.8fr_1.2fr]">
         <div className="min-w-0 rounded-xl bg-gray-50 p-3">
-            <p className="text-[11px] font-semibold text-muted-foreground">เป้าหมาย</p>
+            <p className="text-[11px] font-semibold text-muted-foreground">รหัสที่ถูกกระทำ</p>
           <p className="mt-1 break-all font-mono text-xs font-semibold text-foreground">{log.targetId || '-'}</p>
         </div>
         <div className="min-w-0 rounded-xl bg-gray-50 p-3">
-            <p className="text-[11px] font-semibold text-muted-foreground">รายละเอียด</p>
+            <p className="text-[11px] font-semibold text-muted-foreground">รายละเอียดการเปลี่ยนแปลง</p>
             <p className="mt-1 break-words text-xs font-medium text-foreground">{translateAuditDetails(log.details) || '-'}</p>
         </div>
       </div>
@@ -115,8 +116,8 @@ export default function AuditLog() {
             <ClipboardList className="h-5 w-5" aria-hidden="true" />
           </div>
           <div>
-            <h1 className="app-page-title">Log ระบบ</h1>
-            <p className="app-page-subtitle">ตรวจสอบว่าใครทำอะไร เมื่อไร และเกี่ยวข้องกับรายการหรือผู้ใช้ใด</p>
+            <h1 className="app-page-title">บันทึกระบบ</h1>
+            <p className="app-page-subtitle">ใช้ตรวจสอบการกระทำของผู้ใช้ในระบบ เช่น ลบรายการ แก้ไขผู้ใช้ สร้างสาขา หรือถูกบล็อกการเข้าสู่ระบบ</p>
           </div>
         </div>
         <button type="button" onClick={fetchLogs} disabled={loading} className="app-secondary-button h-10 px-3">
@@ -125,16 +126,40 @@ export default function AuditLog() {
         </button>
       </div>
 
+      <div className="grid gap-3 md:grid-cols-3">
+        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
+          <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-white text-emerald-700">
+            <UserRoundCog className="h-4 w-4" aria-hidden="true" />
+          </div>
+          <p className="text-sm font-black text-emerald-950">ใช้ดูว่าใครทำอะไร</p>
+          <p className="mt-1 text-xs leading-relaxed text-emerald-900/70">แสดงผู้กระทำ เวลา ประเภทการกระทำ และรหัสรายการหรือผู้ใช้ที่เกี่ยวข้อง</p>
+        </div>
+        <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
+          <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-white text-blue-700">
+            <Fingerprint className="h-4 w-4" aria-hidden="true" />
+          </div>
+          <p className="text-sm font-black text-blue-950">เหมาะสำหรับตรวจสอบย้อนหลัง</p>
+          <p className="mt-1 text-xs leading-relaxed text-blue-900/70">ใช้ไล่เหตุการณ์สำคัญ เช่น มีใครลบรายการ แก้ไขข้อมูล หรือจัดการบัญชีพนักงาน</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+            <ClipboardList className="h-4 w-4" aria-hidden="true" />
+          </div>
+          <p className="text-sm font-black text-slate-950">ไม่ใช่เส้นทางพัสดุ</p>
+          <p className="mt-1 text-xs leading-relaxed text-slate-500">ถ้าต้องดูว่าพัสดุผ่านจุดไหนหรือส่งถึงไหนแล้ว ให้ไปที่หน้า “ประวัติพัสดุ”</p>
+        </div>
+      </div>
+
       <div className="app-toolbar grid gap-3 lg:grid-cols-[1.4fr_1fr_1fr_1fr_auto]">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          <input value={query} onChange={event => setQuery(event.target.value)} placeholder="ค้นหาการกระทำ เป้าหมาย หรือรายละเอียด..." className="app-input w-full pl-10" />
+          <input value={query} onChange={event => setQuery(event.target.value)} placeholder="ค้นหาการกระทำ รหัสรายการ รหัสผู้ใช้ หรือรายละเอียด..." className="app-input w-full pl-10" />
         </div>
         <select value={action} onChange={event => setAction(event.target.value)} className="app-input w-full">
-          {ACTION_OPTIONS.map(option => <option key={option || 'ALL'} value={option}>{option ? (AUDIT_ACTION_LABELS[option] || option) : 'ทุกการกระทำ'}</option>)}
+          {ACTION_OPTIONS.map(option => <option key={option || 'ALL'} value={option}>{option ? (AUDIT_ACTION_LABELS[option] || option) : 'ทุกการกระทำในระบบ'}</option>)}
         </select>
-        <input value={actorId} onChange={event => setActorId(event.target.value)} placeholder="รหัสผู้กระทำ" className="app-input w-full" />
-        <input value={targetId} onChange={event => setTargetId(event.target.value)} placeholder="รหัสเป้าหมาย" className="app-input w-full" />
+        <input value={actorId} onChange={event => setActorId(event.target.value)} placeholder="ผู้ทำ เช่น ADMIN" className="app-input w-full" />
+        <input value={targetId} onChange={event => setTargetId(event.target.value)} placeholder="รหัสที่ถูกกระทำ เช่น TRK... หรือ USER" className="app-input w-full" />
         {hasFilters && (
           <button type="button" onClick={clearFilters} className="app-secondary-button h-11 px-3 text-xs text-red-600">
             <FilterX className="h-4 w-4" aria-hidden="true" />
@@ -147,7 +172,7 @@ export default function AuditLog() {
         <div className="flex items-center justify-between gap-3 border-b border-outline-variant/10 bg-surface-container-lowest/50 px-4 py-3">
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
             <ShieldCheck className="h-4 w-4" aria-hidden="true" />
-            {totalCount} รายการ
+            พบ {totalCount} บันทึกระบบ
           </div>
           <span className="text-xs text-muted-foreground">หน้า {page}/{totalPages}</span>
         </div>
@@ -160,7 +185,7 @@ export default function AuditLog() {
         ) : logs.length === 0 ? (
           <div className="grid place-items-center gap-2 py-16 text-center text-sm text-muted-foreground">
             <ClipboardList className="h-10 w-10 opacity-30" aria-hidden="true" />
-            ไม่พบ Log ระบบ
+            ไม่พบบันทึกระบบที่ตรงกับเงื่อนไข
           </div>
         ) : (
           <>
