@@ -31,15 +31,13 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { UI_COPY } from '@/lib/uiCopy';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { translateSystemNote } from '@/lib/translationUtils';
 import {
   AlertTriangle,
   Camera,
   CheckCircle2,
   ClipboardList,
-  FileClock,
   FilterX,
   History,
   Loader2,
@@ -265,31 +263,6 @@ const StaleBadge = ({ parcel }: { parcel: Parcel }) => {
   );
 };
 
-const ParcelInfoStrip = ({ parcel }: { parcel: Parcel }) => {
-  const note = translateSystemNote(getCleanNote(parcel));
-  const [isExpanded, setIsExpanded] = useState(false);
-  return (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-      <div className="rounded-xl bg-surface-container-lowest px-3 py-2 ring-1 ring-outline-variant/10">
-        <p className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/45">{UI_COPY.parcel.itemDetail}</p>
-        <p className="mt-0.5 truncate text-xs font-bold text-primary" title={parcel['รายละเอียด']}>{parcel['รายละเอียด'] || '-'}</p>
-      </div>
-      <div 
-        onClick={() => note && setIsExpanded(!isExpanded)}
-        className={`rounded-xl bg-surface-container-lowest px-3 py-2 ring-1 ring-outline-variant/10 transition-colors ${note ? 'cursor-pointer hover:bg-slate-50' : ''}`}
-      >
-        <div className="flex items-center justify-between">
-          <p className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/45">หมายเหตุ</p>
-          {note.length > 25 && (
-            <span className="text-[8px] text-blue-500 font-bold uppercase">{isExpanded ? 'ย่อ' : 'ดูเพิ่ม'}</span>
-          )}
-        </div>
-        <p className={`mt-0.5 text-xs font-bold text-primary ${isExpanded ? 'break-words' : 'truncate'}`}>{note || '-'}</p>
-      </div>
-    </div>
-  );
-};
-
 type DashboardActionVariant = 'primary' | 'secondary' | 'blue' | 'warning' | 'danger' | 'ghost';
 type SectionTone = 'default' | 'amber' | 'emerald' | 'blue';
 
@@ -383,40 +356,6 @@ const DashboardActionButton = ({
     {children}
   </button>
 );
-
-const RoleSectionHeader = ({
-  icon,
-  title,
-  subtitle,
-  count,
-  tone = 'default',
-}: {
-  icon: string;
-  title: string;
-  subtitle?: string;
-  count?: number;
-  tone?: SectionTone;
-}) => {
-  const toneClass = sectionToneClass[tone];
-  return (
-    <div className={`mb-3 flex items-center justify-between gap-3 rounded-2xl border px-3 py-2.5 ${toneClass.shell}`}>
-      <div className="flex min-w-0 items-center gap-2.5">
-        <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${toneClass.icon}`}>
-          <DashboardIcon icon={icon} className="h-4.5 w-4.5" />
-        </span>
-        <div className="min-w-0">
-          <h3 className="truncate font-display text-sm font-black leading-tight text-primary">{title}</h3>
-          {subtitle && <p className="mt-0.5 line-clamp-2 text-xs font-semibold leading-snug text-on-surface-variant/65">{subtitle}</p>}
-        </div>
-      </div>
-      {typeof count === 'number' && (
-        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-black ${toneClass.count}`}>
-          {count} งาน
-        </span>
-      )}
-    </div>
-  );
-};
 
 const MessengerViewBanner = ({
   icon,
@@ -1079,7 +1018,6 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [confirmTrackingId, setConfirmTrackingId] = useState<string | null>(null);
   const [isConfirmFlowOpen, setIsConfirmFlowOpen] = useState(false);
-  const [isConfirmPreparingCamera, setIsConfirmPreparingCamera] = useState(false);
   const [messengerView, setMessengerView] = useState<MessengerView>('waiting');
   const [startingDeliveryId, setStartingDeliveryId] = useState<string | null>(null);
   const [releasingDeliveryId, setReleasingDeliveryId] = useState<string | null>(null);
@@ -1093,7 +1031,6 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
     done: MESSENGER_BATCH_SIZE,
   });
   const isFetchingRef = useRef(false);
-  const canConfirmParcel = role === 'ADMIN' || role === 'MESSENGER';
   const currentEmployeeId = String(user?.employeeId || '').trim().toUpperCase();
   const stats = useMemo(() => {
     return STATS.map((stat) => ({
@@ -1945,7 +1882,6 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
           setIsConfirmFlowOpen(open);
           if (!open) {
             setConfirmTrackingId(null);
-            setIsConfirmPreparingCamera(false);
           }
         }}
       >
@@ -1963,12 +1899,10 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
                 autoCheckInitial
                 autoOpenCamera
                 embedded
-                onPreparingCameraChange={setIsConfirmPreparingCamera}
                 onClose={() => setIsConfirmFlowOpen(false)}
                 onComplete={() => {
                   setIsConfirmFlowOpen(false);
                   setConfirmTrackingId(null);
-                  setIsConfirmPreparingCamera(false);
                 }}
               />
             </Suspense>

@@ -13,7 +13,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/contexts/AuthContext';
-import { useBranches } from '@/hooks/useBranches';
 import { createUser, deleteUser, disableUser, getUsers, updateUser, updateUserRole, type UserRow } from '@/lib/parcelService';
 import { SYSTEM_ROLES, type AppRole, type SystemRole } from '@/lib/roles';
 import { isValidEmployeeId, normalizeEmployeeId, sanitizeTextInput, validatePassword, validateRequiredText } from '@/lib/validation';
@@ -68,7 +67,6 @@ function RoleDropdown({
 
 export default function UserManagement() {
   const { user: currentUser } = useAuth();
-  const { branches } = useBranches();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -78,14 +76,13 @@ export default function UserManagement() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [creatingUser, setCreatingUser] = useState(false);
   const [editingUser, setEditingUser] = useState<UserRow | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', branch: '', role: 'MESSENGER' as SystemRole, password: '' });
+  const [editForm, setEditForm] = useState({ name: '', role: 'MESSENGER' as SystemRole, password: '' });
   const [editSaving, setEditSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [pendingUserAction, setPendingUserAction] = useState<PendingUserAction>(null);
   const [newUser, setNewUser] = useState({
     employeeId: '',
     name: '',
-    branch: '',
     role: 'MESSENGER' as SystemRole,
     password: '',
   });
@@ -110,7 +107,7 @@ export default function UserManagement() {
     if (roleFilter === 'DISABLED' && u.status !== 'DISABLED') return false;
     if (roleFilter !== 'ALL' && roleFilter !== 'DISABLED' && u.role !== roleFilter) return false;
     if (!q) return true;
-    return [u.employeeId, u.name, u.branch, u.role, u.status ?? 'ACTIVE']
+    return [u.employeeId, u.name, u.role, u.status ?? 'ACTIVE']
       .some(value => String(value).toLowerCase().includes(q));
   }), [roleFilter, search, users]);
 
@@ -140,27 +137,25 @@ export default function UserManagement() {
     event.preventDefault();
     const employeeId = normalizeEmployeeId(newUser.employeeId);
     const name = sanitizeTextInput(newUser.name, 100);
-    const branch = sanitizeTextInput(newUser.branch, 100);
     const password = newUser.password.trim();
     const nameError = validateRequiredText(name, 'ชื่อ-นามสกุล', 1, 100);
-    const branchError = validateRequiredText(branch, 'แผนก/สาขา', 1, 100);
     const passwordError = validatePassword(password, 100);
 
     if (!isValidEmployeeId(employeeId)) {
       toast.error('รหัสพนักงานต้องใช้ A-Z, 0-9 หรือ _ เท่านั้น');
       return;
     }
-    if (nameError || branchError || passwordError) {
-      toast.error(nameError || branchError || passwordError || 'กรุณาตรวจสอบข้อมูลผู้ใช้');
+    if (nameError || passwordError) {
+      toast.error(nameError || passwordError || 'กรุณาตรวจสอบข้อมูลผู้ใช้');
       return;
     }
 
     setCreatingUser(true);
-    const res = await createUser({ employeeId, name, branch, role: newUser.role, password });
+    const res = await createUser({ employeeId, name, role: newUser.role, password });
     setCreatingUser(false);
     if (res.success && res.user) {
       setUsers(prev => [res.user!, ...prev.filter(user => user.employeeId !== employeeId)]);
-      setNewUser({ employeeId: '', name: '', branch: '', role: 'MESSENGER', password: '' });
+      setNewUser({ employeeId: '', name: '', role: 'MESSENGER', password: '' });
       toast.success('สร้างผู้ใช้สำเร็จ');
     } else {
       toast.error(res.error || 'ไม่สามารถสร้างผู้ใช้ได้');
@@ -187,7 +182,6 @@ export default function UserManagement() {
     setEditingUser(target);
     setEditForm({
       name: target.name,
-      branch: target.branch,
       role: target.role === 'ADMIN' ? 'ADMIN' : 'MESSENGER',
       password: '',
     });
@@ -197,13 +191,11 @@ export default function UserManagement() {
     event.preventDefault();
     if (!editingUser) return;
     const name = sanitizeTextInput(editForm.name, 100);
-    const branch = sanitizeTextInput(editForm.branch, 100);
     const password = editForm.password.trim();
     const nameError = validateRequiredText(name, 'ชื่อ-นามสกุล', 1, 100);
-    const branchError = validateRequiredText(branch, 'แผนก/สาขา', 1, 100);
     const passwordError = password ? validatePassword(password, 100) : undefined;
-    if (nameError || branchError || passwordError) {
-      toast.error(nameError || branchError || passwordError || 'กรุณาตรวจสอบข้อมูลผู้ใช้');
+    if (nameError || passwordError) {
+      toast.error(nameError || passwordError || 'กรุณาตรวจสอบข้อมูลผู้ใช้');
       return;
     }
 
@@ -211,7 +203,6 @@ export default function UserManagement() {
     const res = await updateUser({
       targetId: editingUser.employeeId,
       name,
-      branch,
       role: editForm.role,
       password: password || undefined,
     });
@@ -311,8 +302,8 @@ export default function UserManagement() {
         </button>
       </div>
 
-      <form onSubmit={handleCreateUser} className="app-panel grid gap-3 p-4 lg:grid-cols-[1fr_1.4fr_1.2fr_0.9fr_1fr_auto]">
-        <div className="lg:col-span-6">
+      <form onSubmit={handleCreateUser} className="app-panel grid gap-3 p-4 lg:grid-cols-[1fr_1.5fr_0.9fr_1fr_auto]">
+        <div className="lg:col-span-5">
           <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <Plus className="h-4 w-4" aria-hidden="true" />
             สร้างผู้ใช้ใหม่
@@ -320,8 +311,6 @@ export default function UserManagement() {
         </div>
         <input value={newUser.employeeId} onChange={e => setNewUser(v => ({ ...v, employeeId: normalizeEmployeeId(e.target.value) }))} disabled={creatingUser} placeholder="รหัสพนักงาน" className="app-input uppercase" />
         <input value={newUser.name} onChange={e => setNewUser(v => ({ ...v, name: e.target.value }))} disabled={creatingUser} placeholder="ชื่อ-นามสกุล" className="app-input" />
-        <input value={newUser.branch} onChange={e => setNewUser(v => ({ ...v, branch: e.target.value }))} disabled={creatingUser} list="user-branch-options" placeholder="แผนก/สาขา" className="app-input" />
-        <datalist id="user-branch-options">{branches.map(branch => <option key={branch} value={branch} />)}</datalist>
         <select value={newUser.role} onChange={e => setNewUser(v => ({ ...v, role: e.target.value as SystemRole }))} disabled={creatingUser} className="app-input font-medium">
           {SYSTEM_ROLES.map(role => <option key={role} value={role}>{ROLE_CONFIG[role].label}</option>)}
         </select>
@@ -358,7 +347,7 @@ export default function UserManagement() {
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="ค้นหาด้วยรหัสพนักงาน ชื่อ แผนก/สาขา หรือสิทธิ์..." className="app-input w-full pl-10" />
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="ค้นหาด้วยรหัสพนักงาน ชื่อ หรือสิทธิ์..." className="app-input w-full pl-10" />
       </div>
 
       <div className="app-panel overflow-hidden">
@@ -382,7 +371,6 @@ export default function UserManagement() {
                             {isSelf && <span className="shrink-0 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary/60">คุณ</span>}
                           </div>
                           <p className="mt-1 truncate text-base font-black leading-tight text-on-surface">{u.name}</p>
-                          <p className="mt-0.5 truncate text-sm text-on-surface-variant/70">{u.branch}</p>
                           <div className="mt-2 flex items-center gap-2">
                             <RoleDropdown value={u.role} onChange={(role) => handleRoleChange(u.employeeId, role)} disabled={isSelf || updatingId === u.employeeId} />
                             <StatusBadge status={u.status} />
@@ -411,7 +399,6 @@ export default function UserManagement() {
               <tr className="border-b border-gray-100 bg-gray-50">
                 <th className="px-5 py-3.5 text-[11px] font-black uppercase tracking-widest text-muted-foreground">รหัสพนักงาน</th>
                 <th className="px-5 py-3.5 text-[11px] font-black uppercase tracking-widest text-muted-foreground">ชื่อ-นามสกุล</th>
-                <th className="px-5 py-3.5 text-[11px] font-black uppercase tracking-widest text-muted-foreground">แผนก/สาขา</th>
                 <th className="px-5 py-3.5 text-[11px] font-black uppercase tracking-widest text-muted-foreground">สิทธิ์</th>
                 <th className="px-5 py-3.5 text-[11px] font-black uppercase tracking-widest text-muted-foreground">สถานะ</th>
                 <th className="px-5 py-3.5 text-right text-[11px] font-black uppercase tracking-widest text-muted-foreground">จัดการ</th>
@@ -419,9 +406,9 @@ export default function UserManagement() {
             </thead>
             <tbody className="divide-y divide-outline-variant/10">
               {loading ? (
-                <tr><td colSpan={6} className="py-16 text-center text-sm text-muted-foreground"><Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin" />กำลังโหลด...</td></tr>
+                <tr><td colSpan={5} className="py-16 text-center text-sm text-muted-foreground"><Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin" />กำลังโหลด...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={6} className="py-16 text-center text-sm text-muted-foreground"><Users className="mx-auto mb-2 h-10 w-10 opacity-30" />ไม่พบผู้ใช้</td></tr>
+                <tr><td colSpan={5} className="py-16 text-center text-sm text-muted-foreground"><Users className="mx-auto mb-2 h-10 w-10 opacity-30" />ไม่พบผู้ใช้</td></tr>
               ) : paginatedUsers.map(u => {
                 const isSelf = u.employeeId === currentUser?.employeeId;
                 return (
@@ -438,7 +425,6 @@ export default function UserManagement() {
                         <span className="text-sm font-bold text-on-surface">{u.name}</span>
                       </div>
                     </td>
-                    <td className="px-5 py-4 text-sm text-on-surface-variant">{u.branch}</td>
                     <td className="px-5 py-4">{updatingId === u.employeeId ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : <RoleDropdown value={u.role} onChange={(role) => handleRoleChange(u.employeeId, role)} disabled={isSelf} />}</td>
                     <td className="px-5 py-4"><StatusBadge status={u.status} /></td>
                     <td className="px-5 py-4">{renderActions(u)}</td>
@@ -488,18 +474,13 @@ export default function UserManagement() {
               </div>
               <div>
                 <DialogTitle className="text-lg font-black text-white">แก้ไขผู้ใช้</DialogTitle>
-                <DialogDescription className="text-xs font-semibold text-slate-300">แก้ชื่อ แผนก/สาขา สิทธิ์ หรือเปลี่ยนรหัสผ่าน</DialogDescription>
+                <DialogDescription className="text-xs font-semibold text-slate-300">แก้ชื่อ สิทธิ์ หรือเปลี่ยนรหัสผ่าน</DialogDescription>
               </div>
             </div>
           </DialogHeader>
           <form onSubmit={handleSaveUser} className="space-y-4 px-5 py-4">
             <div><label className="mb-1.5 block text-xs font-semibold text-muted-foreground">รหัสพนักงาน</label><input value={editingUser?.employeeId ?? ''} disabled className="app-input w-full opacity-70" /></div>
             <div><label className="mb-1.5 block text-xs font-semibold text-muted-foreground">ชื่อ-นามสกุล</label><input value={editForm.name} onChange={event => setEditForm(v => ({ ...v, name: event.target.value }))} disabled={editSaving} className="app-input w-full" /></div>
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">แผนก/สาขา</label>
-              <input value={editForm.branch} onChange={event => setEditForm(v => ({ ...v, branch: event.target.value }))} disabled={editSaving} list="edit-user-branch-options" className="app-input w-full" />
-              <datalist id="edit-user-branch-options">{branches.map(branch => <option key={branch} value={branch} />)}</datalist>
-            </div>
             <div>
               <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">สิทธิ์</label>
               <select value={editForm.role} onChange={event => setEditForm(v => ({ ...v, role: event.target.value as SystemRole }))} disabled={editSaving || editingUser?.employeeId === currentUser?.employeeId} className="app-input w-full">

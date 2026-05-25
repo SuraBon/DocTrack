@@ -242,8 +242,6 @@ function TrackingMap({ events, className = '', mapClassName = 'h-[250px] sm:h-[3
     };
   }, [isMapReady]);
 
-  const hasGpsMarkers = pathEntries.some(e => e.isGps);
-
   return (
     <div className={`relative flex w-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm ${className}`}>
       {!hasRouteData && (

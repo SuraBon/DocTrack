@@ -18,7 +18,7 @@ import { useGeolocation } from '@/hooks/useGeolocation';
 import { MapView } from '@/components/Map';
 import { isValidTrackingId, sanitizeTextInput } from '@/lib/validation';
 import { getErrorMessage } from '@/lib/apiErrorHelper';
-import { buildGpsEvidenceNote, getGpsQuality, needsGpsOverrideReason as shouldRequireGpsOverrideReason } from '@/lib/gpsQuality';
+import { buildGpsEvidenceNote, needsGpsOverrideReason as shouldRequireGpsOverrideReason } from '@/lib/gpsQuality';
 import { processProofImageFile } from '@/lib/imageProofHelper';
 import { buildDeliveryActionPayload, getCurrentBranchFromParcel, isParcelTrulyDelivered } from '@/lib/deliveryActionBuilder';
 
@@ -94,16 +94,16 @@ export default function ConfirmReceipt({
   autoCheckInitial = false,
   autoOpenCamera = false,
   embedded = false,
+  onClose,
   onComplete,
-  onPreparingCameraChange,
 }: {
   initialTrackingId?: string | null;
   onInitialTrackingIdConsumed?: () => void;
   autoCheckInitial?: boolean;
   autoOpenCamera?: boolean;
   embedded?: boolean;
+  onClose?: () => void;
   onComplete?: () => void;
-  onPreparingCameraChange?: (isPreparing: boolean) => void;
 }) {
   const { confirmReceipt, updateParcelLocally, loadParcels } = useParcelStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -137,19 +137,20 @@ export default function ConfirmReceipt({
   const [checkedParcel, setCheckedParcel] = useState<Parcel | null>(null);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [isDelivered, setIsDelivered] = useState(false);
+  const handleCloseStep = () => {
+    if (embedded && onClose) {
+      onClose();
+      return;
+    }
+    setCurrentStep(1);
+  };
 
   const effectiveGeoStatus = isGpsBypassed ? 'error' : geoStatus;
-  const gpsQuality = getGpsQuality(effectiveGeoStatus, position);
-  const hasLowAccuracyGps = gpsQuality === 'low_accuracy';
   const needsGpsOverrideReason = shouldRequireGpsOverrideReason(effectiveGeoStatus);
   const canProceedFromPhoto = Boolean(photoPreview) && !isProcessingImage && (
     effectiveGeoStatus === 'success' ||
     (needsGpsOverrideReason && gpsOverrideReason.trim().length > 0)
   );
-
-  useEffect(() => {
-    onPreparingCameraChange?.(isAutoPreparingCamera);
-  }, [isAutoPreparingCamera, onPreparingCameraChange]);
 
   // Re-request GPS whenever entering step 2 (handles back-navigation from step 3)
   useEffect(() => {
@@ -487,7 +488,7 @@ export default function ConfirmReceipt({
           <div className="relative bg-slate-950 px-5 py-5 text-white sm:px-6">
             <button
               type="button"
-              onClick={() => setCurrentStep(1)}
+              onClick={handleCloseStep}
               className="absolute right-4 top-4 grid size-10 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
               aria-label="ย้อนกลับ"
             >
@@ -647,15 +648,15 @@ export default function ConfirmReceipt({
 
       {/* Step 3: Final Details & Confirm */}
       {currentStep === 3 && (
-        <div className={`overflow-hidden animate-in slide-in-from-right-4 duration-500 ${embedded ? '' : 'rounded-[1.75rem] border border-gray-100 bg-white shadow-xl'}`}>
-          <div className="bg-slate-950 p-5 text-center text-white sm:p-6">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-white">
-              <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>fact_check</span>
+        <div className={`overflow-hidden animate-in slide-in-from-right-4 duration-500 ${embedded ? '' : 'rounded-[1.25rem] border border-gray-100 bg-white shadow-xl'}`}>
+          <div className="bg-slate-950 px-4 py-3.5 text-center text-white sm:px-5 sm:py-4">
+            <div className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-white">
+              <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>fact_check</span>
             </div>
-            <h2 className="font-display text-xl font-black text-white">เช็กปลายทางก่อนบันทึก</h2>
-            <p className="mt-1 text-xs font-semibold text-slate-300">ตรวจต้นทาง ปลายทาง และผู้รับก่อนยืนยัน</p>
+            <h2 className="font-display text-lg font-black leading-tight text-white sm:text-xl">เช็กปลายทางก่อนบันทึก</h2>
+            <p className="mt-0.5 text-[11px] font-semibold text-slate-300 sm:text-xs">ตรวจต้นทาง ปลายทาง และผู้รับก่อนยืนยัน</p>
           </div>
-          <div className="space-y-4 p-4 sm:p-5">
+          <div className="space-y-3 p-3.5 sm:p-4">
             {checkedParcel && <ParcelJobSummary parcel={checkedParcel} />}
 
             <div className="grid grid-cols-1 gap-3 rounded-2xl border border-gray-200 bg-white p-3 text-sm sm:grid-cols-2">

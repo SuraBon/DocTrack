@@ -4,7 +4,6 @@ import { toast } from 'sonner';
 import {
   ArrowRight,
   BadgeCheck,
-  Building2,
   CheckCircle2,
   KeyRound,
   Loader2,
@@ -52,7 +51,6 @@ export default function Login() {
   
   // For setup
   const [name, setName] = useState('');
-  const [branch, setBranch] = useState('');
 
   const [authDialog, setAuthDialog] = useState<AuthDialogState>({
     open: false,
@@ -83,9 +81,8 @@ export default function Login() {
     if (isSetup) {
       const passwordError = validatePassword(pin, 20);
       const nameError = validateRequiredText(name, 'ชื่อ-นามสกุล', 1, 100);
-      const branchError = validateRequiredText(branch, 'แผนก/สาขา', 1, 100);
-      if (passwordError || nameError || branchError) {
-        const message = passwordError || nameError || branchError || 'กรุณากรอกข้อมูลให้ครบถ้วน';
+      if (passwordError || nameError) {
+        const message = passwordError || nameError || 'กรุณากรอกข้อมูลให้ครบถ้วน';
         showAuthError('ตั้งค่าการเข้าใช้งานไม่สำเร็จ', message);
         return;
       }
@@ -95,7 +92,7 @@ export default function Login() {
         title: 'กำลังบันทึกข้อมูล',
         message: 'กรุณารอสักครู่ ระบบกำลังตรวจสอบและบันทึกข้อมูลของท่าน',
       });
-      const res = await setupUserPin(employeeId, pin, name, branch);
+      const res = await setupUserPin(employeeId, pin, name);
       if (res.success) {
         setAuthDialog({
           open: true,
@@ -132,7 +129,6 @@ export default function Login() {
         if (res.needsSetup) {
           setIsSetup(true);
           setName(res.name !== 'Unknown' ? res.name! : '');
-          setBranch(res.branch !== 'Unknown' ? res.branch! : '');
           setAuthDialog({
             open: true,
             status: 'success',
@@ -201,21 +197,6 @@ export default function Login() {
                       className="app-input w-full pl-11"
                       placeholder="ชื่อของท่าน"
                       autoComplete="name"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-foreground">แผนก/สาขาประจำ</label>
-                  <div className="relative">
-                    <Building2 className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-                    <input
-                      type="text"
-                      value={branch}
-                      onChange={e => setBranch(e.target.value)}
-                      disabled={isLoginDisabled}
-                      className="app-input w-full pl-11"
-                      placeholder="เช่น พิบูลสงคราม"
-                      autoComplete="organization"
                     />
                   </div>
                 </div>

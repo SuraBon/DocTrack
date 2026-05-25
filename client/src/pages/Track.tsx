@@ -52,8 +52,7 @@ export default function Track({ embedded = false }: { embedded?: boolean }) {
       setIsRefreshingHistory(false);
       return;
     }
-    toast.promise(
-      (async () => {
+    const refreshPromise = (async () => {
         let updatedCount = 0;
         for (const item of history) {
           try {
@@ -68,15 +67,21 @@ export default function Track({ embedded = false }: { embedded?: boolean }) {
         }
         setCreatedHistory(getCreatedParcelHistory());
         return updatedCount;
-      })(),
+      })();
+
+    toast.promise(
+      refreshPromise,
       {
         loading: 'กำลังอัปเดตสถานะล่าสุด...',
         success: (count) => `อัปเดตสถานะสำเร็จ ${count} รายการ`,
         error: 'เกิดข้อผิดพลาดในการอัปเดตสถานะ',
       }
-    ).finally(() => {
-      setIsRefreshingHistory(false);
-    });
+    );
+
+    refreshPromise.then(
+      () => setIsRefreshingHistory(false),
+      () => setIsRefreshingHistory(false),
+    );
   };
 
   useEffect(() => {

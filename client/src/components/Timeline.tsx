@@ -211,8 +211,7 @@ export default function Timeline({ events, className = '', compact = false }: Ti
       )}
 
       <div className="relative space-y-0">
-        {events.map((event, index) => {
-          const nextEvent = events[index + 1];
+        {events.map((event) => {
           return (
             <div
               key={event.id}

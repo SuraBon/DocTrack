@@ -495,7 +495,6 @@ export async function getParcelActivityLogs(input: LogQueryInput = {}): Promise<
 export interface User {
   employeeId: string;
   name: string;
-  branch: string;
   role: AppRole;
   token?: string;
 }
@@ -510,7 +509,6 @@ export interface UserRow extends User {
 export interface CreateUserInput {
   employeeId: string;
   name: string;
-  branch: string;
   role: 'ADMIN' | 'MESSENGER';
   password: string;
 }
@@ -518,7 +516,6 @@ export interface CreateUserInput {
 export interface UpdateUserInput {
   targetId: string;
   name: string;
-  branch: string;
   role: 'ADMIN' | 'MESSENGER';
   password?: string;
 }
@@ -587,9 +584,9 @@ const REAL_AUTH_ERRORS = [
   'เหลือ',
 ];
 
-export async function login(employeeId: string, pin?: string): Promise<{ success: boolean, needsSetup?: boolean, user?: User, error?: string, role?: string, name?: string, branch?: string }> {
+export async function login(employeeId: string, pin?: string): Promise<{ success: boolean, needsSetup?: boolean, user?: User, error?: string, role?: string, name?: string }> {
   try {
-    const res = normalizeAuthResponse(await callAPI<{ success: boolean, needsSetup?: boolean, user?: User, error?: string, role?: string, name?: string, branch?: string }>({ action: 'login', employeeId, pin }, {}, NO_RETRY));
+    const res = normalizeAuthResponse(await callAPI<{ success: boolean, needsSetup?: boolean, user?: User, error?: string, role?: string, name?: string }>({ action: 'login', employeeId, pin }, {}, NO_RETRY));
 
     // Backend responded — use as-is
     if (res.success || res.needsSetup) return res;
@@ -605,9 +602,9 @@ export async function login(employeeId: string, pin?: string): Promise<{ success
   }
 }
 
-export async function setupPin(employeeId: string, pin: string, name: string, branch: string): Promise<{ success: boolean, user?: User, error?: string }> {
+export async function setupPin(employeeId: string, pin: string, name: string): Promise<{ success: boolean, user?: User, error?: string }> {
   try {
-    const res = normalizeAuthResponse(await callAPI<{ success: boolean, user?: User, error?: string }>({ action: 'setupPin', employeeId, pin, name, branch }, {}, NO_RETRY));
+    const res = normalizeAuthResponse(await callAPI<{ success: boolean, user?: User, error?: string }>({ action: 'setupPin', employeeId, pin, name }, {}, NO_RETRY));
 
     if (res.success) return res;
 
@@ -645,7 +642,6 @@ export async function createUser(input: CreateUserInput): Promise<{ success: boo
       action: 'createUser',
       targetId: input.employeeId,
       name: input.name,
-      branch: input.branch,
       newRole: input.role,
       password: input.password,
     }, {}, NO_RETRY);
@@ -672,7 +668,6 @@ export async function updateUser(input: UpdateUserInput): Promise<{ success: boo
       action: 'updateUser',
       targetId: input.targetId,
       name: input.name,
-      branch: input.branch,
       newRole: input.role,
       password: input.password,
     }, {}, NO_RETRY);
@@ -723,7 +718,6 @@ export async function editParcel(trackingID: string, updates: Partial<Record<str
 
 export async function updateProfile(
   newName?: string,
-  newBranch?: string,
   newPassword?: string,
   currentPassword?: string,
 ): Promise<{ success: boolean; user?: User; error?: string }> {
@@ -731,7 +725,6 @@ export async function updateProfile(
     const res = await callAPI<{ success: boolean; user?: User; error?: string }>({
       action: 'updateProfile',
       newName,
-      newBranch,
       newPassword,
       currentPassword,
     }, {}, NO_RETRY);

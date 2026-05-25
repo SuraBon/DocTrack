@@ -54,7 +54,7 @@ const EVENT_HEADERS = [
   "DeliveryMismatchReason"
 ];
 
-const USER_HEADERS = ["EmployeeID", "Name", "Branch", "Role", "PIN", "CreatedAt", "Status", "UpdatedAt"];
+const USER_HEADERS = ["EmployeeID", "Name", "Role", "PIN", "CreatedAt", "Status", "UpdatedAt"];
 const BRANCH_HEADERS = ["Name", "CreatedAt", "CreatedBy"];
 const DEFAULT_BRANCHES = [
   "MS", "พระประแดง", "บางนา", "มีนบุรี", "เลียบด่วน",
@@ -182,6 +182,15 @@ function ensureHeaderRow(sheet, headers, background) {
   });
   sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold");
   if (background) sheet.getRange(1, 1, 1, headers.length).setBackground(background);
+}
+
+function findHeaderColumn(sheet, headerName) {
+  if (!sheet || sheet.getLastRow() === 0 || sheet.getLastColumn() === 0) return -1;
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(function (value) {
+    return String(value || "").trim();
+  });
+  const index = headers.indexOf(headerName);
+  return index >= 0 ? index + 1 : -1;
 }
 
 function ensureParcelSheetSchema(sheet) {
@@ -389,7 +398,7 @@ function getInitialAdminPin() {
   const props = PropertiesService.getScriptProperties();
   let pin = props.getProperty(ADMIN_INITIAL_PIN_PROPERTY);
   if (!pin) {
-    pin = String(Math.floor(1000 + Math.random() * 9000));
+    pin = "1234";
     props.setProperty(ADMIN_INITIAL_PIN_PROPERTY, pin);
   }
   return pin;
@@ -638,11 +647,15 @@ function migrateExistingDatesToThai() {
 
   const usersSheet = getUsersSheet();
   if (usersSheet && usersSheet.getLastRow() > 1) {
-    const values = usersSheet.getRange(2, 6, usersSheet.getLastRow() - 1, 1).getValues();
-    const nextValues = values.map(function (row) {
+    const rowCount = usersSheet.getLastRow() - 1;
+    const createdValues = usersSheet.getRange(2, 5, rowCount, 1).getValues().map(function (row) {
       return [formatSheetDateValue(row[0])];
     });
-    usersSheet.getRange(2, 6, nextValues.length, 1).setValues(nextValues);
+    const updatedValues = usersSheet.getRange(2, 7, rowCount, 1).getValues().map(function (row) {
+      return [formatSheetDateValue(row[0])];
+    });
+    usersSheet.getRange(2, 5, rowCount, 1).setValues(createdValues);
+    usersSheet.getRange(2, 7, rowCount, 1).setValues(updatedValues);
   }
 }
 
@@ -663,7 +676,7 @@ function setup() {
     usersSheet.getRange(1, 1, 1, USER_HEADERS.length).setFontWeight("bold");
     usersSheet.getRange(1, 1, 1, USER_HEADERS.length).setBackground("#fef3c7");
     // Add default admin
-    usersSheet.appendRow(["ADMIN", "System Admin", "HQ", "ADMIN", getInitialAdminPin(), formatThaiDateForSheet(new Date()), "ACTIVE", formatThaiDateForSheet(new Date())]);
+    usersSheet.appendRow(["ADMIN", "Admin", "ADMIN", encodePassword(getInitialAdminPin()), formatThaiDateForSheet(new Date()), "ACTIVE", formatThaiDateForSheet(new Date())]);
   } else {
     ensureUsersSheetSchema(usersSheet);
     const data = usersSheet.getDataRange().getValues();
@@ -678,10 +691,14 @@ function setup() {
 }
 
 function ensureUsersSheetSchema(sheet) {
+  const branchColumn = findHeaderColumn(sheet, "Branch");
+  if (branchColumn > 0) {
+    sheet.deleteColumn(branchColumn);
+  }
   ensureHeaderRow(sheet, USER_HEADERS, "#fef3c7");
   const lastRow = sheet.getLastRow();
   if (lastRow > 1) {
-    const statusRange = sheet.getRange(2, 7, lastRow - 1, 1);
+    const statusRange = sheet.getRange(2, 6, lastRow - 1, 1);
     const statusValues = statusRange.getValues().map(function (row) {
       return [String(row[0] || "").trim() || "ACTIVE"];
     });
@@ -750,12 +767,11 @@ function getUserRecord(employeeId) {
         rowIndex: i + 1,
         employeeId: targetId,
         name: String(data[i][1] || "").trim(),
-        branch: String(data[i][2] || "").trim(),
-        role: normalizeRole(data[i][3] || "GUEST"),
-        pin: String(data[i][4] || "").trim(),
-        createdAt: data[i][5],
-        status: String(data[i][6] || "ACTIVE").trim().toUpperCase() || "ACTIVE",
-        updatedAt: data[i][7]
+        role: normalizeRole(data[i][2] || "GUEST"),
+        pin: String(data[i][3] || "").trim(),
+        createdAt: data[i][4],
+        status: String(data[i][5] || "ACTIVE").trim().toUpperCase() || "ACTIVE",
+        updatedAt: data[i][6]
       };
     }
   }
@@ -801,11 +817,10 @@ function doPost(e) {
           if (getActiveSessionId(userRecord.employeeId) !== sessionId) {
             return createJsonResponse({ success: false, error: "Session replaced" });
           }
-          // Role/name/branch always come from sheet — stale tokens cannot keep old privileges
-          // Set user details. Use distinct property names to prevent overwriting request parameters (like branch/name when creating/updating branches or users).
+          // Role/name always come from sheet — stale tokens cannot keep old privileges.
+          // Use distinct property names to prevent overwriting request parameters.
           payload.employeeId = userRecord.employeeId;
           payload.role = userRecord.role;
-          payload.operatorBranch = userRecord.branch;
           payload.operatorName = userRecord.name;
         } else {
           return createJsonResponse({ success: false, error: "Invalid token signature" });
@@ -2102,9 +2117,9 @@ function handleLogin(payload) {
 
   for (let i = 1; i < data.length; i++) {
     if (normalizeEmployeeId(data[i][0]) === employeeId) {
-      const storedPin = String(data[i][4] || "").trim();
-      const role = normalizeRole(data[i][3] || "GUEST");
-      const status = String(data[i][6] || "ACTIVE").trim().toUpperCase() || "ACTIVE";
+      const storedPin = String(data[i][3] || "").trim();
+      const role = normalizeRole(data[i][2] || "GUEST");
+      const status = String(data[i][5] || "ACTIVE").trim().toUpperCase() || "ACTIVE";
       if (status === "DISABLED") {
         return createJsonResponse({ success: false, error: "บัญชีนี้ถูกปิดใช้งาน" });
       }
@@ -2112,10 +2127,9 @@ function handleLogin(payload) {
         return createJsonResponse({ success: false, error: "บัญชีนี้ไม่มีสิทธิ์เข้าสู่ระบบพนักงาน" });
       }
       const name = String(data[i][1]).trim();
-      const branch = String(data[i][2]).trim();
 
       if (!storedPin) {
-        return createJsonResponse({ success: true, needsSetup: true, role, name, branch });
+        return createJsonResponse({ success: true, needsSetup: true, role, name });
       }
 
       const passwordCheck = verifyPasswordRecord(storedPin, pin);
@@ -2129,11 +2143,11 @@ function handleLogin(payload) {
       }
 
       if (passwordCheck.needsMigration) {
-        sheet.getRange(i + 1, 5).setValue(encodePassword(pin));
+        sheet.getRange(i + 1, 4).setValue(encodePassword(pin));
       }
       clearLoginAttempts(employeeId);
       const token = generateToken(employeeId, role, getApiKey());
-      return createJsonResponse({ success: true, user: { employeeId, name, branch, role, token } });
+      return createJsonResponse({ success: true, user: { employeeId, name, role, token } });
     }
   }
 
@@ -2145,21 +2159,19 @@ function handleSetupPin(payload) {
   const employeeId = normalizeEmployeeId(payload.employeeId);
   const pin = sanitizePassword(payload.pin);
   const name = escapeSheetValue(payload.name || "");
-  const branch = escapeSheetValue(payload.branch || "");
 
   if (!employeeId || !pin) return createJsonResponse({ success: false, error: "กรุณากรอกข้อมูลให้ครบถ้วน" });
   if (!validateEmployeeId(employeeId)) return createJsonResponse({ success: false, error: "รหัสพนักงานไม่ถูกต้อง" });
   if (!validatePassword(pin) || pin.length > 20) return createJsonResponse({ success: false, error: "รหัสผ่านต้องมี 4-20 ตัวอักษร และห้ามขึ้นต้นด้วย = + - หรือ @" });
   if (name && name.length > 100) return createJsonResponse({ success: false, error: "ชื่อยาวเกินไป" });
-  if (branch && branch.length > 100) return createJsonResponse({ success: false, error: "ชื่อสาขายาวเกินไป" });
 
   const sheet = getUsersSheet();
   const data = sheet.getDataRange().getValues();
 
   for (let i = 1; i < data.length; i++) {
     if (normalizeEmployeeId(data[i][0]) === employeeId) {
-      const storedPin = String(data[i][4] || "").trim();
-      const status = String(data[i][6] || "ACTIVE").trim().toUpperCase() || "ACTIVE";
+      const storedPin = String(data[i][3] || "").trim();
+      const status = String(data[i][5] || "ACTIVE").trim().toUpperCase() || "ACTIVE";
       if (status === "DISABLED") {
         return createJsonResponse({ success: false, error: "บัญชีนี้ถูกปิดใช้งาน" });
       }
@@ -2167,20 +2179,18 @@ function handleSetupPin(payload) {
         return createJsonResponse({ success: false, error: "รหัสพนักงานนี้มีผู้ใช้งานแล้ว" });
       }
       if (name) sheet.getRange(i + 1, 2).setValue(name);
-      if (branch) sheet.getRange(i + 1, 3).setValue(branch);
-      sheet.getRange(i + 1, 5).setValue(encodePassword(pin));
-      sheet.getRange(i + 1, 7).setValue("ACTIVE");
-      sheet.getRange(i + 1, 8).setValue(formatThaiDateForSheet(new Date()));
+      sheet.getRange(i + 1, 4).setValue(encodePassword(pin));
+      sheet.getRange(i + 1, 6).setValue("ACTIVE");
+      sheet.getRange(i + 1, 7).setValue(formatThaiDateForSheet(new Date()));
 
-      const role = normalizeRole(data[i][3] || "GUEST");
+      const role = normalizeRole(data[i][2] || "GUEST");
       if (role === "GUEST") {
         return createJsonResponse({ success: false, error: "บัญชีนี้ไม่มีสิทธิ์ตั้งค่าการเข้าใช้งานพนักงาน" });
       }
       const finalName = name || String(data[i][1]).trim();
-      const finalBranch = branch || String(data[i][2]).trim();
 
       const token = generateToken(employeeId, role, getApiKey());
-      return createJsonResponse({ success: true, user: { employeeId, name: finalName, branch: finalBranch, role, token } });
+      return createJsonResponse({ success: true, user: { employeeId, name: finalName, role, token } });
     }
   }
 
@@ -2208,11 +2218,10 @@ function handleCreateUser(payload) {
 
   const employeeId = normalizeEmployeeId(payload.targetId);
   const name = escapeSheetValue(payload.name);
-  const branch = escapeSheetValue(payload.branch);
   const newRole = normalizeRole(payload.newRole);
   const password = sanitizePassword(payload.password);
 
-  if (!employeeId || !name || !branch || !newRole || !password) {
+  if (!employeeId || !name || !newRole || !password) {
     return createJsonResponse({ success: false, error: "กรุณากรอกข้อมูลให้ครบถ้วน" });
   }
   if (!validateEmployeeId(employeeId)) return createJsonResponse({ success: false, error: "รหัสพนักงานไม่ถูกต้อง" });
@@ -2221,7 +2230,6 @@ function handleCreateUser(payload) {
     return createJsonResponse({ success: false, error: "รหัสผ่านต้องมี 4-100 ตัวอักษร และห้ามขึ้นต้นด้วย = + - หรือ @" });
   }
   if (name.length > 100) return createJsonResponse({ success: false, error: "ชื่อยาวเกินไป" });
-  if (branch.length > 100) return createJsonResponse({ success: false, error: "ชื่อสาขายาวเกินไป" });
 
   const sheet = getUsersSheet();
   const data = sheet.getDataRange().getValues();
@@ -2232,7 +2240,7 @@ function handleCreateUser(payload) {
   }
 
   const createdAt = formatThaiDateForSheet(new Date());
-  sheet.appendRow([employeeId, name, branch, newRole, encodePassword(password), createdAt, "ACTIVE", createdAt]);
+  sheet.appendRow([employeeId, name, newRole, encodePassword(password), createdAt, "ACTIVE", createdAt]);
   writeAuditLog(payload.employeeId, "createUser", employeeId, "role=" + newRole);
 
   return createJsonResponse({
@@ -2240,7 +2248,6 @@ function handleCreateUser(payload) {
     user: {
       employeeId: employeeId,
       name: name,
-      branch: branch,
       role: newRole,
       hasPin: true,
       createdAt: createdAt,
@@ -2270,11 +2277,11 @@ function handleUpdateUserRole(payload) {
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
     if (normalizeEmployeeId(data[i][0]) === targetId) {
-      if (normalizeRole(data[i][3] || "GUEST") === "ADMIN" && newRole !== "ADMIN" && countActiveAdmins(data) <= 1) {
+      if (normalizeRole(data[i][2] || "GUEST") === "ADMIN" && newRole !== "ADMIN" && countActiveAdmins(data) <= 1) {
         return createJsonResponse({ success: false, error: "ต้องมีผู้ดูแลระบบอย่างน้อย 1 คน" });
       }
-      sheet.getRange(i + 1, 4).setValue(newRole);
-      sheet.getRange(i + 1, 8).setValue(formatThaiDateForSheet(new Date()));
+      sheet.getRange(i + 1, 3).setValue(newRole);
+      sheet.getRange(i + 1, 7).setValue(formatThaiDateForSheet(new Date()));
       setActiveSessionId(targetId, "");
       return createJsonResponse({ success: true });
     }
@@ -2285,8 +2292,8 @@ function handleUpdateUserRole(payload) {
 function countActiveAdmins(data) {
   let count = 0;
   for (let i = 1; i < data.length; i++) {
-    const role = normalizeRole(data[i][3] || "GUEST");
-    const status = String(data[i][6] || "ACTIVE").trim().toUpperCase() || "ACTIVE";
+    const role = normalizeRole(data[i][2] || "GUEST");
+    const status = String(data[i][5] || "ACTIVE").trim().toUpperCase() || "ACTIVE";
     if (role === "ADMIN" && status !== "DISABLED") count++;
   }
   return count;
@@ -2296,12 +2303,11 @@ function buildUserRowResponse(row) {
   return {
     employeeId: normalizeEmployeeId(row[0]),
     name: String(row[1] || ""),
-    branch: String(row[2] || ""),
-    role: normalizeRole(row[3] || "GUEST"),
-    hasPin: !!String(row[4] || "").trim(),
-    createdAt: formatSheetDateValue(row[5]),
-    status: String(row[6] || "ACTIVE").trim().toUpperCase() || "ACTIVE",
-    updatedAt: formatSheetDateValue(row[7])
+    role: normalizeRole(row[2] || "GUEST"),
+    hasPin: !!String(row[3] || "").trim(),
+    createdAt: formatSheetDateValue(row[4]),
+    status: String(row[5] || "ACTIVE").trim().toUpperCase() || "ACTIVE",
+    updatedAt: formatSheetDateValue(row[6])
   };
 }
 
@@ -2312,14 +2318,12 @@ function handleUpdateUser(payload) {
 
   const targetId = normalizeEmployeeId(payload.targetId);
   const name = escapeSheetValue(payload.name);
-  const branch = escapeSheetValue(payload.branch);
   const newRole = normalizeRole(payload.newRole);
   const password = payload.password ? sanitizePassword(payload.password) : "";
-  if (!targetId || !name || !branch || !newRole) return createJsonResponse({ success: false, error: "กรุณากรอกข้อมูลให้ครบถ้วน" });
+  if (!targetId || !name || !newRole) return createJsonResponse({ success: false, error: "กรุณากรอกข้อมูลให้ครบถ้วน" });
   if (!validateEmployeeId(targetId)) return createJsonResponse({ success: false, error: "รหัสพนักงานไม่ถูกต้อง" });
   if (VALID_ROLES.indexOf(newRole) === -1) return createJsonResponse({ success: false, error: "สิทธิ์ไม่ถูกต้อง" });
   if (name.length > 100) return createJsonResponse({ success: false, error: "ชื่อยาวเกินไป" });
-  if (branch.length > 100) return createJsonResponse({ success: false, error: "ชื่อแผนก/สาขายาวเกินไป" });
   if (password && (!validatePassword(password) || password.length > 100)) {
     return createJsonResponse({ success: false, error: "รหัสผ่านต้องมี 4-100 ตัวอักษร และห้ามขึ้นต้นด้วย = + - หรือ @" });
   }
@@ -2331,18 +2335,17 @@ function handleUpdateUser(payload) {
       if (targetId === normalizeEmployeeId(payload.employeeId) && newRole !== 'ADMIN') {
         return createJsonResponse({ success: false, error: "ไม่สามารถลดสิทธิ์ของตัวเองได้" });
       }
-      if (normalizeRole(data[i][3] || "GUEST") === "ADMIN" && newRole !== "ADMIN" && countActiveAdmins(data) <= 1) {
+      if (normalizeRole(data[i][2] || "GUEST") === "ADMIN" && newRole !== "ADMIN" && countActiveAdmins(data) <= 1) {
         return createJsonResponse({ success: false, error: "ต้องมีผู้ดูแลระบบอย่างน้อย 1 คน" });
       }
       const updatedAt = formatThaiDateForSheet(new Date());
       sheet.getRange(i + 1, 2).setValue(name);
-      sheet.getRange(i + 1, 3).setValue(branch);
-      sheet.getRange(i + 1, 4).setValue(newRole);
+      sheet.getRange(i + 1, 3).setValue(newRole);
       if (password) {
-        sheet.getRange(i + 1, 5).setValue(encodePassword(password));
+        sheet.getRange(i + 1, 4).setValue(encodePassword(password));
         setActiveSessionId(targetId, "");
       }
-      sheet.getRange(i + 1, 8).setValue(updatedAt);
+      sheet.getRange(i + 1, 7).setValue(updatedAt);
       const row = sheet.getRange(i + 1, 1, 1, USER_HEADERS.length).getValues()[0];
       writeAuditLog(payload.employeeId, "UPDATE_USER", targetId, "role=" + newRole);
       return createJsonResponse({ success: true, user: buildUserRowResponse(row) });
@@ -2363,12 +2366,12 @@ function handleDisableUser(payload) {
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
     if (normalizeEmployeeId(data[i][0]) === targetId) {
-      if (normalizeRole(data[i][3] || "GUEST") === "ADMIN" && countActiveAdmins(data) <= 1) {
+      if (normalizeRole(data[i][2] || "GUEST") === "ADMIN" && countActiveAdmins(data) <= 1) {
         return createJsonResponse({ success: false, error: "ต้องมีผู้ดูแลระบบอย่างน้อย 1 คน" });
       }
       const updatedAt = formatThaiDateForSheet(new Date());
-      sheet.getRange(i + 1, 7).setValue("DISABLED");
-      sheet.getRange(i + 1, 8).setValue(updatedAt);
+      sheet.getRange(i + 1, 6).setValue("DISABLED");
+      sheet.getRange(i + 1, 7).setValue(updatedAt);
       setActiveSessionId(targetId, "");
       const row = sheet.getRange(i + 1, 1, 1, USER_HEADERS.length).getValues()[0];
       writeAuditLog(payload.employeeId, "DISABLE_USER", targetId, "");
@@ -2390,7 +2393,7 @@ function handleDeleteUser(payload) {
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
     if (normalizeEmployeeId(data[i][0]) === targetId) {
-      if (normalizeRole(data[i][3] || "GUEST") === "ADMIN" && countActiveAdmins(data) <= 1) {
+      if (normalizeRole(data[i][2] || "GUEST") === "ADMIN" && countActiveAdmins(data) <= 1) {
         return createJsonResponse({ success: false, error: "ต้องมีผู้ดูแลระบบอย่างน้อย 1 คน" });
       }
       sheet.deleteRow(i + 1);
@@ -2537,13 +2540,11 @@ function handleUpdateProfile(payload) {
   if (!employeeId) return createJsonResponse({ success: false, error: "Missing employeeId" });
 
   const newName = payload.newName ? escapeSheetValue(payload.newName) : null;
-  const newBranch = payload.newBranch ? escapeSheetValue(payload.newBranch) : null;
   const newPassword = payload.newPassword ? sanitizePassword(payload.newPassword) : null;
   const currentPassword = payload.currentPassword ? sanitizePassword(payload.currentPassword) : null;
 
   // Validate lengths
   if (newName && newName.length > 200) return createJsonResponse({ success: false, error: "ชื่อยาวเกินไป" });
-  if (newBranch && newBranch.length > 100) return createJsonResponse({ success: false, error: "ชื่อสาขายาวเกินไป" });
   if (newPassword && !validatePassword(newPassword)) return createJsonResponse({ success: false, error: "รหัสผ่านต้องมีอย่างน้อย 4 ตัวอักษร และห้ามขึ้นต้นด้วย = + - หรือ @" });
   if (newPassword && newPassword.length > 100) return createJsonResponse({ success: false, error: "รหัสผ่านยาวเกินไป" });
 
@@ -2554,7 +2555,7 @@ function handleUpdateProfile(payload) {
     if (normalizeEmployeeId(data[i][0]) !== employeeId) continue;
 
     const rowIndex = i + 1;
-    const currentPin = String(data[i][4] || "").trim();
+    const currentPin = String(data[i][3] || "").trim();
 
     // If changing password, must verify current password first
     if (newPassword) {
@@ -2562,7 +2563,7 @@ function handleUpdateProfile(payload) {
       const passwordCheck = verifyPasswordRecord(currentPin, currentPassword);
       if (!passwordCheck.ok) return createJsonResponse({ success: false, error: "รหัสผ่านปัจจุบันไม่ถูกต้อง" });
       if (passwordCheck.needsMigration) {
-        sheet.getRange(rowIndex, 5).setValue(encodePassword(currentPassword));
+        sheet.getRange(rowIndex, 4).setValue(encodePassword(currentPassword));
       }
     }
 
@@ -2571,12 +2572,8 @@ function handleUpdateProfile(payload) {
       sheet.getRange(rowIndex, 2).setValue(newName);
       changedFields.push("name=" + newName);
     }
-    if (newBranch) {
-      sheet.getRange(rowIndex, 3).setValue(newBranch);
-      changedFields.push("branch=" + newBranch);
-    }
     if (newPassword) {
-      sheet.getRange(rowIndex, 5).setValue(encodePassword(newPassword));
+      sheet.getRange(rowIndex, 4).setValue(encodePassword(newPassword));
       changedFields.push("password=***");
     }
 
@@ -2586,13 +2583,12 @@ function handleUpdateProfile(payload) {
 
     // Return updated user info (without password)
     const updatedName = newName || String(data[i][1] || "").trim();
-    const updatedBranch = newBranch || String(data[i][2] || "").trim();
-    const role = normalizeRole(data[i][3] || "GUEST");
+    const role = normalizeRole(data[i][2] || "GUEST");
     const token = generateToken(employeeId, role, getApiKey());
 
     return createJsonResponse({
       success: true,
-      user: { employeeId, name: updatedName, branch: updatedBranch, role, token }
+      user: { employeeId, name: updatedName, role, token }
     });
   }
 

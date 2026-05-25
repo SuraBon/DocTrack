@@ -4,10 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { Parcel } from '@/types/parcel';
 import { formatThaiDateTime, getDateTime } from '@/lib/dateUtils';
 import { normalizeRole, type AppRole } from '@/lib/roles';
-import { useBranches } from '@/hooks/useBranches';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import NativeSelect, { resolveSelectValue } from '@/components/NativeSelect';
 import { UI_COPY } from '@/lib/uiCopy';
 import {
   BarChart3,
@@ -65,10 +63,9 @@ const NavIcon = ({ icon: Icon, active = false }: { icon: LucideIcon; active?: bo
 const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }) => {
   const { parcels } = useParcelStore();
   const { user, logout, updateUserProfile } = useAuth();
-  const { branches } = useBranches();
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [profileForm, setProfileForm] = useState({ name: '', branch: '', currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [profileForm, setProfileForm] = useState({ name: '', currentPassword: '', newPassword: '', confirmPassword: '' });
   const [showPasswordFields, setShowPasswordFields] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
   const [seenIds, setSeenIds] = useState<Set<string>>(() => {
@@ -138,6 +135,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
   };
 
   const currentRole = normalizeRole(user?.role ?? 'GUEST');
+  const hideGuestMobileTopBar = currentRole === 'GUEST' && (currentPage === 'create' || currentPage === 'track');
   const dashboardLabel = currentRole === 'MESSENGER' ? UI_COPY.nav.messengerDashboard : UI_COPY.nav.adminDashboard;
   const dashboardIcon =
     currentRole === 'MESSENGER'
@@ -161,16 +159,15 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
   };
 
   const openProfile = () => {
-    setProfileForm({ name: user?.name ?? '', branch: user?.branch ?? '', currentPassword: '', newPassword: '', confirmPassword: '' });
+    setProfileForm({ name: user?.name ?? '', currentPassword: '', newPassword: '', confirmPassword: '' });
     setShowPasswordFields(false);
     setIsProfileOpen(true);
   };
 
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { name, branch, currentPassword, newPassword, confirmPassword } = profileForm;
+    const { name, currentPassword, newPassword, confirmPassword } = profileForm;
     if (!name.trim()) { toast.error('กรุณากรอกชื่อ-นามสกุล'); return; }
-    if (!branch.trim() || !resolveSelectValue(branch)) { toast.error('กรุณาเลือกแผนก/สาขา'); return; }
     if (showPasswordFields && !currentPassword) { toast.error('กรุณากรอกรหัสผ่านปัจจุบัน'); return; }
     if (showPasswordFields && !newPassword) { toast.error('กรุณากรอกรหัสผ่านใหม่'); return; }
     if (showPasswordFields && newPassword.length < 4) { toast.error('รหัสผ่านใหม่ต้องมีอย่างน้อย 4 ตัวอักษร'); return; }
@@ -179,7 +176,6 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
     setProfileLoading(true);
     const res = await updateUserProfile(
       name.trim() !== user?.name ? name.trim() : undefined,
-      resolveSelectValue(branch) !== user?.branch ? resolveSelectValue(branch) : undefined,
       showPasswordFields ? newPassword : undefined,
       showPasswordFields ? currentPassword : undefined,
     );
@@ -199,7 +195,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
       <div className="flex min-h-screen flex-col">
         {/* Top bar */}
         <header
-          className="sticky top-0 z-40 border-b border-gray-100 bg-white/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85"
+          className={`sticky top-0 z-40 border-b border-gray-100 bg-white/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85 ${hideGuestMobileTopBar ? 'hidden md:block' : ''}`}
         >
           <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
             <div className="min-w-0">
@@ -316,7 +312,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-7xl flex-1 px-3 pb-24 pt-4 sm:px-5 md:px-6 md:pb-10 lg:px-8">
+        <main className={`mx-auto w-full max-w-7xl flex-1 px-3 pb-24 sm:px-5 md:px-6 md:pb-10 lg:px-8 ${hideGuestMobileTopBar ? 'pt-3 md:pt-4' : 'pt-4'}`}>
           {children}
         </main>
       </div>
@@ -366,7 +362,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
               <div>
                 <DialogTitle className="text-lg font-black text-white">แก้ไขโปรไฟล์</DialogTitle>
                 <DialogDescription className="mt-1 text-xs font-semibold text-slate-300">
-                  แก้ไขชื่อ แผนก/สาขา หรือรหัสผ่านของคุณ
+                  แก้ไขชื่อหรือรหัสผ่านของคุณ
                 </DialogDescription>
               </div>
             </div>
@@ -384,20 +380,6 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
                 disabled={profileLoading}
                 className="h-11 w-full rounded-lg border border-outline-variant bg-white px-3 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:opacity-50"
                 placeholder="ชื่อ-นามสกุล"
-              />
-            </div>
-
-            {/* Branch */}
-            <div>
-              <label className="block text-sm font-bold text-on-surface-variant mb-1.5">แผนก/สาขาประจำ</label>
-              <NativeSelect
-                value={profileForm.branch}
-                onChange={v => setProfileForm(f => ({ ...f, branch: v }))}
-                options={branches}
-                placeholder="เลือกแผนก/สาขา"
-                icon="apartment"
-                disabled={profileLoading}
-                otherPlaceholder="ระบุแผนก/สาขา"
               />
             </div>
 
