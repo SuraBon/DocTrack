@@ -75,7 +75,7 @@ export default function Timeline({ events, className = '', compact = false }: Ti
 
   const formatTimelineDateParts = (timestamp: string) => {
     const parsed = parseDateInput(timestamp);
-    if (!timestamp || !parsed) return { day: '-', time: '-' };
+    if (!timestamp || !parsed) return { day: '', time: '' };
 
     const now = new Date();
     const isToday =
@@ -89,49 +89,94 @@ export default function Timeline({ events, className = '', compact = false }: Ti
 
   if (compact) {
     const displayEvents = [...events].reverse();
+    const getCompactTone = (event: TimelineEvent, isLatest: boolean) => {
+      const isDeliveredEvent = event.title.includes('ส่งสำเร็จ');
+      const isTransitEvent = event.title.includes('จัดส่ง') || event.title.includes('เดินทาง') || event.title.includes('รับงาน');
+      const isWaitingEvent = event.status === 'current' && !isDeliveredEvent && !isTransitEvent;
+
+      if (isDeliveredEvent) {
+        return {
+          dot: 'border-emerald-500 bg-emerald-600 text-white shadow-[0_0_0_4px_rgba(16,185,129,0.16)]',
+          card: isLatest ? 'border-emerald-200 bg-emerald-50 shadow-sm' : 'border-emerald-100 bg-white',
+          title: 'text-emerald-900',
+          badge: isLatest ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100',
+          line: 'bg-emerald-200',
+        };
+      }
+
+      if (isTransitEvent || event.status === 'current') {
+        return {
+          dot: 'border-blue-500 bg-blue-600 text-white shadow-[0_0_0_4px_rgba(59,130,246,0.16)]',
+          card: isLatest ? 'border-blue-200 bg-blue-50 shadow-sm' : 'border-blue-100 bg-white',
+          title: 'text-blue-900',
+          badge: isLatest ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-700 ring-1 ring-blue-100',
+          line: 'bg-blue-200',
+        };
+      }
+
+      if (isWaitingEvent || event.status === 'pending') {
+        return {
+          dot: 'border-amber-500 bg-amber-500 text-white',
+          card: isLatest ? 'border-amber-200 bg-amber-50 shadow-sm' : 'border-amber-100 bg-white',
+          title: 'text-amber-900',
+          badge: isLatest ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-700 ring-1 ring-amber-100',
+          line: 'bg-amber-200',
+        };
+      }
+
+      return {
+        dot: event.status === 'completed' ? 'border-slate-400 bg-slate-500 text-white' : 'border-slate-300 bg-white text-slate-400',
+        card: isLatest ? 'border-slate-200 bg-slate-50 shadow-sm' : 'border-slate-100 bg-white',
+        title: 'text-slate-800',
+        badge: 'bg-slate-100 text-slate-600',
+        line: 'bg-slate-200',
+      };
+    };
 
     return (
       <div className={`relative ${className}`}>
-        <div className="space-y-0">
+        <div className="space-y-1">
           {displayEvents.map((event, index) => {
             const { day, time } = formatTimelineDateParts(event.timestamp);
             const isLatest = index === 0;
             const hasNext = index < displayEvents.length - 1;
+            const stepNumber = displayEvents.length - index;
+            const tone = getCompactTone(event, isLatest);
+            const statusLabel = isLatest ? 'ล่าสุด' : event.status === 'completed' ? 'บันทึกแล้ว' : 'รอดำเนินการ';
             return (
-              <div key={event.id} className="grid grid-cols-[48px_20px_minmax(0,1fr)] gap-2">
-                <div className={`pt-1 text-right leading-none ${isLatest ? 'text-gray-800' : 'text-gray-400'}`}>
-                  <p className="text-[10px] font-semibold">{day}</p>
-                  <p className="mt-1 text-[9px] font-medium">{time}</p>
+              <div key={event.id} className="grid grid-cols-[52px_28px_minmax(0,1fr)] gap-2.5">
+                <div className={`pt-2 text-right leading-none ${isLatest ? 'text-slate-900' : 'text-slate-400'}`}>
+                  {day ? (
+                    <>
+                      <p className="text-[10px] font-black">{day}</p>
+                      <p className="mt-1 text-[9px] font-semibold">{time}</p>
+                    </>
+                  ) : (
+                    <p className="text-[9px] font-bold leading-tight text-slate-300">ไม่ระบุเวลา</p>
+                  )}
                 </div>
                 <div className="relative flex justify-center">
                   {hasNext && (
-                    <span className="absolute bottom-[-2px] top-[15px] w-px bg-slate-200" />
+                    <span className={`absolute bottom-[-4px] top-[25px] w-0.5 rounded-full ${tone.line}`} />
                   )}
-                  <span className={`relative z-10 mt-1 grid h-3.5 w-3.5 place-items-center rounded-full border-2 ${
-                    isLatest
-                      ? 'border-blue-500 bg-blue-500 shadow-[0_0_0_4px_rgba(59,130,246,0.16)]'
-                      : 'border-slate-300 bg-white'
-                  }`}>
+                  <span className={`relative z-10 mt-1 grid h-6 w-6 place-items-center rounded-full border-2 text-[10px] font-black ${tone.dot}`}>
+                    {event.title.includes('ส่งสำเร็จ') || (event.status === 'completed' && !isLatest) ? '✓' : stepNumber}
                   </span>
                 </div>
-                <div className="min-w-0 pb-2">
-                  <div className={`rounded-lg border px-3 py-2 transition-all ${
-                    isLatest
-                      ? 'border-blue-100 bg-blue-50/45'
-                      : 'border-transparent bg-transparent'
-                  }`}>
+                <div className="min-w-0 pb-3">
+                  <div className={`rounded-xl border px-3 py-2.5 transition-all ${tone.card}`}>
                     <div className="flex min-w-0 items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className={`text-xs font-semibold leading-tight ${isLatest ? 'text-blue-700' : 'text-gray-700'}`}>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className={`rounded-full px-2 py-0.5 text-[8px] font-black leading-none ${tone.badge}`}>
+                            {statusLabel}
+                          </span>
+                          <p className={`text-sm font-black leading-tight ${tone.title}`}>
                             {event.title}
                           </p>
-                          {isLatest && (
-                            <span className="rounded bg-blue-600 px-1.5 py-0.5 text-[8px] font-bold uppercase leading-none text-white">ล่าสุด</span>
-                          )}
                         </div>
                         {event.description && (
-                          <p className="mt-1 line-clamp-1 break-words text-[10px] font-medium leading-snug text-gray-500">
+                          <p className={`${isLatest ? 'line-clamp-3' : 'line-clamp-2'} mt-1.5 break-words text-[11px] font-semibold leading-snug text-slate-500`}>
                             {event.description}
                           </p>
                         )}
@@ -146,12 +191,16 @@ export default function Timeline({ events, className = '', compact = false }: Ti
                       )}
                     </div>
 
-                    <div className={`${isLatest ? 'mt-2 border-t border-blue-100/60 pt-1.5' : 'mt-1'} flex flex-wrap items-center gap-x-3 gap-y-1`}>
-                      <span className="inline-flex items-center text-[9px] font-medium text-gray-400">
-                        {event.timestamp ? formatThaiDateTime(event.timestamp) : '-'}
-                      </span>
+                    <div className={`${isLatest ? 'mt-2 border-t border-white/70 pt-1.5' : 'mt-2'} flex flex-wrap items-center gap-x-3 gap-y-1`}>
+                      {event.timestamp && (
+                        <span className="inline-flex items-center gap-1 text-[9px] font-bold text-slate-400">
+                          <span className="material-symbols-outlined text-[12px]">schedule</span>
+                          {formatThaiDateTime(event.timestamp)}
+                        </span>
+                      )}
                       {event.location && (
-                        <span className="inline-flex min-w-0 items-center text-[9px] font-medium text-gray-400">
+                        <span className="inline-flex min-w-0 items-center gap-1 text-[9px] font-bold text-slate-400">
+                          <span className="material-symbols-outlined text-[12px]">place</span>
                           <span className="truncate">{event.location}</span>
                         </span>
                       )}

@@ -485,19 +485,19 @@ export default function ConfirmReceipt({
       {/* Step 2: Photo Evidence */}
       {currentStep === 2 && (
         <div className={`overflow-hidden animate-in slide-in-from-right-4 duration-500 ${embedded ? '' : 'rounded-[1.75rem] border border-gray-100 bg-white shadow-xl'}`}>
-          <div className="relative bg-slate-950 px-5 py-5 text-white sm:px-6">
+          <div className={`relative bg-slate-950 text-white ${embedded ? 'px-4 py-3' : 'px-5 py-5 sm:px-6'}`}>
             <button
               type="button"
               onClick={handleCloseStep}
-              className="absolute right-4 top-4 grid size-10 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+              className={`absolute grid place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 ${embedded ? 'right-3 top-3 size-8' : 'right-4 top-4 size-10'}`}
               aria-label="ย้อนกลับ"
             >
-              <span className="material-symbols-outlined text-2xl">close</span>
+              <span className={`material-symbols-outlined ${embedded ? 'text-xl' : 'text-2xl'}`}>close</span>
             </button>
-            <div className="pr-12">
-              <h2 className="font-display text-2xl font-black leading-tight text-white">ถ่ายรูปหลักฐาน</h2>
-              <p className="mt-2 font-mono text-sm font-black tracking-wide text-blue-200">{checkedParcel?.TrackingID}</p>
-              <p className="mt-2 text-xs font-semibold text-slate-300">ถ่ายรูปสิ่งที่ส่งหรือหลักฐานการจัดส่ง</p>
+            <div className={embedded ? 'pr-10' : 'pr-12'}>
+              <h2 className={`font-display font-black leading-tight text-white ${embedded ? 'text-lg' : 'text-2xl'}`}>ถ่ายรูปหลักฐาน</h2>
+              <p className={`font-mono font-black tracking-wide text-blue-200 ${embedded ? 'mt-1 text-xs' : 'mt-2 text-sm'}`}>{checkedParcel?.TrackingID}</p>
+              <p className={`font-semibold text-slate-300 ${embedded ? 'sr-only' : 'mt-2 text-xs'}`}>ถ่ายรูปสิ่งที่ส่งหรือหลักฐานการจัดส่ง</p>
             </div>
           </div>
           <div className="space-y-4 p-4 sm:p-5">
@@ -649,12 +649,14 @@ export default function ConfirmReceipt({
       {/* Step 3: Final Details & Confirm */}
       {currentStep === 3 && (
         <div className={`overflow-hidden animate-in slide-in-from-right-4 duration-500 ${embedded ? '' : 'rounded-[1.25rem] border border-gray-100 bg-white shadow-xl'}`}>
-          <div className="bg-slate-950 px-4 py-3.5 text-center text-white sm:px-5 sm:py-4">
-            <div className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-white">
+          <div className={`bg-slate-950 px-4 text-white sm:px-5 ${embedded ? 'flex items-center gap-3 py-3 text-left' : 'py-3.5 text-center sm:py-4'}`}>
+            <div className={`${embedded ? 'h-8 w-8 shrink-0' : 'mx-auto mb-2 h-9 w-9'} flex items-center justify-center rounded-xl bg-white/10 text-white`}>
               <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>fact_check</span>
             </div>
-            <h2 className="font-display text-lg font-black leading-tight text-white sm:text-xl">เช็กปลายทางก่อนบันทึก</h2>
-            <p className="mt-0.5 text-[11px] font-semibold text-slate-300 sm:text-xs">ตรวจต้นทาง ปลายทาง และผู้รับก่อนยืนยัน</p>
+            <div className="min-w-0">
+              <h2 className={`font-display font-black leading-tight text-white ${embedded ? 'text-base' : 'text-lg sm:text-xl'}`}>เช็กปลายทางก่อนบันทึก</h2>
+              <p className={`${embedded ? 'mt-0 text-[10px]' : 'mt-0.5 text-[11px] sm:text-xs'} font-semibold text-slate-300`}>ตรวจต้นทาง ปลายทาง และผู้รับก่อนยืนยัน</p>
+            </div>
           </div>
           <div className="space-y-3 p-3.5 sm:p-4">
             {checkedParcel && <ParcelJobSummary parcel={checkedParcel} />}

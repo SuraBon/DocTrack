@@ -12,6 +12,8 @@ import {
   Bell,
   BellRing,
   ClipboardList,
+  ChevronDown,
+  ChevronUp,
   FileClock,
   Inbox,
   Loader2,
@@ -65,6 +67,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
   const { user, logout, updateUserProfile } = useAuth();
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isMobileNavCollapsed, setIsMobileNavCollapsed] = useState(false);
   const [profileForm, setProfileForm] = useState({ name: '', currentPassword: '', newPassword: '', confirmPassword: '' });
   const [showPasswordFields, setShowPasswordFields] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
@@ -152,6 +155,13 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
     { id: "branches",  label: "แผนก/สาขา", icon: Building2, badge: null, roles: ['ADMIN'], accent: "from-slate-400 to-slate-700" },
   ];
   const navItems = allNavItems.filter(item => item.roles.includes(currentRole));
+  const canCollapseMobileNav = currentRole === 'ADMIN' && navItems.length > 3;
+  const currentNavItem = navItems.find(n => n.id === currentPage);
+  const mobileBottomPadding = canCollapseMobileNav && isMobileNavCollapsed ? 'pb-16' : 'pb-24';
+
+  useEffect(() => {
+    if (!canCollapseMobileNav) setIsMobileNavCollapsed(false);
+  }, [canCollapseMobileNav]);
 
   const handleNav = (event: React.MouseEvent<HTMLAnchorElement>, id: PageId) => {
     event.preventDefault();
@@ -312,34 +322,66 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
           </div>
         </header>
 
-        <main className={`mx-auto w-full max-w-7xl flex-1 px-3 pb-24 sm:px-5 md:px-6 md:pb-10 lg:px-8 ${hideGuestMobileTopBar ? 'pt-3 md:pt-4' : 'pt-4'}`}>
+        <main className={`mx-auto w-full max-w-7xl flex-1 px-3 ${mobileBottomPadding} sm:px-5 md:px-6 md:pb-10 lg:px-8 ${hideGuestMobileTopBar ? 'pt-3 md:pt-4' : 'pt-4'}`}>
           {children}
         </main>
       </div>
 
       {navItems.length > 1 && (
         <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-100 bg-white/95 px-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur md:hidden">
-          <div className={`mx-auto grid max-w-md gap-1 ${navItems.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
-            {navItems.map((item) => {
-              const active = currentPage === item.id;
-              return (
-                <a
-                  key={item.id}
-                  href={pagePaths[item.id]}
-                  onClick={(event) => handleNav(event, item.id)}
-                  aria-current={active ? 'page' : undefined}
-                  className={`flex h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-semibold transition-colors ${
-                    active
-                      ? 'bg-slate-900 text-white'
-                      : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'
-                  }`}
+          {canCollapseMobileNav && isMobileNavCollapsed ? (
+            <div className="mx-auto flex h-11 max-w-md items-center justify-between gap-3 rounded-2xl bg-slate-50 px-3">
+              <div className="flex min-w-0 items-center gap-2 text-slate-700">
+                {currentNavItem && <NavIcon icon={currentNavItem.icon} active />}
+                <span className="truncate text-sm font-black">{currentNavItem?.label ?? currentPage}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMobileNavCollapsed(false)}
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-slate-500 transition-colors hover:bg-white hover:text-slate-900"
+                aria-label="ขยายเมนู"
+                title="ขยายเมนู"
+              >
+                <ChevronUp className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </div>
+          ) : (
+            <>
+              {canCollapseMobileNav && (
+                <button
+                  type="button"
+                  onClick={() => setIsMobileNavCollapsed(true)}
+                  className="mx-auto mb-1 flex h-6 items-center gap-1 rounded-full px-3 text-[10px] font-bold text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                  aria-label="ย่อเมนู"
+                  title="ย่อเมนู"
                 >
-                  <NavIcon icon={item.icon} active={active} />
-                  <span className="w-full truncate px-1 text-center">{item.label}</span>
-                </a>
-              );
-            })}
-          </div>
+                  ย่อเมนู
+                  <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              )}
+              <div className={`mx-auto grid max-w-md gap-1 ${navItems.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                {navItems.map((item) => {
+                  const active = currentPage === item.id;
+                  return (
+                    <a
+                      key={item.id}
+                      href={pagePaths[item.id]}
+                      onClick={(event) => handleNav(event, item.id)}
+                      aria-current={active ? 'page' : undefined}
+                      className={`flex h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-semibold transition-colors ${
+                        active
+                          ? 'bg-slate-900 text-white'
+                          : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'
+                      }`}
+                    >
+                      <NavIcon icon={item.icon} active={active} />
+                      <span className="w-full truncate px-1 text-center">{item.label}</span>
+                    </a>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </nav>
       )}
 

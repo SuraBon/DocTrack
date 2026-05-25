@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FileClock, FilterX, Loader2, MapPin, PackageCheck, RefreshCw, Route, Search } from 'lucide-react';
+import { FileClock, FilterX, HelpCircle, Loader2, MapPin, PackageCheck, RefreshCw, Route, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { getParcelActivityLogs, type ParcelActivityLogRow } from '@/lib/parcelService';
 import { useDebounce } from '@/hooks/useDebounce';
 import { translateSystemNote } from '@/lib/translationUtils';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 
 const PAGE_SIZE = 25;
 const EVENT_TYPES = ['', 'CREATED', 'START_DELIVERY', 'PICKUP', 'FORWARD', 'PROXY', 'DELIVERED', 'RELEASE_DELIVERY'];
@@ -72,6 +73,7 @@ export default function ParcelActivityLog() {
   const [trackingId, setTrackingId] = useState('');
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const debouncedQuery = useDebounce(query, 300);
@@ -129,35 +131,62 @@ export default function ParcelActivityLog() {
             <p className="app-page-subtitle">ดูเส้นทางและเหตุการณ์ของพัสดุแต่ละเลข Tracking เช่น สร้างรายการ รับงาน ส่งต่อ และส่งสำเร็จ</p>
           </div>
         </div>
-        <button type="button" onClick={fetchActivities} disabled={loading} className="app-secondary-button h-10 px-3">
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
-          รีเฟรช
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsHelpOpen(true)}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
+            aria-label="อธิบายหน้าประวัติพัสดุ"
+            title="อธิบายหน้าประวัติพัสดุ"
+          >
+            <HelpCircle className="h-5 w-5" aria-hidden="true" />
+          </button>
+          <button type="button" onClick={fetchActivities} disabled={loading} className="app-secondary-button h-10 px-3">
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
+            รีเฟรช
+          </button>
+        </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-3">
-        <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
-          <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-white text-blue-700">
-            <Route className="h-4 w-4" aria-hidden="true" />
+      <Dialog open={isHelpOpen} onOpenChange={setIsHelpOpen}>
+        <DialogContent showCloseButton={false} className="w-[calc(100vw-1rem)] max-w-lg overflow-hidden rounded-2xl border border-slate-100 bg-white p-0 shadow-xl">
+          <div className="relative bg-slate-950 px-5 py-4 text-white">
+            <button
+              type="button"
+              onClick={() => setIsHelpOpen(false)}
+              className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+              aria-label="ปิดคำอธิบาย"
+            >
+              <span className="material-symbols-outlined text-xl">close</span>
+            </button>
+            <DialogTitle className="pr-10 font-display text-lg font-black text-white">ประวัติพัสดุใช้ดูอะไร</DialogTitle>
+            <p className="mt-1 pr-10 text-xs font-semibold text-slate-300">คำอธิบายของข้อมูลในหน้านี้</p>
           </div>
-          <p className="text-sm font-black text-blue-950">ใช้ดูเส้นทางพัสดุ</p>
-          <p className="mt-1 text-xs leading-relaxed text-blue-900/70">ตอบคำถามว่าพัสดุผ่านจุดไหน ใครรับช่วงต่อ และสถานะล่าสุดเกิดจากเหตุการณ์ใด</p>
-        </div>
-        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
-          <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-white text-emerald-700">
-            <PackageCheck className="h-4 w-4" aria-hidden="true" />
+          <div className="grid gap-3 bg-slate-50 p-4">
+            <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
+              <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-white text-blue-700">
+                <Route className="h-4 w-4" aria-hidden="true" />
+              </div>
+              <p className="text-sm font-black text-blue-950">ใช้ดูเส้นทางพัสดุ</p>
+              <p className="mt-1 text-xs leading-relaxed text-blue-900/70">ตอบคำถามว่าพัสดุผ่านจุดไหน ใครรับช่วงต่อ และสถานะล่าสุดเกิดจากเหตุการณ์ใด</p>
+            </div>
+            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4">
+              <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-white text-emerald-700">
+                <PackageCheck className="h-4 w-4" aria-hidden="true" />
+              </div>
+              <p className="text-sm font-black text-emerald-950">ผูกกับเลข Tracking</p>
+              <p className="mt-1 text-xs leading-relaxed text-emerald-900/70">เหมาะสำหรับค้นประวัติของพัสดุหนึ่งรายการ หรือกรองเฉพาะเหตุการณ์การจัดส่ง</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-4">
+              <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+                <FileClock className="h-4 w-4" aria-hidden="true" />
+              </div>
+              <p className="text-sm font-black text-slate-950">ไม่ใช่บันทึกผู้ดูแลระบบ</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500">ถ้าต้องดูการลบ แก้ไขผู้ใช้ หรือการตั้งค่าระบบ ให้ไปที่หน้า “บันทึกระบบ”</p>
+            </div>
           </div>
-          <p className="text-sm font-black text-emerald-950">ผูกกับเลข Tracking</p>
-          <p className="mt-1 text-xs leading-relaxed text-emerald-900/70">เหมาะสำหรับค้นประวัติของพัสดุหนึ่งรายการ หรือกรองเฉพาะเหตุการณ์การจัดส่ง</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
-            <FileClock className="h-4 w-4" aria-hidden="true" />
-          </div>
-          <p className="text-sm font-black text-slate-950">ไม่ใช่บันทึกผู้ดูแลระบบ</p>
-          <p className="mt-1 text-xs leading-relaxed text-slate-500">ถ้าต้องดูการลบ แก้ไขผู้ใช้ หรือการตั้งค่าระบบ ให้ไปที่หน้า “บันทึกระบบ”</p>
-        </div>
-      </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="app-toolbar grid gap-3 lg:grid-cols-[1.4fr_1fr_1fr_auto]">
         <div className="relative">

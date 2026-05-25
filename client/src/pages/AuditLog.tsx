@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ClipboardList, FilterX, Fingerprint, Loader2, RefreshCw, Search, ShieldCheck, UserRoundCog } from 'lucide-react';
+import { ClipboardList, FilterX, Fingerprint, HelpCircle, Loader2, RefreshCw, Search, ShieldCheck, UserRoundCog } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAuditLogs, type AuditLogRow } from '@/lib/parcelService';
 import { useDebounce } from '@/hooks/useDebounce';
 import { AUDIT_ACTION_LABELS, translateAuditDetails } from '@/lib/translationUtils';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 
 const PAGE_SIZE = 25;
 
@@ -60,6 +61,7 @@ export default function AuditLog() {
   const [targetId, setTargetId] = useState('');
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const debouncedQuery = useDebounce(query, 300);
@@ -120,35 +122,62 @@ export default function AuditLog() {
             <p className="app-page-subtitle">ใช้ตรวจสอบการกระทำของผู้ใช้ในระบบ เช่น ลบรายการ แก้ไขผู้ใช้ สร้างสาขา หรือถูกบล็อกการเข้าสู่ระบบ</p>
           </div>
         </div>
-        <button type="button" onClick={fetchLogs} disabled={loading} className="app-secondary-button h-10 px-3">
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
-          รีเฟรช
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsHelpOpen(true)}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
+            aria-label="อธิบายหน้าบันทึกระบบ"
+            title="อธิบายหน้าบันทึกระบบ"
+          >
+            <HelpCircle className="h-5 w-5" aria-hidden="true" />
+          </button>
+          <button type="button" onClick={fetchLogs} disabled={loading} className="app-secondary-button h-10 px-3">
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
+            รีเฟรช
+          </button>
+        </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-3">
-        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
-          <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-white text-emerald-700">
-            <UserRoundCog className="h-4 w-4" aria-hidden="true" />
+      <Dialog open={isHelpOpen} onOpenChange={setIsHelpOpen}>
+        <DialogContent showCloseButton={false} className="w-[calc(100vw-1rem)] max-w-lg overflow-hidden rounded-2xl border border-slate-100 bg-white p-0 shadow-xl">
+          <div className="relative bg-slate-950 px-5 py-4 text-white">
+            <button
+              type="button"
+              onClick={() => setIsHelpOpen(false)}
+              className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+              aria-label="ปิดคำอธิบาย"
+            >
+              <span className="material-symbols-outlined text-xl">close</span>
+            </button>
+            <DialogTitle className="pr-10 font-display text-lg font-black text-white">บันทึกระบบใช้ดูอะไร</DialogTitle>
+            <p className="mt-1 pr-10 text-xs font-semibold text-slate-300">คำอธิบายของข้อมูลในหน้านี้</p>
           </div>
-          <p className="text-sm font-black text-emerald-950">ใช้ดูว่าใครทำอะไร</p>
-          <p className="mt-1 text-xs leading-relaxed text-emerald-900/70">แสดงผู้กระทำ เวลา ประเภทการกระทำ และรหัสรายการหรือผู้ใช้ที่เกี่ยวข้อง</p>
-        </div>
-        <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
-          <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-white text-blue-700">
-            <Fingerprint className="h-4 w-4" aria-hidden="true" />
+          <div className="grid gap-3 bg-slate-50 p-4">
+            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4">
+              <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-white text-emerald-700">
+                <UserRoundCog className="h-4 w-4" aria-hidden="true" />
+              </div>
+              <p className="text-sm font-black text-emerald-950">ใช้ดูว่าใครทำอะไร</p>
+              <p className="mt-1 text-xs leading-relaxed text-emerald-900/70">แสดงผู้กระทำ เวลา ประเภทการกระทำ และรหัสรายการหรือผู้ใช้ที่เกี่ยวข้อง</p>
+            </div>
+            <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
+              <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-white text-blue-700">
+                <Fingerprint className="h-4 w-4" aria-hidden="true" />
+              </div>
+              <p className="text-sm font-black text-blue-950">เหมาะสำหรับตรวจสอบย้อนหลัง</p>
+              <p className="mt-1 text-xs leading-relaxed text-blue-900/70">ใช้ไล่เหตุการณ์สำคัญ เช่น มีใครลบรายการ แก้ไขข้อมูล หรือจัดการบัญชีพนักงาน</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-4">
+              <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+                <ClipboardList className="h-4 w-4" aria-hidden="true" />
+              </div>
+              <p className="text-sm font-black text-slate-950">ไม่ใช่เส้นทางพัสดุ</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500">ถ้าต้องดูว่าพัสดุผ่านจุดไหนหรือส่งถึงไหนแล้ว ให้ไปที่หน้า “ประวัติพัสดุ”</p>
+            </div>
           </div>
-          <p className="text-sm font-black text-blue-950">เหมาะสำหรับตรวจสอบย้อนหลัง</p>
-          <p className="mt-1 text-xs leading-relaxed text-blue-900/70">ใช้ไล่เหตุการณ์สำคัญ เช่น มีใครลบรายการ แก้ไขข้อมูล หรือจัดการบัญชีพนักงาน</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
-            <ClipboardList className="h-4 w-4" aria-hidden="true" />
-          </div>
-          <p className="text-sm font-black text-slate-950">ไม่ใช่เส้นทางพัสดุ</p>
-          <p className="mt-1 text-xs leading-relaxed text-slate-500">ถ้าต้องดูว่าพัสดุผ่านจุดไหนหรือส่งถึงไหนแล้ว ให้ไปที่หน้า “ประวัติพัสดุ”</p>
-        </div>
-      </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="app-toolbar grid gap-3 lg:grid-cols-[1.4fr_1fr_1fr_1fr_auto]">
         <div className="relative">

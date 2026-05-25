@@ -448,7 +448,7 @@ export default function Track({ embedded = false }: { embedded?: boolean }) {
                 <div className="pr-12">
                   <div className="min-w-0">
                     <DialogTitle className="font-display text-2xl font-black leading-tight text-white">
-                      ลำดับการจัดส่ง
+                      Milestone การจัดส่ง
                     </DialogTitle>
                     <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2">
                       <p className="min-w-0 break-all font-mono text-sm font-black tracking-wide text-blue-200">{parcel.TrackingID}</p>
@@ -465,15 +465,15 @@ export default function Track({ embedded = false }: { embedded?: boolean }) {
               </div>
 
               <div className="modal-scroll flex-1 overflow-y-auto bg-white p-5 sm:p-6">
-                <div className="rounded-3xl border border-gray-100 bg-white p-4 shadow-md">
+                <div className="rounded-3xl border border-blue-100 bg-white p-4 shadow-md">
                   <div className="mb-4 flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3">
                       <div className="grid size-10 place-items-center rounded-xl bg-blue-50 text-blue-600">
                         <span className="material-symbols-outlined text-2xl">route</span>
                       </div>
                       <div>
-                        <p className="font-display text-base font-black text-slate-900">สถานะล่าสุด</p>
-                        <p className="text-xs font-semibold text-slate-400">เรียงจากล่าสุด</p>
+                        <p className="font-display text-base font-black text-slate-900">Milestone การจัดส่ง</p>
+                        <p className="text-xs font-semibold text-slate-400">สถานะล่าสุดอยู่ด้านบน พร้อมเวลาและจุดที่บันทึก</p>
                       </div>
                     </div>
                     {hasLocationData && (

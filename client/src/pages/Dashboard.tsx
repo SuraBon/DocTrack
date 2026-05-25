@@ -547,6 +547,100 @@ const CardActions = ({
   </div>
 );
 
+const DeliveryInfoRow = ({
+  icon,
+  label,
+  value,
+  tone = 'slate',
+}: {
+  icon: string;
+  label: string;
+  value?: string;
+  tone?: 'slate' | 'blue' | 'emerald' | 'orange';
+}) => {
+  const toneClasses = {
+    slate: 'bg-slate-50 text-slate-700',
+    blue: 'bg-blue-50 text-blue-700',
+    emerald: 'bg-emerald-50 text-emerald-700',
+    orange: 'bg-orange-50 text-orange-700',
+  };
+
+  return (
+    <div className="flex min-w-0 items-start gap-3 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
+      <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${toneClasses[tone]}`}>
+        <span className="material-symbols-outlined text-xl">{icon}</span>
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] font-bold leading-none text-slate-400">{label}</p>
+        <p className="mt-1 whitespace-pre-wrap break-words text-sm font-black leading-snug text-slate-900">
+          {value?.trim() || '-'}
+        </p>
+      </div>
+    </div>
+  );
+};
+
+const DeliveryJobDetailsModal = ({
+  parcel,
+  open,
+  onOpenChange,
+}: {
+  parcel: Parcel | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) => {
+  if (!parcel) return null;
+
+  const note = translateSystemNote(getCleanNote(parcel));
+  const itemDescription = parcel['รายละเอียด'] || '';
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        showCloseButton={false}
+        className="max-h-[88vh] w-[calc(100vw-1rem)] max-w-md overflow-hidden rounded-[1.5rem] border border-slate-100 bg-white p-0 shadow-2xl"
+      >
+        <div className="flex max-h-[88vh] flex-col">
+          <div className="relative shrink-0 bg-slate-950 px-5 py-4 text-white">
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+              aria-label="ปิดรายละเอียดงานส่ง"
+            >
+              <span className="material-symbols-outlined text-xl">close</span>
+            </button>
+            <DialogTitle className="pr-10 font-display text-lg font-black leading-tight text-white">
+              รายละเอียดงานส่ง
+            </DialogTitle>
+            <p className="mt-1 break-all font-mono text-xs font-black tracking-wide text-blue-200">{parcel.TrackingID}</p>
+          </div>
+
+          <div className="flex-1 space-y-3 overflow-y-auto bg-slate-50 p-4">
+            <div className="rounded-2xl border border-blue-100 bg-blue-50 p-3 text-blue-950">
+              <p className="text-[10px] font-bold text-blue-600">ต้องไปส่งที่</p>
+              <p className="mt-1 break-words font-display text-xl font-black leading-tight">
+                {parcel['สาขาผู้รับ'] || '-'}
+              </p>
+              <p className="mt-1 text-xs font-semibold text-blue-700/80">ผู้รับ: {parcel['ผู้รับ'] || '-'}</p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3">
+              <DeliveryInfoRow icon="person" label="ผู้ส่ง" value={parcel['ผู้ส่ง']} tone="slate" />
+              <DeliveryInfoRow icon="apartment" label="ต้นทาง" value={parcel['สาขาผู้ส่ง']} tone="slate" />
+              <DeliveryInfoRow icon="person_check" label="ผู้รับ" value={parcel['ผู้รับ']} tone="blue" />
+              <DeliveryInfoRow icon="flag" label="ปลายทาง" value={parcel['สาขาผู้รับ']} tone="blue" />
+              <DeliveryInfoRow icon="inventory_2" label="สิ่งที่ส่ง" value={itemDescription} tone="emerald" />
+              {note && <DeliveryInfoRow icon="sticky_note_2" label="หมายเหตุ" value={note} tone="orange" />}
+              <DeliveryInfoRow icon="schedule" label="สร้างรายการเมื่อ" value={formatThaiDateTime(parcel['วันที่สร้าง'])} tone="slate" />
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 const MessengerDeliveryCard = ({
   parcel,
   onOpen,
@@ -573,7 +667,9 @@ const MessengerDeliveryCard = ({
   canConfirmDelivery: boolean;
 }) => {
   const note = getCleanNote(parcel);
+  const itemDescription = parcel['รายละเอียด'] || '';
   const [isNoteExpanded, setIsNoteExpanded] = useState(false);
+  const [isItemDescriptionExpanded, setIsItemDescriptionExpanded] = useState(false);
   const translatedNote = translateSystemNote(note);
   const isDone = parcel['สถานะ'] === 'ส่งสำเร็จ';
   const isAssignedElsewhere = Boolean(assignment && !canConfirmDelivery && !isDone);
@@ -662,16 +758,24 @@ const MessengerDeliveryCard = ({
 
           <MessengerRouteSummary parcel={parcel} />
 
-          {(parcel['รายละเอียด'] || note || isParcelStale(parcel)) && (
+          {(itemDescription || note || isParcelStale(parcel)) && (
             <div className="space-y-2">
-              {(parcel['รายละเอียด'] || note) && (
+              {(itemDescription || note) && (
                 <div className="grid grid-cols-2 gap-2">
-                  <div className={`flex min-w-0 items-start gap-2.5 rounded-xl bg-slate-50 px-2.5 py-2 ${parcel['รายละเอียด'] ? '' : 'opacity-40'}`}>
+                  <div
+                    onClick={() => itemDescription && setIsItemDescriptionExpanded(!isItemDescriptionExpanded)}
+                    className={`flex min-w-0 items-start gap-2.5 rounded-xl bg-slate-50 px-2.5 py-2 transition-all ${itemDescription ? 'cursor-pointer hover:bg-slate-100' : 'opacity-40'}`}
+                  >
                     <Package className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
                     <div className="min-w-0 flex-1">
-                      <p className="text-[10px] font-bold leading-none text-slate-500">สิ่งที่ส่ง</p>
-                      <p className="mt-1 min-w-0 truncate text-xs font-semibold leading-5 text-slate-800">
-                        {parcel['รายละเอียด'] || '-'}
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-[10px] font-bold leading-none text-slate-500">สิ่งที่ส่ง</p>
+                        {itemDescription.length > 25 && (
+                          <span className="shrink-0 text-[8px] font-bold uppercase text-slate-500">{isItemDescriptionExpanded ? 'ย่อ' : 'ดูเพิ่ม'}</span>
+                        )}
+                      </div>
+                      <p className={`mt-1 min-w-0 text-xs font-semibold leading-relaxed text-slate-800 ${isItemDescriptionExpanded ? 'break-words whitespace-pre-wrap' : 'truncate'}`}>
+                        {itemDescription || '-'}
                       </p>
                     </div>
                   </div>
@@ -731,8 +835,8 @@ const MessengerDeliveryCard = ({
               onClick={onOpen}
               className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-500 transition-colors hover:text-blue-700"
             >
-              ดูรายละเอียด
-              <span className="material-symbols-outlined text-[13px]">chevron_right</span>
+              {isDone ? 'ดู Milestone' : 'ดูรายละเอียด'}
+              <span className="material-symbols-outlined text-[13px]">{isDone ? 'timeline' : 'chevron_right'}</span>
             </button>
           </div>
         </div>
@@ -759,7 +863,9 @@ const AdminParcelManagementCard = ({
   assignment: DeliveryAssignment | null;
 }) => {
   const note = getCleanNote(parcel);
+  const itemDescription = parcel['รายละเอียด'] || '';
   const [isAdminNoteExpanded, setIsAdminNoteExpanded] = useState(false);
+  const [isAdminItemDescriptionExpanded, setIsAdminItemDescriptionExpanded] = useState(false);
   const translatedNote = translateSystemNote(note);
   const isDone = parcel['สถานะ'] === 'ส่งสำเร็จ';
   const isInTransit = parcel['สถานะ'] === 'กำลังจัดส่ง';
@@ -808,14 +914,22 @@ const AdminParcelManagementCard = ({
           <MessengerRouteSummary parcel={parcel} />
 
           <div className="space-y-2">
-            {(parcel['รายละเอียด'] || note) && (
+            {(itemDescription || note) && (
               <div className="grid grid-cols-2 gap-2">
-                <div className={`flex min-w-0 items-start gap-2.5 rounded-lg bg-slate-50 px-2.5 py-2 ${parcel['รายละเอียด'] ? '' : 'opacity-40'}`}>
+                <div
+                  onClick={() => itemDescription && setIsAdminItemDescriptionExpanded(!isAdminItemDescriptionExpanded)}
+                  className={`flex min-w-0 items-start gap-2.5 rounded-lg bg-slate-50 px-2.5 py-2 transition-all ${itemDescription ? 'cursor-pointer hover:bg-slate-100' : 'opacity-40'}`}
+                >
                   <Package className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-[10px] font-bold leading-none text-slate-500">สิ่งที่ส่ง</p>
-                    <p className="mt-1 min-w-0 truncate text-xs font-semibold leading-5 text-slate-800">
-                      {parcel['รายละเอียด'] || '-'}
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[10px] font-bold leading-none text-slate-500">สิ่งที่ส่ง</p>
+                      {itemDescription.length > 25 && (
+                        <span className="shrink-0 text-[8px] font-bold uppercase text-slate-500">{isAdminItemDescriptionExpanded ? 'ย่อ' : 'ดูเพิ่ม'}</span>
+                      )}
+                    </div>
+                    <p className={`mt-1 min-w-0 text-xs font-semibold leading-relaxed text-slate-800 ${isAdminItemDescriptionExpanded ? 'break-words whitespace-pre-wrap' : 'truncate'}`}>
+                      {itemDescription || '-'}
                     </p>
                   </div>
                 </div>
@@ -1025,6 +1139,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
   const [statusFilter, setStatusFilter] = useState(() => defaultStatusFilter);
   const [selectedParcel, setSelectedParcel] = useState<Parcel | null>(null);
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
+  const [isDeliveryDetailsOpen, setIsDeliveryDetailsOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [confirmTrackingId, setConfirmTrackingId] = useState<string | null>(null);
   const [isConfirmFlowOpen, setIsConfirmFlowOpen] = useState(false);
@@ -1219,6 +1334,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
 
   const openConfirmFlow = (trackingId: string) => {
     setIsTimelineOpen(false);
+    setIsDeliveryDetailsOpen(false);
     setConfirmTrackingId(trackingId);
     setIsConfirmFlowOpen(true);
   };
@@ -1527,7 +1643,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
                         canStartDelivery={isAvailableForMessenger(parcel)}
                         canReleaseDelivery={false}
                         canConfirmDelivery={false}
-                        onOpen={() => { setSelectedParcel(parcel); setIsTimelineOpen(true); }}
+                        onOpen={() => { setSelectedParcel(parcel); setIsDeliveryDetailsOpen(true); }}
                         onConfirm={() => openConfirmFlow(parcel.TrackingID)}
                         onStartDelivery={() => handleStartDelivery(parcel)}
                         onReleaseDelivery={() => handleReleaseDelivery(parcel)}
@@ -1572,7 +1688,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
                           canStartDelivery={false}
                           canReleaseDelivery={canReleaseMessengerJob(parcel, currentEmployeeId, role)}
                           canConfirmDelivery={canConfirmMessengerJob(parcel, currentEmployeeId)}
-                          onOpen={() => { setSelectedParcel(parcel); setIsTimelineOpen(true); }}
+                          onOpen={() => { setSelectedParcel(parcel); setIsDeliveryDetailsOpen(true); }}
                           onConfirm={() => openConfirmFlow(parcel.TrackingID)}
                           onStartDelivery={() => handleStartDelivery(parcel)}
                           onReleaseDelivery={() => handleReleaseDelivery(parcel)}
@@ -1868,6 +1984,12 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
           </div>
         )}
       </section>
+
+      <DeliveryJobDetailsModal
+        parcel={selectedParcel}
+        open={isDeliveryDetailsOpen}
+        onOpenChange={setIsDeliveryDetailsOpen}
+      />
 
       {/* ── Timeline Dialog ── */}
       {isTimelineOpen && (

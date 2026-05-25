@@ -51,22 +51,22 @@ export default function ParcelTimelineModal({
             >
               <span className="material-symbols-outlined text-sm">close</span>
             </button>
-            <DialogTitle className="pr-8 text-sm font-semibold leading-tight text-white">ลำดับการจัดส่ง</DialogTitle>
+            <DialogTitle className="pr-8 text-sm font-semibold leading-tight text-white">Milestone การจัดส่ง</DialogTitle>
             <p className="mt-1 min-w-0 pr-8 text-[10px] tracking-wide text-slate-400">
               <code className="font-mono font-semibold text-slate-400 break-all">{selectedParcel.TrackingID}</code>
             </p>
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto bg-gray-50 px-4 py-4">
-            <div className="rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
+            <div className="rounded-2xl border border-blue-100 bg-white px-4 py-3 shadow-sm">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-2">
                   <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-blue-50 text-blue-500">
                     <span className="material-symbols-outlined text-sm">route</span>
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold text-gray-800">สถานะล่าสุด</p>
-                    <p className="mt-0.5 truncate text-[10px] text-gray-400">เรียงจากล่าสุด</p>
+                    <p className="text-xs font-black text-gray-800">Milestone การจัดส่ง</p>
+                    <p className="mt-0.5 truncate text-[10px] font-semibold text-gray-400">ล่าสุดอยู่ด้านบน</p>
                   </div>
                 </div>
                 <button
