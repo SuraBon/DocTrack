@@ -36,9 +36,15 @@ import {
   type OfflineQueueItem,
   type SyncResult,
 } from './offlineQueue';
+import {
+  getUnsyncedRouteSamples,
+  markRouteSamplesSynced,
+  type RouteSampleRecord,
+} from './routeTracking';
 import { toast } from 'sonner';
 
 let isSyncing = false;
+let isRouteSyncing = false;
 const QUEUEABLE_ACTIONS = ['createParcel', 'confirmReceipt', 'startDelivery', 'releaseDelivery'];
 
 // ── Status normalizer ────────────────────────────────────────────────────────
@@ -788,6 +794,60 @@ export async function updateProfile(
   }
 }
 
+type SyncRouteSamplesResponse = {
+  success: boolean;
+  savedCount?: number;
+  skippedCount?: number;
+  error?: string;
+};
+
+export async function syncRouteSamples(trackingID?: string): Promise<SyncRouteSamplesResponse> {
+  if (isRouteSyncing) return { success: true, savedCount: 0, skippedCount: 0 };
+  const samples = await getUnsyncedRouteSamples(trackingID);
+  if (samples.length === 0) return { success: true, savedCount: 0, skippedCount: 0 };
+
+  const groups = samples.reduce<Record<string, RouteSampleRecord[]>>((acc, sample) => {
+    (acc[sample.trackingID] ||= []).push(sample);
+    return acc;
+  }, {});
+
+  isRouteSyncing = true;
+  let savedCount = 0;
+  let skippedCount = 0;
+  try {
+    for (const [groupTrackingID, groupSamples] of Object.entries(groups)) {
+      const res = await callAPI<SyncRouteSamplesResponse>({
+        action: 'syncRouteSamples',
+        trackingID: groupTrackingID,
+        samples: groupSamples,
+        idempotencyKey: createIdempotencyKey('syncRouteSamples'),
+      }, {}, NO_RETRY);
+
+      if (!res.success) {
+        return { success: false, error: res.error || 'ซิงค์เส้นทางไม่สำเร็จ', savedCount, skippedCount };
+      }
+
+      await markRouteSamplesSynced(groupSamples.map(sample => sample.id));
+      savedCount += res.savedCount ?? groupSamples.length;
+      skippedCount += res.skippedCount ?? 0;
+    }
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'ซิงค์เส้นทางไม่สำเร็จ',
+      savedCount,
+      skippedCount,
+    };
+  } finally {
+    isRouteSyncing = false;
+  }
+
+  if (savedCount > 0 || skippedCount > 0) {
+    window.dispatchEvent(new Event('offline-sync-complete'));
+  }
+  return { success: true, savedCount, skippedCount };
+}
+
 async function runQueuedAction(item: OfflineQueueItem): Promise<any> {
   const payload = await resolveSyncPayload(item.payload);
   if (payload.action === 'createParcel') {
@@ -875,10 +935,12 @@ export async function syncOfflineQueue(): Promise<SyncResult> {
 if (typeof window !== 'undefined') {
   window.addEventListener('online', () => {
     void syncOfflineQueue();
+    void syncRouteSamples();
   });
   window.addEventListener('load', () => {
     if (navigator.onLine) {
       void syncOfflineQueue();
+      void syncRouteSamples();
     }
   });
 }

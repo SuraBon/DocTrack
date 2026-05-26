@@ -821,7 +821,7 @@ function doPost(e) {
     }
 
     // --- Token Signature Verification ---
-    const protectedActions = ['confirmReceipt', 'startDelivery', 'releaseDelivery', 'getParcels', 'exportSummary', 'getUsers', 'createUser', 'updateUserRole', 'updateUser', 'disableUser', 'deleteUser', 'createBranch', 'deleteBranch', 'deleteParcel', 'editParcel', 'updateProfile', 'getAuditLogs', 'getParcelActivityLogs'];
+    const protectedActions = ['confirmReceipt', 'startDelivery', 'releaseDelivery', 'syncRouteSamples', 'getParcels', 'exportSummary', 'getUsers', 'createUser', 'updateUserRole', 'updateUser', 'disableUser', 'deleteUser', 'createBranch', 'deleteBranch', 'deleteParcel', 'editParcel', 'updateProfile', 'getAuditLogs', 'getParcelActivityLogs'];
     if (payload.token) {
       const parts = String(payload.token).split('|');
       if (parts.length === 5) {
@@ -867,7 +867,7 @@ function doPost(e) {
       payload.role = 'GUEST';
     }
 
-    const writeActions = ['createParcel', 'confirmReceipt', 'startDelivery', 'releaseDelivery', 'login', 'setupPin', 'createUser', 'updateUserRole', 'updateUser', 'disableUser', 'deleteUser', 'createBranch', 'deleteBranch', 'deleteParcel', 'editParcel', 'updateProfile'];
+    const writeActions = ['createParcel', 'confirmReceipt', 'startDelivery', 'releaseDelivery', 'syncRouteSamples', 'login', 'setupPin', 'createUser', 'updateUserRole', 'updateUser', 'disableUser', 'deleteUser', 'createBranch', 'deleteBranch', 'deleteParcel', 'editParcel', 'updateProfile'];
     const isWrite = writeActions.includes(action);
 
     let result;
@@ -909,6 +909,7 @@ function routeAction(action, payload) {
   if (action === 'confirmReceipt') return handleConfirmReceipt(payload);
   if (action === 'startDelivery') return handleStartDelivery(payload);
   if (action === 'releaseDelivery') return handleReleaseDelivery(payload);
+  if (action === 'syncRouteSamples') return handleSyncRouteSamples(payload);
   if (action === 'searchParcels') return handleSearchParcels(payload);
   if (action === 'login') return handleLogin(payload);
   if (action === 'setupPin') return handleSetupPin(payload);
@@ -1875,6 +1876,114 @@ function handleReleaseDelivery(payload) {
 }
 
 
+function sanitizeRouteSampleId(value) {
+  return String(value || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 80);
+}
+
+function handleSyncRouteSamples(payload) {
+  if (!hasAnyRole(payload, ['ADMIN', 'MESSENGER'])) {
+    return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง" });
+  }
+
+  const rl = checkWriteRateLimit(payload.employeeId, 'syncRouteSamples');
+  if (!rl.allowed) {
+    return createJsonResponse({ success: false, error: "ส่งคำขอบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่" });
+  }
+
+  if (!validateTrackingID(payload.trackingID)) {
+    return createJsonResponse({ success: false, error: "รูปแบบหมายเลขติดตามไม่ถูกต้อง" });
+  }
+
+  const samples = Array.isArray(payload.samples) ? payload.samples.slice(0, 500) : [];
+  if (samples.length === 0) {
+    return createJsonResponse({ success: true, savedCount: 0, skippedCount: 0 });
+  }
+
+  const storage = getParcelStorageByTrackingId(payload.trackingID);
+  if (!storage) {
+    return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง" });
+  }
+
+  const data = storage.sheet.getDataRange().getValues();
+  let parcelRow = null;
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]).trim() === String(payload.trackingID).trim()) {
+      parcelRow = data[i];
+      break;
+    }
+  }
+
+  if (!parcelRow || !canReadParcelRow(payload, parcelRow)) {
+    return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง" });
+  }
+
+  const eventSheet = getEventSheetForSpreadsheet(storage.spreadsheet);
+  if (!eventSheet) {
+    return createJsonResponse({ success: false, error: "Event sheet unavailable" });
+  }
+
+  const existingIds = {};
+  const existingEvents = getParcelEventsForSpreadsheet(storage.spreadsheet, payload.trackingID);
+  for (let i = 0; i < existingEvents.length; i++) {
+    existingIds[String(existingEvents[i].id)] = true;
+  }
+
+  let savedCount = 0;
+  let skippedCount = 0;
+  const operatorName = escapeSheetValue(payload.operatorName || payload.name || payload.employeeId || "");
+  for (let i = 0; i < samples.length; i++) {
+    const sample = samples[i] || {};
+    const sampleId = sanitizeRouteSampleId(sample.id || (String(payload.trackingID) + "_" + i));
+    if (!sampleId) {
+      skippedCount++;
+      continue;
+    }
+
+    const eventId = "ROUTE_" + sampleId;
+    if (existingIds[eventId]) {
+      skippedCount++;
+      continue;
+    }
+
+    const latitude = sanitizeCoordinate(sample.latitude, -90, 90);
+    const longitude = sanitizeCoordinate(sample.longitude, -180, 180);
+    if (latitude === "" || longitude === "") {
+      skippedCount++;
+      continue;
+    }
+
+    const rawDate = sample.timestamp ? new Date(String(sample.timestamp)) : new Date();
+    const eventDate = isNaN(rawDate.getTime()) ? new Date() : rawDate;
+    const noteParts = ["routeSampleId=" + sampleId];
+    if (sample.accuracy !== undefined && sample.accuracy !== null && isFinite(Number(sample.accuracy))) noteParts.push("accuracy=" + Math.round(Number(sample.accuracy)));
+    if (sample.speed !== undefined && sample.speed !== null && isFinite(Number(sample.speed))) noteParts.push("speed=" + Number(sample.speed).toFixed(2));
+    if (sample.heading !== undefined && sample.heading !== null && isFinite(Number(sample.heading))) noteParts.push("heading=" + Math.round(Number(sample.heading)));
+
+    eventSheet.appendRow([
+      eventId,
+      payload.trackingID,
+      formatThaiDateForSheet(eventDate),
+      "ROUTE_SAMPLE",
+      "GPS",
+      "",
+      operatorName,
+      "",
+      latitude,
+      longitude,
+      escapeSheetValue(noteParts.join(";")),
+      "",
+      ""
+    ]);
+    existingIds[eventId] = true;
+    savedCount++;
+  }
+
+  if (savedCount > 0) {
+    writeAuditLog(payload.employeeId, "SYNC_ROUTE_SAMPLES", payload.trackingID, "Saved route samples: " + savedCount);
+  }
+  return createJsonResponse({ success: true, savedCount: savedCount, skippedCount: skippedCount });
+}
+
 function handleSearchParcels(payload) {
   const query = sanitizeText(payload.query || "");
   if (!query) {
@@ -2034,7 +2143,7 @@ const LOGIN_LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
 // Write rate limit: max 30 creates per user per 10 minutes
 const MAX_WRITE_PER_WINDOW = 30;
 const WRITE_WINDOW_SECONDS = 600; // 10 minutes
-const IDEMPOTENT_ACTIONS = ["createParcel", "confirmReceipt", "startDelivery", "releaseDelivery"];
+const IDEMPOTENT_ACTIONS = ["createParcel", "confirmReceipt", "startDelivery", "releaseDelivery", "syncRouteSamples"];
 const IDEMPOTENCY_TTL_SECONDS = 21600; // 6 hours
 
 function getIdempotencyCacheKey(action, payload) {

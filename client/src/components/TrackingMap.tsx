@@ -3,6 +3,7 @@ import L from 'leaflet';
 import { MapView } from './Map';
 import type { TimelineEvent } from '@/types/timeline';
 import { formatThaiDateTime } from '@/lib/dateUtils';
+import { useRouteSamples } from '@/hooks/useRouteSamples';
 
 const DEFAULT_CENTER = { lat: 13.7563, lng: 100.5018 }; // กรุงเทพฯ
 
@@ -18,21 +19,23 @@ function escapeHtml(str: string): string {
 
 interface TrackingMapProps {
   events: TimelineEvent[];
+  trackingID?: string;
   className?: string;
   mapClassName?: string;
 }
 
-function TrackingMap({ events, className = '', mapClassName = 'h-[250px] sm:h-[300px] md:h-[400px] max-h-[50vh]' }: TrackingMapProps) {
+function TrackingMap({ events, trackingID, className = '', mapClassName = 'h-[250px] sm:h-[300px] md:h-[400px] max-h-[50vh]' }: TrackingMapProps) {
   const mapRef      = useRef<L.Map | null>(null);
   const markersRef  = useRef<L.Marker[]>([]);
   const polylineRef = useRef<L.Polyline | null>(null);
   const polylineHaloRef = useRef<L.Polyline | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
+  const routeSamples = useRouteSamples(trackingID);
 
   // Derive the ordered list of coordinate-bearing events from the timeline.
   // ใช้เฉพาะ GPS จริงจาก events — ไม่ fallback ไปหา branch coordinates
   const { pathEntries, hasUnresolved } = useMemo(() => {
-    const entries: { lat: number; lng: number; label: string; isGps: boolean; isLast: boolean; event: TimelineEvent }[] = [];
+    const entries: { lat: number; lng: number; label: string; isGps: boolean; isLast: boolean; isRouteSample?: boolean; event: TimelineEvent }[] = [];
 
     for (const e of events) {
       // ใช้เฉพาะ GPS จริงเท่านั้น
@@ -45,16 +48,47 @@ function TrackingMap({ events, className = '', mapClassName = 'h-[250px] sm:h-[3
         entries.push({
           lat: e.latitude,
           lng: e.longitude,
-          label: e.location || 'GPS',
+          label: e.kind === 'routeSample' ? 'ตำแหน่งระหว่างส่ง' : e.location || 'GPS',
           isGps: true,
           isLast: false,
+          isRouteSample: e.kind === 'routeSample',
           event: e,
         });
       }
     }
 
+    for (const sample of routeSamples.filter(sample => !sample.synced)) {
+      entries.push({
+        lat: sample.latitude,
+        lng: sample.longitude,
+        label: 'ตำแหน่งระหว่างส่ง',
+        isGps: true,
+        isLast: false,
+        isRouteSample: true,
+        event: {
+          id: sample.id,
+          status: 'completed',
+          title: 'ตำแหน่งระหว่างส่ง',
+          description: sample.accuracy ? `ความแม่นยำประมาณ ${Math.round(sample.accuracy)} เมตร` : undefined,
+          timestamp: sample.timestamp,
+          location: 'GPS',
+          latitude: sample.latitude,
+          longitude: sample.longitude,
+        },
+      });
+    }
+
+    const orderedEntries = [...entries].sort((a, b) => {
+      const aTime = Date.parse(a.event.timestamp || '');
+      const bTime = Date.parse(b.event.timestamp || '');
+      if (!Number.isFinite(aTime) && !Number.isFinite(bTime)) return 0;
+      if (!Number.isFinite(aTime)) return 1;
+      if (!Number.isFinite(bTime)) return -1;
+      return aTime - bTime;
+    });
+
     // Deduplicate consecutive identical coordinates
-    const deduped = entries.filter((entry, i, arr) => {
+    const deduped = orderedEntries.filter((entry, i, arr) => {
       if (i === 0) return true;
       const prev = arr[i - 1];
       return entry.lat !== prev.lat || entry.lng !== prev.lng;
@@ -73,7 +107,7 @@ function TrackingMap({ events, className = '', mapClassName = 'h-[250px] sm:h-[3
     );
 
     return { pathEntries: deduped, hasUnresolved };
-  }, [events]);
+  }, [events, routeSamples]);
 
   const hasRouteData = pathEntries.length > 0;
   const hasCreatedPoint = pathEntries.some(entry => entry.event.title === 'สร้างรายการส่ง');
@@ -105,12 +139,13 @@ function TrackingMap({ events, className = '', mapClassName = 'h-[250px] sm:h-[3
       const eventDate = event.timestamp ? formatThaiDateTime(event.timestamp) : '';
       const safeLabel     = escapeHtml(label || 'GPS');
       const isDeliveredPoint = event.title === 'ส่งสำเร็จ';
+      const isRouteSample = entry.isRouteSample;
       const isStartPoint = !isDeliveredPoint && (
         event.title === 'สร้างรายการส่ง' ||
         (!hasCreatedPoint && index === 0)
       );
-      const iconName = isStartPoint ? 'inventory_2' : isDeliveredPoint ? 'task_alt' : 'local_shipping';
-      const markerColor = isStartPoint ? '#2563eb' : isDeliveredPoint ? '#16a34a' : '#0f172a';
+      const iconName = isStartPoint ? 'inventory_2' : isDeliveredPoint ? 'task_alt' : isRouteSample ? 'near_me' : 'local_shipping';
+      const markerColor = isStartPoint ? '#2563eb' : isDeliveredPoint ? '#16a34a' : isRouteSample ? '#7c3aed' : '#0f172a';
       const markerRing  = isStartPoint
         ? 'rgba(37,99,235,0.18)'
         : isDeliveredPoint
@@ -142,7 +177,7 @@ function TrackingMap({ events, className = '', mapClassName = 'h-[250px] sm:h-[3
 
       const badge = document.createElement('div');
       badge.style.cssText = `display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;background:${isStartPoint ? '#eff6ff' : isDeliveredPoint ? '#f0fdf4' : '#0f172a'};color:${isStartPoint ? '#2563eb' : isDeliveredPoint ? '#15803d' : '#ffffff'};font-size:11px;font-weight:900;margin-bottom:8px`;
-      badge.textContent = isStartPoint ? 'จุดเริ่มต้น' : isDeliveredPoint ? 'ปลายทาง' : 'กำลังจัดส่ง';
+      badge.textContent = isStartPoint ? 'จุดเริ่มต้น' : isDeliveredPoint ? 'ปลายทาง' : isRouteSample ? 'เส้นทางจริง' : 'กำลังจัดส่ง';
 
       const title = document.createElement('div');
       title.style.cssText = 'font-weight:900;color:#091426;font-size:15px;line-height:1.25';
@@ -187,7 +222,7 @@ function TrackingMap({ events, className = '', mapClassName = 'h-[250px] sm:h-[3
 
       const footer = document.createElement('div');
       footer.style.cssText = 'margin-top:10px;padding-top:10px;border-top:1px solid #eef1f6;font-size:11px;color:#855300;font-weight:900';
-      footer.textContent = 'คลิกหมุดอื่นเพื่อดูรายละเอียดจุดนั้น';
+      footer.textContent = isRouteSample ? 'บันทึกจาก GPS ระหว่างพนักงานนำส่ง' : 'คลิกหมุดอื่นเพื่อดูรายละเอียดจุดนั้น';
 
       popupEl.appendChild(footer);
       marker.bindPopup(popupEl, {

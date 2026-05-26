@@ -549,7 +549,7 @@ export default function Track({ embedded = false }: { embedded?: boolean }) {
                 <p className="mt-1 break-all font-mono text-sm font-black tracking-wide text-blue-200">{parcel.TrackingID}</p>
               </div>
               <div className="bg-white p-4">
-                <TrackingMap events={timelineEvents} mapClassName="h-[68vh] max-h-[640px] min-h-[360px]" />
+                <TrackingMap events={timelineEvents} trackingID={parcel.TrackingID} mapClassName="h-[68vh] max-h-[640px] min-h-[360px]" />
               </div>
             </div>
           </DialogContent>

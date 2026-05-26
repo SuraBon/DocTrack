@@ -10,7 +10,7 @@ import L from 'leaflet';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
 import { useParcelStore } from '@/hooks/useParcelStore';
-import { getParcel } from '@/lib/parcelService';
+import { getParcel, syncRouteSamples } from '@/lib/parcelService';
 import { useBranches } from '@/hooks/useBranches';
 import NativeSelect, { resolveSelectValue } from '@/components/NativeSelect';
 import { toast } from 'sonner';
@@ -23,6 +23,7 @@ import { buildGpsEvidenceNote, needsGpsOverrideReason as shouldRequireGpsOverrid
 import { processProofImageFile } from '@/lib/imageProofHelper';
 import { buildDeliveryActionPayload, getCurrentBranchFromParcel, isParcelTrulyDelivered } from '@/lib/deliveryActionBuilder';
 import { useOfflineQueue } from '@/hooks/useOfflineQueue';
+import { stopRouteTracking } from '@/lib/routeTracking';
 
 
 /** Rendered outside the main component so it never remounts on state changes. */
@@ -359,6 +360,8 @@ export default function ConfirmReceipt({
       );
       
       if (response && response.success) {
+        stopRouteTracking(finalTrackingId);
+        void syncRouteSamples(finalTrackingId);
         toast.success(response.queued ? 'บันทึกไว้ในเครื่องแล้ว ระบบจะซิงค์เมื่อเชื่อมต่อได้' : 'ยืนยันส่งเรียบร้อยแล้ว');
         // Reset all state
         setCurrentStep(1);

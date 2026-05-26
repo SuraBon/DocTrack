@@ -2,12 +2,13 @@ import type { CreateParcelDraft } from './createParcelDraft';
 import type { CreatedParcelHistoryItem } from './createdParcelHistory';
 
 const DB_NAME = 'shiptrack_offline';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 export const OFFLINE_QUEUE_STORE = 'offlineQueue';
 export const OFFLINE_MEDIA_STORE = 'offlineMedia';
 export const OFFLINE_DRAFT_STORE = 'drafts';
 export const OFFLINE_HISTORY_STORE = 'createdParcelHistory';
+export const OFFLINE_ROUTE_STORE = 'routeSamples';
 
 export const LEGACY_QUEUE_KEY = 'shiptrack_offline_queue';
 export const LEGACY_DRAFT_KEY = 'shiptrack_create_parcel_draft';
@@ -45,6 +46,18 @@ export type OfflineHistoryRecord = CreatedParcelHistoryItem & {
   id: string;
 };
 
+export interface RouteSampleRecord {
+  id: string;
+  trackingID: string;
+  latitude: number;
+  longitude: number;
+  accuracy?: number;
+  speed?: number | null;
+  heading?: number | null;
+  timestamp: string;
+  synced?: boolean;
+}
+
 let dbPromise: Promise<IDBDatabase | null> | null = null;
 
 export function isIndexedDbAvailable(): boolean {
@@ -70,6 +83,10 @@ function openDb(): Promise<IDBDatabase | null> {
       }
       if (!db.objectStoreNames.contains(OFFLINE_HISTORY_STORE)) {
         db.createObjectStore(OFFLINE_HISTORY_STORE, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(OFFLINE_ROUTE_STORE)) {
+        const routeStore = db.createObjectStore(OFFLINE_ROUTE_STORE, { keyPath: 'id' });
+        routeStore.createIndex('trackingID', 'trackingID', { unique: false });
       }
     };
     request.onsuccess = () => resolve(request.result);

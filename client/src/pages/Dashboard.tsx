@@ -5,7 +5,8 @@
 import { lazy, Suspense, useEffect, useState, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import { useParcelStore } from '@/hooks/useParcelStore';
 import { useAuth } from '@/contexts/AuthContext';
-import { deleteParcel, releaseDelivery, startDelivery } from '@/lib/parcelService';
+import { deleteParcel, releaseDelivery, startDelivery, syncRouteSamples } from '@/lib/parcelService';
+import { startRouteTracking, stopRouteTracking } from '@/lib/routeTracking';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import StatusBadge from '@/components/StatusBadge';
@@ -1391,6 +1392,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
       'สถานะ': 'กำลังจัดส่ง',
       events: nextEvents,
     });
+    startRouteTracking(parcel.TrackingID);
     setMessengerView('mine');
     toast.success(res.autoPickedUp ? 'รับงานและบันทึกรับของแล้ว' : (res.alreadyStarted ? 'งานนี้อยู่ในรายการที่ต้องส่งแล้ว' : 'รับงานสำเร็จ'));
     loadParcels(undefined, true).catch(() => {});
@@ -1422,6 +1424,8 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
       'สถานะ': 'รอจัดส่ง',
       events: [...(parcel.events || []), releaseEvent],
     });
+    stopRouteTracking(parcel.TrackingID);
+    void syncRouteSamples(parcel.TrackingID);
     setMessengerView('waiting');
     toast.success(res.alreadyReleased ? 'งานนี้พร้อมให้ผู้อื่นกดรับแล้ว' : 'คืนงานสำเร็จ');
     loadParcels(undefined, true).catch(() => {});

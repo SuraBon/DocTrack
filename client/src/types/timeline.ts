@@ -8,6 +8,7 @@ export type DeliveryMatchStatus = 'MATCHED_DECLARED_DESTINATION' | 'DELIVERED_EL
 
 export interface TimelineEvent {
   id: string;
+  kind?: 'event' | 'routeSample';
   status: TimelineStatus;
   title: string;
   description?: string;

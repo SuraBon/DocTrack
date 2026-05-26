@@ -30,7 +30,7 @@ export interface ParcelEventRecord {
   id: string;
   trackingId: string;
   timestamp: string;
-  eventType: 'FORWARD' | 'PROXY' | 'DELIVERED' | 'CREATED' | 'START_DELIVERY' | 'PICKUP' | 'RELEASE_DELIVERY';
+  eventType: 'FORWARD' | 'PROXY' | 'DELIVERED' | 'CREATED' | 'START_DELIVERY' | 'PICKUP' | 'RELEASE_DELIVERY' | 'ROUTE_SAMPLE';
   location: string;
   destLocation?: string;
   person?: string;
