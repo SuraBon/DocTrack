@@ -27,13 +27,7 @@ import {
 } from '@/lib/createParcelDraft';
 import { UI_COPY } from '@/lib/uiCopy';
 
-type CreatedParcelDetails = {
-  senderName: string;
-  senderBranch: string;
-  receiverName: string;
-  receiverBranch: string;
-  createdAt: string;
-};
+
 
 export default function CreateParcel({ embedded = false }: { embedded?: boolean }) {
   const { createParcel } = useParcelStore();
@@ -45,7 +39,6 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
   const [formData, setFormData] = useState(loadCreateParcelDraft);
 
   const [createdTrackingId, setCreatedTrackingId] = useState<string | null>(null);
-  const [createdParcelDetails, setCreatedParcelDetails] = useState<CreatedParcelDetails | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [isResultOpen, setIsResultOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -201,13 +194,6 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
         clearProofPhoto();
       } else if (result.trackingId) {
         setCreatedTrackingId(result.trackingId);
-        setCreatedParcelDetails({
-          senderName: v.senderName,
-          senderBranch: v.senderBranch,
-          receiverName: v.receiverName,
-          receiverBranch: v.receiverBranch,
-          createdAt: new Date().toISOString(),
-        });
         setIsResultOpen(true);
         clearCreateParcelDraft();
         setFormData(EMPTY_CREATE_PARCEL_DRAFT);
@@ -658,24 +644,24 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
 
             {/* Footer */}
             <div className="border-t border-gray-100 bg-white p-4 sm:p-5">
-              <div className="flex flex-col-reverse gap-3 sm:flex-row">
+              <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => setIsConfirmOpen(false)}
-                  className="app-secondary-button h-11 flex-1 rounded-xl"
+                  className="app-secondary-button h-12 w-full rounded-xl text-base font-bold"
                 >
                   แก้ไข
                 </button>
                 <button
                   onClick={handleConfirmSubmit}
                   disabled={isLoading}
-                  className="app-primary-button h-11 flex-[2] rounded-xl"
+                  className="app-primary-button h-12 w-full rounded-xl text-base font-bold"
                 >
                   {isLoading ? (
                     <Spinner className="h-5 w-5" />
                   ) : (
                     <>
-                  ยืนยันสร้างรายการ
-                      <span className="material-symbols-outlined text-xl" aria-hidden="true">verified</span>
+                      ยืนยันสร้างรายการ
+                      <span className="material-symbols-outlined text-lg" aria-hidden="true">verified</span>
                     </>
                   )}
                 </button>
@@ -730,95 +716,20 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
               </div>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row">
+            <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={handleCopyTrackingId}
-                className="flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
+                className="flex h-12 min-w-0 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
               >
                 <span className="material-symbols-outlined text-xl" aria-hidden="true">content_copy</span>
                 คัดลอกหมายเลข
               </button>
               <button
-                onClick={async () => {
-                  const printWindow = window.open('', '', 'width=400,height=500');
-                  if (printWindow) {
-                    const labelDetails = createdParcelDetails ?? {
-                      ...getFinalValues(),
-                      createdAt: new Date().toISOString(),
-                    };
-                    const trackingId = createdTrackingId ?? '';
-                    // Generate QR locally for print
-                    let printQrSrc = '';
-                    try {
-                      printQrSrc = await QRCode.toDataURL(trackingId, { width: 200, margin: 1 });
-                    } catch { /* fallback: no QR */ }
-                    const doc = printWindow.document;
-                    doc.title = 'ShipTrack Label';
-                    const meta = doc.createElement('meta');
-                    meta.setAttribute('charset', 'utf-8');
-                    doc.head.appendChild(meta);
-                    doc.body.style.margin = '0';
-                    doc.body.style.padding = '16px';
-
-                    const label = doc.createElement('div');
-                    label.style.cssText = 'text-align:center;font-family:sans-serif;padding:28px;border:4px solid #091426;border-radius:20px;max-width:400px;margin:auto;box-sizing:border-box;';
-
-                    const header = doc.createElement('div');
-                    header.style.cssText = 'background:#091426;color:#fff;padding:15px;border-radius:12px;margin-bottom:20px;';
-                    const title = doc.createElement('h2');
-                    title.style.cssText = 'margin:0;font-size:24px;';
-                    title.textContent = 'ShipTrack';
-                    header.appendChild(title);
-
-                    const trackingHeading = doc.createElement('h1');
-                    trackingHeading.style.cssText = 'font-size:clamp(24px,8vw,38px);margin:10px 0;font-family:monospace;letter-spacing:1px;overflow-wrap:anywhere;line-height:1.1;';
-                    trackingHeading.textContent = trackingId;
-
-                    const qrImg = doc.createElement('img');
-                    qrImg.alt = 'QR code';
-                    qrImg.style.cssText = 'width:180px;height:180px;margin:20px 0;';
-                    if (printQrSrc) {
-                      qrImg.src = printQrSrc;
-                    }
-
-                    const details = doc.createElement('div');
-                    details.style.cssText = 'margin-top:20px;text-align:left;border-top:2px solid #eee;padding-top:20px;';
-                    const sender = doc.createElement('div');
-                    sender.style.marginBottom = '10px';
-                    const senderLabel = doc.createElement('p');
-                    senderLabel.style.cssText = 'margin:0;font-size:10px;color:#666;text-transform:uppercase;font-weight:bold;';
-                    senderLabel.textContent = 'ผู้ส่ง';
-                    const senderInfo = doc.createElement('p');
-                    senderInfo.style.cssText = 'margin:0;font-weight:bold;';
-                    senderInfo.textContent = `${labelDetails.senderName} (${labelDetails.senderBranch})`;
-                    sender.append(senderLabel, senderInfo);
-
-                    const receiver = doc.createElement('div');
-                    const receiverLabel = doc.createElement('p');
-                    receiverLabel.style.cssText = 'margin:0;font-size:10px;color:#666;text-transform:uppercase;font-weight:bold;';
-                    receiverLabel.textContent = 'ผู้รับ';
-                    const receiverInfo = doc.createElement('p');
-                    receiverInfo.style.cssText = 'margin:0;font-weight:bold;';
-                    receiverInfo.textContent = `${labelDetails.receiverName} (${labelDetails.receiverBranch})`;
-                    receiver.append(receiverLabel, receiverInfo);
-                    details.append(sender, receiver);
-
-                    const createdAt = doc.createElement('p');
-                    createdAt.style.cssText = 'margin-top:30px;font-size:10px;color:#999;font-style:italic;';
-                    createdAt.textContent = `สร้างเมื่อ: ${formatThaiDateTime(labelDetails.createdAt)}`;
-
-                    label.append(header, trackingHeading, qrImg, details, createdAt);
-                    doc.body.replaceChildren(label);
-                    printWindow.setTimeout(() => {
-                      printWindow.print();
-                      printWindow.close();
-                    }, 150);
-                  }
-                }}
-                className="flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-slate-950 text-sm font-bold text-white shadow-lg shadow-slate-200 transition-colors hover:bg-slate-900"
+                onClick={() => setIsResultOpen(false)}
+                className="flex h-12 min-w-0 items-center justify-center gap-2 rounded-xl bg-slate-950 text-sm font-bold text-white shadow-lg shadow-slate-200 transition-colors hover:bg-slate-900"
               >
-                <span className="material-symbols-outlined text-xl" aria-hidden="true">print</span>
-                พิมพ์ใบปะหน้า
+                <span className="material-symbols-outlined text-xl" aria-hidden="true">done</span>
+                เสร็จสิ้น
               </button>
             </div>
           </div>
