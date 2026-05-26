@@ -19,7 +19,7 @@ import { Spinner } from '@/components/ui/spinner';
 import {
   clearCreatedParcelHistory,
   getCreatedParcelProofPhoto,
-  getCreatedParcelHistory,
+  getCreatedParcelHistoryFromDb,
   removeCreatedParcelHistoryItem,
   updateCreatedParcelHistoryFromParcel,
   type CreatedParcelHistoryItem,
@@ -48,7 +48,7 @@ export default function Track({ embedded = false }: { embedded?: boolean }) {
   const handleRefreshHistory = async () => {
     if (isRefreshingHistory) return;
     setIsRefreshingHistory(true);
-    const history = getCreatedParcelHistory();
+    const history = await getCreatedParcelHistoryFromDb();
     if (history.length === 0) {
       setIsRefreshingHistory(false);
       return;
@@ -66,7 +66,7 @@ export default function Track({ embedded = false }: { embedded?: boolean }) {
             // ignore
           }
         }
-        setCreatedHistory(getCreatedParcelHistory());
+        setCreatedHistory(await getCreatedParcelHistoryFromDb());
         return updatedCount;
       })();
 
@@ -101,7 +101,7 @@ export default function Track({ embedded = false }: { embedded?: boolean }) {
   }, []);
 
   useEffect(() => {
-    const syncHistory = () => setCreatedHistory(getCreatedParcelHistory());
+    const syncHistory = () => { void getCreatedParcelHistoryFromDb().then(setCreatedHistory); };
     syncHistory();
     window.addEventListener('doc-track-created-parcels-updated', syncHistory);
     return () => window.removeEventListener('doc-track-created-parcels-updated', syncHistory);
@@ -110,7 +110,7 @@ export default function Track({ embedded = false }: { embedded?: boolean }) {
   // Silent update on mount to keep local history statuses fresh
   useEffect(() => {
     const silentRefreshHistory = async () => {
-      const history = getCreatedParcelHistory();
+      const history = await getCreatedParcelHistoryFromDb();
       if (history.length === 0) return;
       for (const item of history) {
         try {
@@ -122,7 +122,7 @@ export default function Track({ embedded = false }: { embedded?: boolean }) {
           // ignore
         }
       }
-      setCreatedHistory(getCreatedParcelHistory());
+      setCreatedHistory(await getCreatedParcelHistoryFromDb());
     };
     void silentRefreshHistory();
   }, []);

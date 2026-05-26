@@ -1,3 +1,13 @@
+import {
+  LEGACY_DRAFT_KEY,
+  OFFLINE_DRAFT_STORE,
+  type OfflineDraftRecord,
+  idbDelete,
+  idbGet,
+  idbPut,
+  isIndexedDbAvailable,
+} from './offlineDb';
+
 const CREATE_PARCEL_DRAFT_KEY = 'shiptrack_create_parcel_draft';
 
 export type CreateParcelDraft = {
@@ -37,10 +47,32 @@ export function loadCreateParcelDraft(): CreateParcelDraft {
   }
 }
 
+export async function loadCreateParcelDraftFromDb(): Promise<CreateParcelDraft> {
+  const record = await idbGet<OfflineDraftRecord>(OFFLINE_DRAFT_STORE, 'createParcel');
+  if (record?.value) return record.value;
+  const legacy = loadCreateParcelDraft();
+  if (isIndexedDbAvailable()) {
+    await idbPut(OFFLINE_DRAFT_STORE, {
+      id: 'createParcel',
+      value: legacy,
+      updatedAt: new Date().toISOString(),
+    });
+    localStorage.removeItem(LEGACY_DRAFT_KEY);
+  }
+  return legacy;
+}
+
 export function saveCreateParcelDraft(draft: CreateParcelDraft): void {
-  localStorage.setItem(CREATE_PARCEL_DRAFT_KEY, JSON.stringify(draft));
+  void idbPut(OFFLINE_DRAFT_STORE, {
+    id: 'createParcel',
+    value: draft,
+    updatedAt: new Date().toISOString(),
+  }).then(saved => {
+    if (!saved) localStorage.setItem(CREATE_PARCEL_DRAFT_KEY, JSON.stringify(draft));
+  });
 }
 
 export function clearCreateParcelDraft(): void {
   localStorage.removeItem(CREATE_PARCEL_DRAFT_KEY);
+  void idbDelete(OFFLINE_DRAFT_STORE, 'createParcel');
 }

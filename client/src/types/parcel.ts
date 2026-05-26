@@ -75,6 +75,7 @@ export interface CreateParcelResponse {
   success: boolean;
   trackingID?: string;
   error?: string;
+  queued?: boolean;
 }
 
 export interface GetParcelsPayload {
@@ -129,6 +130,7 @@ export interface ConfirmReceiptPayload {
 export interface ConfirmReceiptResponse {
   success: boolean;
   error?: string;
+  queued?: boolean;
 }
 
 export interface StartDeliveryPayload {
@@ -142,6 +144,7 @@ export interface StartDeliveryPayload {
 export interface StartDeliveryResponse {
   success: boolean;
   error?: string;
+  queued?: boolean;
   alreadyStarted?: boolean;
   assignedToId?: string;
   assignedToName?: string;
@@ -157,5 +160,6 @@ export interface ReleaseDeliveryPayload {
 export interface ReleaseDeliveryResponse {
   success: boolean;
   error?: string;
+  queued?: boolean;
   alreadyReleased?: boolean;
 }

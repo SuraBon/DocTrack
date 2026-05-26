@@ -1,4 +1,13 @@
 import type { Parcel, ParcelStatus } from '@/types/parcel';
+import {
+  LEGACY_HISTORY_KEY,
+  OFFLINE_HISTORY_STORE,
+  type OfflineHistoryRecord,
+  idbDelete,
+  idbGetAll,
+  idbPut,
+  isIndexedDbAvailable,
+} from './offlineDb';
 
 const DEVICE_ID_KEY = 'shiptrack_device_id';
 const CREATED_PARCELS_KEY = 'shiptrack_created_parcels';
@@ -62,12 +71,36 @@ export function getCreatedParcelHistory(): CreatedParcelHistoryItem[] {
   }
 }
 
+export async function getCreatedParcelHistoryFromDb(): Promise<CreatedParcelHistoryItem[]> {
+  const records = await idbGetAll<OfflineHistoryRecord>(OFFLINE_HISTORY_STORE);
+  if (records && records.length > 0) {
+    return records
+      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+      .slice(0, MAX_HISTORY_ITEMS);
+  }
+  const legacy = getCreatedParcelHistory();
+  if (legacy.length > 0 && isIndexedDbAvailable()) {
+    for (const item of legacy) {
+      await idbPut(OFFLINE_HISTORY_STORE, { ...item, id: item.trackingID });
+    }
+    localStorage.removeItem(LEGACY_HISTORY_KEY);
+  }
+  return legacy;
+}
+
+function persistCreatedHistoryToDb(items: CreatedParcelHistoryItem[]): void {
+  for (const item of items) {
+    void idbPut(OFFLINE_HISTORY_STORE, { ...item, id: item.trackingID });
+  }
+}
+
 export function saveCreatedParcelHistory(item: CreatedParcelHistoryItem): CreatedParcelHistoryItem[] {
   const next = [
     item,
     ...getCreatedParcelHistory().filter(existing => existing.trackingID !== item.trackingID),
   ].slice(0, MAX_HISTORY_ITEMS);
   localStorage.setItem(CREATED_PARCELS_KEY, JSON.stringify(next));
+  persistCreatedHistoryToDb(next);
   window.dispatchEvent(new Event('doc-track-created-parcels-updated'));
   return next;
 }
@@ -75,12 +108,16 @@ export function saveCreatedParcelHistory(item: CreatedParcelHistoryItem): Create
 export function removeCreatedParcelHistoryItem(trackingID: string): CreatedParcelHistoryItem[] {
   const next = getCreatedParcelHistory().filter(item => item.trackingID !== trackingID);
   localStorage.setItem(CREATED_PARCELS_KEY, JSON.stringify(next));
+  void idbDelete(OFFLINE_HISTORY_STORE, trackingID);
   window.dispatchEvent(new Event('doc-track-created-parcels-updated'));
   return next;
 }
 
 export function clearCreatedParcelHistory(): void {
   localStorage.removeItem(CREATED_PARCELS_KEY);
+  void idbGetAll<OfflineHistoryRecord>(OFFLINE_HISTORY_STORE).then(records => {
+    records?.forEach(record => void idbDelete(OFFLINE_HISTORY_STORE, record.id));
+  });
   window.dispatchEvent(new Event('doc-track-created-parcels-updated'));
 }
 
@@ -99,6 +136,7 @@ export function updateCreatedParcelHistoryFromParcel(parcel: Parcel): CreatedPar
     proofPhotoUrl: parcel['รูปยืนยัน'] || next[index].proofPhotoUrl,
   };
   localStorage.setItem(CREATED_PARCELS_KEY, JSON.stringify(next));
+  persistCreatedHistoryToDb(next);
   window.dispatchEvent(new Event('doc-track-created-parcels-updated'));
   return next;
 }

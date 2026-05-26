@@ -17,10 +17,12 @@ import { sanitizeTextInput, validateRequiredText } from '@/lib/validation';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { getErrorMessage } from '@/lib/apiErrorHelper';
 import { processProofImageFile } from '@/lib/imageProofHelper';
+import { useOfflineQueue } from '@/hooks/useOfflineQueue';
 import {
   EMPTY_CREATE_PARCEL_DRAFT,
   clearCreateParcelDraft,
   loadCreateParcelDraft,
+  loadCreateParcelDraftFromDb,
   saveCreateParcelDraft,
 } from '@/lib/createParcelDraft';
 import { UI_COPY } from '@/lib/uiCopy';
@@ -35,6 +37,7 @@ type CreatedParcelDetails = {
 
 export default function CreateParcel({ embedded = false }: { embedded?: boolean }) {
   const { createParcel } = useParcelStore();
+  const offlineQueue = useOfflineQueue();
   const { branches } = useBranches();
   const { position, status: geoStatus, errorMessage: geoError, requestLocation } = useGeolocation();
   const proofInputRef = useRef<HTMLInputElement>(null);
@@ -50,6 +53,7 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
   const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [proofPhotoUrl, setProofPhotoUrl] = useState('');
   const [proofPhotoPreview, setProofPhotoPreview] = useState<string | null>(null);
+  const pendingOfflineCount = offlineQueue.filter(item => item.status === 'pending' || item.status === 'failed').length;
 
   // Generate QR code locally whenever a new tracking ID is created
   useEffect(() => {
@@ -62,6 +66,14 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
   useEffect(() => {
     if (geoStatus === 'idle') requestLocation();
   }, [geoStatus, requestLocation]);
+
+  useEffect(() => {
+    let active = true;
+    loadCreateParcelDraftFromDb().then(draft => {
+      if (active) setFormData(draft);
+    });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     saveCreateParcelDraft(formData);
@@ -168,7 +180,12 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
         position.longitude,
         proofPhotoUrl,
       );
-      if (result.trackingId) {
+      if (result.queued) {
+        toast.info('บันทึกรายการไว้ในเครื่องแล้ว ระบบจะซิงค์เมื่อเชื่อมต่อได้');
+        clearCreateParcelDraft();
+        setFormData(EMPTY_CREATE_PARCEL_DRAFT);
+        clearProofPhoto();
+      } else if (result.trackingId) {
         setCreatedTrackingId(result.trackingId);
         setCreatedParcelDetails({
           senderName: v.senderName,
@@ -204,6 +221,12 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
           <h1 className="app-page-title">{UI_COPY.nav.create}</h1>
           <p className="app-page-subtitle">กรอกข้อมูลที่จำเป็น แนบรูป และบันทึกตำแหน่งจุดรับ</p>
         </div>
+        {pendingOfflineCount > 0 && (
+          <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
+            <span className="material-symbols-outlined text-base" aria-hidden="true">sync_problem</span>
+            รอซิงค์ {pendingOfflineCount} รายการ
+          </div>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">

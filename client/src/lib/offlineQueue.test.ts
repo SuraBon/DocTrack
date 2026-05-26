@@ -1,8 +1,16 @@
 import { vi, describe, expect, it, beforeEach } from 'vitest';
 import { toast } from 'sonner';
-import { getOfflineQueue, saveOfflineQueue, enqueueOfflineAction, removeOfflineAction } from './offlineQueue';
+import {
+  enqueueOfflineAction,
+  getOfflineQueue,
+  removeOfflineAction,
+  saveOfflineQueue,
+  saveOfflineProofImage,
+  getOfflineProofImage,
+  updateOfflineAction,
+  type OfflineQueueItem,
+} from './offlineQueue';
 
-// Mock localStorage
 const store: Record<string, string> = {};
 const localStorageMock = {
   getItem: vi.fn((key: string) => store[key] ?? null),
@@ -13,14 +21,19 @@ const localStorageMock = {
     delete store[key];
   }),
   clear: vi.fn(() => {
-    for (const key in store) {
-      delete store[key];
-    }
+    for (const key in store) delete store[key];
   }),
 };
-Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock, writable: true });
 
-// Mock sonner
+Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock, writable: true });
+Object.defineProperty(globalThis, 'indexedDB', { value: undefined, writable: true });
+Object.defineProperty(globalThis, 'window', {
+  value: {
+    dispatchEvent: vi.fn(),
+  },
+  writable: true,
+});
+
 vi.mock('sonner', () => ({
   toast: {
     info: vi.fn(),
@@ -34,68 +47,104 @@ describe('offlineQueue', () => {
     localStorageMock.clear();
   });
 
-  it('should retrieve an empty queue if none exists in localStorage', () => {
-    const queue = getOfflineQueue();
+  it('retrieves an empty queue if none exists', async () => {
+    const queue = await getOfflineQueue();
     expect(queue).toEqual([]);
     expect(localStorageMock.getItem).toHaveBeenCalledWith('shiptrack_offline_queue');
   });
 
-  it('should retrieve parsed queue from localStorage', () => {
-    const mockQueue = [
-      { id: '1', action: 'startDelivery', payload: { trackingID: 'TRK1' }, timestamp: 12345 }
+  it('migrates legacy localStorage shape to normalized queue items', async () => {
+    store.shiptrack_offline_queue = JSON.stringify([
+      { id: '1', action: 'startDelivery', payload: { trackingID: 'TRK1' }, timestamp: 12345 },
+    ]);
+
+    const queue = await getOfflineQueue();
+    expect(queue[0]).toMatchObject({
+      id: '1',
+      action: 'startDelivery',
+      payload: { trackingID: 'TRK1' },
+      timestamp: 12345,
+      attemptCount: 0,
+      status: 'pending',
+    });
+    expect(queue[0].createdAt).toBeDefined();
+  });
+
+  it('handles corrupt data gracefully', async () => {
+    store.shiptrack_offline_queue = 'invalid-json';
+    await expect(getOfflineQueue()).resolves.toEqual([]);
+  });
+
+  it('saves queue items to fallback storage', async () => {
+    const mockQueue: OfflineQueueItem[] = [
+      {
+        id: '1',
+        action: 'releaseDelivery',
+        payload: { trackingID: 'TRK1' },
+        timestamp: 12345,
+        createdAt: new Date(12345).toISOString(),
+        attemptCount: 0,
+        status: 'pending',
+      },
     ];
-    store['shiptrack_offline_queue'] = JSON.stringify(mockQueue);
 
-    const queue = getOfflineQueue();
-    expect(queue).toEqual(mockQueue);
+    await expect(saveOfflineQueue(mockQueue)).resolves.toBe(true);
+    expect(JSON.parse(store.shiptrack_offline_queue)).toEqual(mockQueue);
   });
 
-  it('should handle corrupt data gracefully by returning empty queue', () => {
-    store['shiptrack_offline_queue'] = 'invalid-json';
-    const queue = getOfflineQueue();
-    expect(queue).toEqual([]);
-  });
+  it('enqueues an offline action with metadata and toast', async () => {
+    const item = await enqueueOfflineAction('confirmReceipt', {
+      trackingID: 'TRK123',
+      note: 'test',
+      idempotencyKey: 'idem-1',
+    });
 
-  it('should save queue to localStorage', () => {
-    const mockQueue = [
-      { id: '1', action: 'releaseDelivery', payload: { trackingID: 'TRK1' }, timestamp: 12345 }
-    ];
-    const success = saveOfflineQueue(mockQueue);
-    expect(success).toBe(true);
-    expect(JSON.parse(store['shiptrack_offline_queue'])).toEqual(mockQueue);
-  });
-
-  it('should enqueue an offline action and show a toast', () => {
-    const action = 'confirmReceipt';
-    const payload = { trackingID: 'TRK123', note: 'test' };
-
-    enqueueOfflineAction(action, payload);
-
-    const queue = getOfflineQueue();
-    expect(queue.length).toBe(1);
-    expect(queue[0].action).toBe(action);
-    expect(queue[0].payload).toEqual(payload);
-    expect(queue[0].id).toBeDefined();
-    expect(queue[0].timestamp).toBeDefined();
-
-    // Verify sonner toast.info was called
+    const queue = await getOfflineQueue();
+    expect(queue).toHaveLength(1);
+    expect(queue[0]).toMatchObject({
+      id: item.id,
+      action: 'confirmReceipt',
+      idempotencyKey: 'idem-1',
+      status: 'pending',
+      attemptCount: 0,
+    });
     expect(toast.info).toHaveBeenCalledWith(
-      'บันทึกข้อมูลในเครื่องแล้ว ระบบจะอัปเดตเมื่อเน็ตกลับมา',
-      expect.any(Object)
+      'บันทึกรายการไว้ในเครื่องแล้ว ระบบจะซิงค์เมื่อเชื่อมต่อได้',
+      expect.any(Object),
     );
   });
 
-  it('should remove an offline action by id', () => {
-    const mockQueue = [
-      { id: 'action_1', action: 'startDelivery', payload: { trackingID: 'TRK1' }, timestamp: 123 },
-      { id: 'action_2', action: 'startDelivery', payload: { trackingID: 'TRK2' }, timestamp: 456 }
-    ];
-    saveOfflineQueue(mockQueue);
+  it('updates failed item state without removing it', async () => {
+    const item = await enqueueOfflineAction('startDelivery', { trackingID: 'TRK1' });
+    await updateOfflineAction({
+      ...item,
+      status: 'failed',
+      attemptCount: 1,
+      lastError: 'ปลายทางไม่ถูกต้อง',
+    });
 
-    removeOfflineAction('action_1');
+    const queue = await getOfflineQueue();
+    expect(queue[0]).toMatchObject({
+      id: item.id,
+      status: 'failed',
+      attemptCount: 1,
+      lastError: 'ปลายทางไม่ถูกต้อง',
+    });
+  });
 
-    const queue = getOfflineQueue();
-    expect(queue.length).toBe(1);
-    expect(queue[0].id).toBe('action_2');
+  it('removes an offline action by id', async () => {
+    const first = await enqueueOfflineAction('startDelivery', { trackingID: 'TRK1' });
+    const second = await enqueueOfflineAction('startDelivery', { trackingID: 'TRK2' });
+
+    await removeOfflineAction(first.id);
+
+    const queue = await getOfflineQueue();
+    expect(queue).toHaveLength(1);
+    expect(queue[0].id).toBe(second.id);
+  });
+
+  it('stores data URL proof media in fallback storage', async () => {
+    const id = await saveOfflineProofImage('data:image/jpeg;base64,abc');
+    await expect(getOfflineProofImage(id)).resolves.toBe('data:image/jpeg;base64,abc');
   });
 });

@@ -34,7 +34,7 @@ interface ParcelStoreValue {
     longitude?: number,
     photoUrl?: string,
     pin?: string,
-  ) => Promise<{ trackingId: string | null; error?: string }>;
+  ) => Promise<{ trackingId: string | null; error?: string; queued?: boolean }>;
   confirmReceipt: (
     trackingID: string,
     photoUrl: string,
@@ -48,7 +48,7 @@ interface ParcelStoreValue {
     deliveryMatchStatus?: DeliveryMatchStatus,
     deliveryMismatchReason?: string,
     pin?: string,
-  ) => Promise<{ success: boolean; error?: string }>;
+  ) => Promise<{ success: boolean; error?: string; queued?: boolean }>;
   removeParcelLocally: (trackingID: string) => void;
   updateParcelLocally: (trackingID: string, updates: Partial<Parcel>) => void;
 }
@@ -131,6 +131,9 @@ export function ParcelStoreProvider({ children }: { children: ReactNode }) {
           const message = res.error ?? 'ไม่สามารถสร้างรายการได้';
           setError(message);
           return { trackingId: null, error: message };
+        }
+        if (res.queued) {
+          return { trackingId: null, queued: true };
         }
         if (res.trackingID) {
           saveCreatedParcelHistory({

@@ -1,25 +1,71 @@
 import { toast } from 'sonner';
+import {
+  LEGACY_QUEUE_KEY,
+  OFFLINE_MEDIA_STORE,
+  OFFLINE_QUEUE_STORE,
+  type OfflineMediaRecord,
+  type OfflineQueueItem,
+  idbDelete,
+  idbGet,
+  idbGetAll,
+  idbPut,
+  isIndexedDbAvailable,
+} from './offlineDb';
 
-export interface OfflineAction {
-  id: string;
-  action: string;
-  payload: any;
-  timestamp: number;
+export type { OfflineQueueItem, OfflineQueueStatus } from './offlineDb';
+
+export interface SyncResult {
+  total: number;
+  synced: number;
+  failed: number;
 }
 
-const QUEUE_KEY = 'shiptrack_offline_queue';
+const QUEUE_UPDATED_EVENT = 'offline-queue-updated';
+const FALLBACK_QUEUE_KEY = LEGACY_QUEUE_KEY;
+export const OFFLINE_MEDIA_URL_PREFIX = 'offline-media://';
 
-export function getOfflineQueue(): OfflineAction[] {
+function nowIso(): string {
+  return new Date().toISOString();
+}
+
+function createId(action: string): string {
+  return `${action}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function normalizeQueueItem(raw: any): OfflineQueueItem | null {
+  if (!raw || typeof raw.action !== 'string' || !raw.payload) return null;
+  const timestamp = Number(raw.timestamp || Date.parse(raw.createdAt || '') || Date.now());
+  return {
+    id: typeof raw.id === 'string' ? raw.id : createId(raw.action),
+    action: raw.action,
+    payload: raw.payload,
+    idempotencyKey: typeof raw.idempotencyKey === 'string'
+      ? raw.idempotencyKey
+      : typeof raw.payload?.idempotencyKey === 'string'
+        ? raw.payload.idempotencyKey
+        : undefined,
+    createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : new Date(timestamp).toISOString(),
+    timestamp,
+    attemptCount: Number(raw.attemptCount || 0),
+    lastError: typeof raw.lastError === 'string' ? raw.lastError : undefined,
+    status: ['pending', 'syncing', 'failed', 'synced'].includes(raw.status) ? raw.status : 'pending',
+    localMediaId: typeof raw.localMediaId === 'string' ? raw.localMediaId : undefined,
+  };
+}
+
+function readFallbackQueue(): OfflineQueueItem[] {
   try {
-    return JSON.parse(localStorage.getItem(QUEUE_KEY) ?? '[]') as OfflineAction[];
+    const parsed = JSON.parse(localStorage.getItem(FALLBACK_QUEUE_KEY) ?? '[]');
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map(normalizeQueueItem).filter((item): item is OfflineQueueItem => Boolean(item));
   } catch {
     return [];
   }
 }
 
-export function saveOfflineQueue(queue: OfflineAction[]): boolean {
+function saveFallbackQueue(queue: OfflineQueueItem[]): boolean {
   try {
-    localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+    localStorage.setItem(FALLBACK_QUEUE_KEY, JSON.stringify(queue));
     return true;
   } catch (err) {
     console.error('Failed to save offline queue:', err);
@@ -27,30 +73,136 @@ export function saveOfflineQueue(queue: OfflineAction[]): boolean {
   }
 }
 
-export function enqueueOfflineAction(action: string, payload: any): void {
-  const queue = getOfflineQueue();
-  const id = `${action}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-  queue.push({
-    id,
-    action,
-    payload,
-    timestamp: Date.now(),
-  });
-  
-  const success = saveOfflineQueue(queue);
-  if (success) {
-    toast.info('บันทึกข้อมูลในเครื่องแล้ว ระบบจะอัปเดตเมื่อเน็ตกลับมา', {
-      duration: 5000,
-    });
-  } else {
-    toast.error('พื้นที่เก็บข้อมูลในเครื่องเต็ม! ไม่สามารถบันทึกรายการออฟไลน์ได้ กรุณาเชื่อมต่ออินเทอร์เน็ตเพื่อซิงค์ข้อมูลก่อน', {
-      duration: 10000,
-    });
-  }
+function dispatchQueueUpdated(): void {
+  window.dispatchEvent(new Event(QUEUE_UPDATED_EVENT));
 }
 
-export function removeOfflineAction(id: string): void {
-  const queue = getOfflineQueue();
-  const next = queue.filter(item => item.id !== id);
-  saveOfflineQueue(next);
+async function migrateLegacyQueue(): Promise<void> {
+  if (!isIndexedDbAvailable()) return;
+  const legacy = readFallbackQueue();
+  if (legacy.length === 0) return;
+  const existing = await idbGetAll<OfflineQueueItem>(OFFLINE_QUEUE_STORE);
+  if (existing === null) return;
+  const existingIds = new Set(existing.map(item => item.id));
+  for (const item of legacy) {
+    if (!existingIds.has(item.id)) {
+      await idbPut(OFFLINE_QUEUE_STORE, item);
+    }
+  }
+  localStorage.removeItem(FALLBACK_QUEUE_KEY);
+}
+
+export async function getOfflineQueue(): Promise<OfflineQueueItem[]> {
+  await migrateLegacyQueue();
+  const queue = await idbGetAll<OfflineQueueItem>(OFFLINE_QUEUE_STORE);
+  if (queue) return queue.sort((a, b) => a.timestamp - b.timestamp);
+  return readFallbackQueue().sort((a, b) => a.timestamp - b.timestamp);
+}
+
+export async function saveOfflineQueue(queue: OfflineQueueItem[]): Promise<boolean> {
+  if (isIndexedDbAvailable()) {
+    const existing = await idbGetAll<OfflineQueueItem>(OFFLINE_QUEUE_STORE);
+    if (existing !== null) {
+      for (const item of existing) await idbDelete(OFFLINE_QUEUE_STORE, item.id);
+      for (const item of queue) await idbPut(OFFLINE_QUEUE_STORE, item);
+      dispatchQueueUpdated();
+      return true;
+    }
+  }
+  const success = saveFallbackQueue(queue);
+  if (success) dispatchQueueUpdated();
+  return success;
+}
+
+export async function enqueueOfflineAction(
+  action: string,
+  payload: any,
+  media?: { localMediaId?: string },
+): Promise<OfflineQueueItem> {
+  const item: OfflineQueueItem = {
+    id: createId(action),
+    action,
+    payload,
+    idempotencyKey: typeof payload?.idempotencyKey === 'string' ? payload.idempotencyKey : undefined,
+    createdAt: nowIso(),
+    timestamp: Date.now(),
+    attemptCount: 0,
+    status: 'pending',
+    localMediaId: media?.localMediaId,
+  };
+
+  const savedToIdb = isIndexedDbAvailable() && await idbPut(OFFLINE_QUEUE_STORE, item);
+  if (!savedToIdb) {
+    const queue = readFallbackQueue();
+    queue.push(item);
+    if (!saveFallbackQueue(queue)) {
+      toast.error('พื้นที่เก็บข้อมูลในเครื่องเต็ม ไม่สามารถบันทึกรายการออฟไลน์ได้', {
+        duration: 10000,
+      });
+      return item;
+    }
+  }
+
+  dispatchQueueUpdated();
+  toast.info('บันทึกรายการไว้ในเครื่องแล้ว ระบบจะซิงค์เมื่อเชื่อมต่อได้', {
+    duration: 5000,
+  });
+  return item;
+}
+
+export async function updateOfflineAction(item: OfflineQueueItem): Promise<void> {
+  if (isIndexedDbAvailable() && await idbPut(OFFLINE_QUEUE_STORE, item)) {
+    dispatchQueueUpdated();
+    return;
+  }
+  const next = readFallbackQueue().map(existing => existing.id === item.id ? item : existing);
+  saveFallbackQueue(next);
+  dispatchQueueUpdated();
+}
+
+export async function removeOfflineAction(id: string): Promise<void> {
+  if (isIndexedDbAvailable() && await idbDelete(OFFLINE_QUEUE_STORE, id)) {
+    dispatchQueueUpdated();
+    return;
+  }
+  const next = readFallbackQueue().filter(item => item.id !== id);
+  saveFallbackQueue(next);
+  dispatchQueueUpdated();
+}
+
+export async function saveOfflineProofImage(fileOrDataUrl: File | Blob | string): Promise<string> {
+  const id = `media_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+  const record: OfflineMediaRecord = {
+    id,
+    data: fileOrDataUrl,
+    createdAt: nowIso(),
+    mimeType: typeof fileOrDataUrl === 'string' ? undefined : fileOrDataUrl.type,
+  };
+  const saved = isIndexedDbAvailable() && await idbPut(OFFLINE_MEDIA_STORE, record);
+  if (!saved && typeof fileOrDataUrl === 'string') {
+    localStorage.setItem(`shiptrack_offline_media_${id}`, fileOrDataUrl);
+  }
+  if (!saved && typeof fileOrDataUrl !== 'string') {
+    throw new Error('ไม่สามารถบันทึกรูปหลักฐานออฟไลน์ได้');
+  }
+  return id;
+}
+
+export async function getOfflineProofImage(localMediaId: string): Promise<string | Blob | null> {
+  const record = await idbGet<OfflineMediaRecord>(OFFLINE_MEDIA_STORE, localMediaId);
+  if (record) return record.data;
+  return localStorage.getItem(`shiptrack_offline_media_${localMediaId}`);
+}
+
+export async function resolveOfflineProofImageUrl(url: string): Promise<string | null> {
+  if (!url.startsWith(OFFLINE_MEDIA_URL_PREFIX)) return url;
+  const mediaId = url.slice(OFFLINE_MEDIA_URL_PREFIX.length);
+  const media = await getOfflineProofImage(mediaId);
+  if (!media) return null;
+  return typeof media === 'string' ? media : URL.createObjectURL(media);
+}
+
+export async function deleteOfflineProofImage(localMediaId: string): Promise<void> {
+  await idbDelete(OFFLINE_MEDIA_STORE, localMediaId);
+  localStorage.removeItem(`shiptrack_offline_media_${localMediaId}`);
 }

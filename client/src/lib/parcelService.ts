@@ -24,10 +24,22 @@ import { normalizeRole, type AppRole } from './roles';
 import { getDeviceId } from './createdParcelHistory';
 import { getErrorMessage, getServerErrorMessage, isAuthErrorMessage } from './apiErrorHelper';
 import { createIdempotencyKey } from './idempotency';
-import { enqueueOfflineAction, getOfflineQueue, removeOfflineAction } from './offlineQueue';
+import {
+  OFFLINE_MEDIA_URL_PREFIX,
+  deleteOfflineProofImage,
+  enqueueOfflineAction,
+  getOfflineProofImage,
+  getOfflineQueue,
+  removeOfflineAction,
+  saveOfflineProofImage,
+  updateOfflineAction,
+  type OfflineQueueItem,
+  type SyncResult,
+} from './offlineQueue';
 import { toast } from 'sonner';
 
 let isSyncing = false;
+const QUEUEABLE_ACTIONS = ['createParcel', 'confirmReceipt', 'startDelivery', 'releaseDelivery'];
 
 // ── Status normalizer ────────────────────────────────────────────────────────
 function normalizeParcelStatus(parcel: Parcel): Parcel {
@@ -154,6 +166,44 @@ type CallApiOptions = {
 
 const NO_RETRY = 0;
 
+function isNetworkErrorMessage(message: string): boolean {
+  return message.includes('เชื่อมต่อ') || message.includes('เวลา') || message.includes('อินเทอร์เน็ต');
+}
+
+async function prepareOfflinePayload<T extends Record<string, any>>(payload: T): Promise<{ payload: T; localMediaId?: string }> {
+  const photoUrl = payload.photoUrl;
+  if (typeof photoUrl !== 'string' || !photoUrl.startsWith('data:')) return { payload };
+  const localMediaId = await saveOfflineProofImage(photoUrl);
+  return {
+    payload: {
+      ...payload,
+      photoUrl: `${OFFLINE_MEDIA_URL_PREFIX}${localMediaId}`,
+    },
+    localMediaId,
+  };
+}
+
+async function enqueuePayload(payload: any): Promise<void> {
+  const prepared = await prepareOfflinePayload(payload);
+  await enqueueOfflineAction(prepared.payload.action, prepared.payload, { localMediaId: prepared.localMediaId });
+}
+
+async function resolveSyncPayload<T extends Record<string, any>>(payload: T): Promise<T> {
+  const photoUrl = payload.photoUrl;
+  if (typeof photoUrl !== 'string' || !photoUrl.startsWith(OFFLINE_MEDIA_URL_PREFIX)) return payload;
+  const localMediaId = photoUrl.slice(OFFLINE_MEDIA_URL_PREFIX.length);
+  const media = await getOfflineProofImage(localMediaId);
+  if (!media) return payload;
+  if (typeof media === 'string') return { ...payload, photoUrl: media };
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(media);
+  });
+  return { ...payload, photoUrl: dataUrl };
+}
+
 async function callAPI<T>(
   payload: object,
   { includeAuth = true, dispatchAuthError = true }: CallApiOptions = {},
@@ -164,9 +214,9 @@ async function callAPI<T>(
   }
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     const p = payload as any;
-    const isQueueable = !isSyncing && p && p.action && ['confirmReceipt', 'startDelivery', 'releaseDelivery'].includes(p.action);
+    const isQueueable = !isSyncing && p && p.action && QUEUEABLE_ACTIONS.includes(p.action);
     if (isQueueable) {
-      enqueueOfflineAction(p.action, p);
+      await enqueuePayload(p);
       return { success: true, queued: true } as any;
     }
     throw new Error('ไม่มีการเชื่อมต่ออินเทอร์เน็ต กรุณาตรวจสอบสัญญาณแล้วลองใหม่');
@@ -247,10 +297,10 @@ async function callAPI<T>(
   }
 
   const p = payload as any;
-  const isQueueable = !isSyncing && p && p.action && ['confirmReceipt', 'startDelivery', 'releaseDelivery'].includes(p.action);
-  const isNetworkError = lastError.message.includes('เชื่อมต่อ') || lastError.message.includes('เวลา');
+  const isQueueable = !isSyncing && p && p.action && QUEUEABLE_ACTIONS.includes(p.action);
+  const isNetworkError = isNetworkErrorMessage(lastError.message);
   if (isQueueable && isNetworkError) {
-    enqueueOfflineAction(p.action, p);
+    await enqueuePayload(p);
     return { success: true, queued: true } as any;
   }
 
@@ -282,6 +332,7 @@ export async function createParcel(
     return {
       success: Boolean(res.success),
       trackingID: (res.trackingID ?? res.trackingId) as string | undefined,
+      queued: Boolean(res.queued),
       error: res.error as string | undefined,
     };
   } catch (err) {
@@ -737,66 +788,88 @@ export async function updateProfile(
   }
 }
 
-export async function syncOfflineQueue(): Promise<void> {
-  if (isSyncing) return;
-  const queue = getOfflineQueue();
-  if (queue.length === 0) return;
+async function runQueuedAction(item: OfflineQueueItem): Promise<any> {
+  const payload = await resolveSyncPayload(item.payload);
+  if (payload.action === 'createParcel') {
+    return callAPI(payload, {}, NO_RETRY);
+  }
+  if (payload.action === 'confirmReceipt') {
+    return callAPI(payload, {}, NO_RETRY);
+  }
+  if (payload.action === 'startDelivery') {
+    return callAPI(payload, {}, NO_RETRY);
+  }
+  if (payload.action === 'releaseDelivery') {
+    return callAPI(payload, {}, NO_RETRY);
+  }
+  return { success: false, error: 'ไม่รู้จักประเภทรายการออฟไลน์' };
+}
+
+export async function syncOfflineQueue(): Promise<SyncResult> {
+  if (isSyncing) return { total: 0, synced: 0, failed: 0 };
+  const queue = (await getOfflineQueue()).filter(item => item.status !== 'syncing');
+  if (queue.length === 0) return { total: 0, synced: 0, failed: 0 };
 
   isSyncing = true;
-  toast.info(`กำลังอัปโหลดข้อมูลออฟไลน์ที่ค้างอยู่ ${queue.length} รายการ...`);
+  toast.info(`กำลังซิงค์รายการออฟไลน์ ${queue.length} รายการ...`);
 
-  let successCount = 0;
-  for (const item of queue) {
-    try {
-      let res: any;
-      if (item.action === 'confirmReceipt') {
-        res = await confirmReceipt(
-          item.payload.trackingID,
-          item.payload.photoUrl,
-          item.payload.note,
-          item.payload.latitude,
-          item.payload.longitude,
-          item.payload.eventType,
-          item.payload.location,
-          item.payload.destLocation,
-          item.payload.person,
-          item.payload.deliveryMatchStatus,
-          item.payload.deliveryMismatchReason,
-          item.payload.pin
-        );
-      } else if (item.action === 'startDelivery') {
-        res = await startDelivery(
-          item.payload.trackingID,
-          item.payload.latitude,
-          item.payload.longitude
-        );
-      } else if (item.action === 'releaseDelivery') {
-        res = await releaseDelivery(item.payload.trackingID);
-      }
-
-      if (res && res.success) {
-        removeOfflineAction(item.id);
-        successCount++;
-      } else {
-        const errorMsg = res?.error || '';
-        if (errorMsg.includes('เชื่อมต่อ') || errorMsg.includes('เวลา')) {
-          toast.warning('การเชื่อมต่อขัดข้องชั่วคราว ระบบจะซิงค์ข้อมูลออฟไลน์ใหม่เมื่อสัญญาณเสถียร');
-          break;
-        } else {
-          // If logical error, drop it to avoid blocking the queue permanently
-          removeOfflineAction(item.id);
+  let synced = 0;
+  let failed = 0;
+  try {
+    for (const item of queue) {
+      await updateOfflineAction({ ...item, status: 'syncing' });
+      try {
+        const res = await runQueuedAction(item);
+        if (res?.success) {
+          await removeOfflineAction(item.id);
+          if (item.localMediaId) await deleteOfflineProofImage(item.localMediaId);
+          synced++;
+          continue;
         }
+
+        const errorMsg = String(res?.error || 'ซิงค์รายการไม่สำเร็จ');
+        if (isNetworkErrorMessage(errorMsg)) {
+          await updateOfflineAction({
+            ...item,
+            status: 'pending',
+            attemptCount: item.attemptCount + 1,
+            lastError: errorMsg,
+          });
+          toast.warning('การเชื่อมต่อขัดข้องชั่วคราว ระบบจะซิงค์ใหม่เมื่อสัญญาณเสถียร');
+          break;
+        }
+
+        await updateOfflineAction({
+          ...item,
+          status: 'failed',
+          attemptCount: item.attemptCount + 1,
+          lastError: errorMsg,
+        });
+        failed++;
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'ซิงค์รายการไม่สำเร็จ';
+        await updateOfflineAction({
+          ...item,
+          status: isNetworkErrorMessage(errorMsg) ? 'pending' : 'failed',
+          attemptCount: item.attemptCount + 1,
+          lastError: errorMsg,
+        });
+        if (isNetworkErrorMessage(errorMsg)) break;
+        failed++;
       }
-    } catch {
-      break;
     }
+  } finally {
+    isSyncing = false;
   }
 
-  if (successCount > 0) {
-    toast.success(`อัปโหลดข้อมูลออฟไลน์สำเร็จ ${successCount} รายการ`);
+  if (synced > 0) {
+    toast.success(`ซิงค์รายการออฟไลน์สำเร็จ ${synced} รายการ`);
     window.dispatchEvent(new Event('offline-sync-complete'));
   }
-  isSyncing = false;
+  if (failed > 0) {
+    toast.error(`มีรายการออฟไลน์ ${failed} รายการที่ต้องตรวจสอบ`);
+  }
+  return { total: queue.length, synced, failed };
 }
 
 if (typeof window !== 'undefined') {
