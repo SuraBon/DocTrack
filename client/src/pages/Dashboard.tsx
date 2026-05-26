@@ -20,11 +20,6 @@ import {
   isAvailableForMessenger,
   buildAssignmentNote,
 } from '@/lib/deliveryAssignment';
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { translateSystemNote } from '@/lib/translationUtils';
 import {
   AlertTriangle,
@@ -45,7 +40,6 @@ import {
   resolveDashboardRole,
   StatsCard,
   TableSkeleton,
-  LazyPanelFallback,
   MessengerViewBanner,
   getTimelineEvents,
   DashboardIcon,
@@ -53,15 +47,13 @@ import {
   type MessengerView,
   type AdminSortMode,
 } from '@/components/dashboard/DashboardComponents';
-import { DeliveryJobDetailsModal } from '@/components/dashboard/DeliveryJobDetailsModal';
 import { MessengerDeliveryCard } from '@/components/dashboard/MessengerDeliveryCard';
 import { AdminParcelManagementCard } from '@/components/dashboard/AdminParcelManagementCard';
 import { AdminParcelManagementTable } from '@/components/dashboard/AdminParcelManagementTable';
 
 interface DashboardProps { isConfigured: boolean; }
 
-const ParcelTimelineModal = lazy(() => import('@/components/ParcelTimelineModal'));
-const ConfirmReceipt = lazy(() => import('@/pages/ConfirmReceipt'));
+const DashboardDialogs = lazy(() => import('@/components/dashboard/DashboardDialogs'));
 
 export default function Dashboard({ isConfigured }: DashboardProps) {
   const { user } = useAuth();
@@ -928,88 +920,28 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
         )}
       </section>
 
-      <DeliveryJobDetailsModal
-        parcel={selectedParcel}
-        open={isDeliveryDetailsOpen}
-        onOpenChange={setIsDeliveryDetailsOpen}
-      />
-
-      {/* ── Timeline Dialog ── */}
-      {isTimelineOpen && (
+      {(isDeliveryDetailsOpen || isTimelineOpen || isConfirmFlowOpen || isDeleteConfirmOpen) && (
         <Suspense fallback={null}>
-          <ParcelTimelineModal
-            isOpen={isTimelineOpen}
-            setIsOpen={setIsTimelineOpen}
+          <DashboardDialogs
             selectedParcel={selectedParcel}
+            isDeliveryDetailsOpen={isDeliveryDetailsOpen}
+            setIsDeliveryDetailsOpen={setIsDeliveryDetailsOpen}
+            isTimelineOpen={isTimelineOpen}
+            setIsTimelineOpen={setIsTimelineOpen}
             selectedTimelineEvents={selectedTimelineEvents}
-            hasKnownBranches={selectedParcelHasKnownBranches}
-            onConfirmParcel={openConfirmFlow}
-            onDeleteParcel={handleDelete}
+            selectedParcelHasKnownBranches={selectedParcelHasKnownBranches}
+            openConfirmFlow={openConfirmFlow}
+            handleDelete={handleDelete}
+            isConfirmFlowOpen={isConfirmFlowOpen}
+            setIsConfirmFlowOpen={setIsConfirmFlowOpen}
+            confirmTrackingId={confirmTrackingId}
+            setConfirmTrackingId={setConfirmTrackingId}
+            isDeleteConfirmOpen={isDeleteConfirmOpen}
+            setIsDeleteConfirmOpen={setIsDeleteConfirmOpen}
+            executeDelete={executeDelete}
           />
         </Suspense>
       )}
-
-      {/* ── Confirm / Photo Capture Dialog ── */}
-      {isConfirmFlowOpen && (
-      <Dialog
-        open={isConfirmFlowOpen}
-        onOpenChange={(open) => {
-          setIsConfirmFlowOpen(open);
-          if (!open) {
-            setConfirmTrackingId(null);
-          }
-        }}
-      >
-        <DialogContent
-          showCloseButton={false}
-          className="max-h-[92vh] w-[calc(100vw-1rem)] max-w-2xl overflow-hidden rounded-[1.75rem] border border-gray-100 bg-white p-0 shadow-2xl"
-        >
-          <DialogTitle className="sr-only">ยืนยันการส่ง</DialogTitle>
-          <div className="modal-scroll relative max-h-[92vh] overflow-y-auto p-0">
-            <Suspense fallback={<LazyPanelFallback label="กำลังโหลดหน้ายืนยันส่ง..." />}>
-              <ConfirmReceipt
-                key={confirmTrackingId ?? 'confirm-flow'}
-                initialTrackingId={confirmTrackingId}
-                onInitialTrackingIdConsumed={() => undefined}
-                autoCheckInitial
-                autoOpenCamera
-                embedded
-                onClose={() => setIsConfirmFlowOpen(false)}
-                onComplete={() => {
-                  setIsConfirmFlowOpen(false);
-                  setConfirmTrackingId(null);
-                }}
-              />
-            </Suspense>
-          </div>
-        </DialogContent>
-      </Dialog>
-      )}
-
-      {/* ── Delete Confirm Dialog ── */}
-      <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
-        <AlertDialogContent className="rounded-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="font-display text-primary">ยืนยันการลบรายการ</AlertDialogTitle>
-            <AlertDialogDescription>
-              คุณแน่ใจหรือไม่ว่าต้องการลบรายการ{' '}
-              <code className="font-mono font-bold text-primary bg-primary/8 px-1.5 py-0.5 rounded">
-                {selectedParcel?.TrackingID}
-              </code>
-              {' '}การดำเนินการนี้ไม่สามารถย้อนกลับได้
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl">ยกเลิก</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={executeDelete}
-              className="rounded-xl bg-error text-white hover:bg-error/90"
-            >
-              ลบรายการ
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

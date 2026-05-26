@@ -20,7 +20,7 @@ import type {
   Parcel,
 } from '@/types/parcel';
 import { applyDerivedStatus, applyDerivedStatuses } from '../parcelStatus';
-import { normalizeRole, type AppRole } from '../roles';
+import { normalizeRole } from '../roles';
 import { getDeviceId } from '../createdParcelHistory';
 import { getErrorMessage, getServerErrorMessage, isAuthErrorMessage } from '../apiErrorHelper';
 import { createIdempotencyKey } from '../idempotency';
@@ -42,6 +42,21 @@ import {
   type RouteSampleRecord,
 } from '../routeTracking';
 import { toast } from 'sonner';
+import type { AuditLogRow, BranchRow, CreateUserInput, LogQueryInput, ParcelActivityLogRow, UpdateUserInput, User, UserRow } from './types';
+import { normalizeParcelStatus, normalizeParcels } from './parcelNormalizers';
+import { REAL_AUTH_ERRORS, normalizeAuthResponse } from './authNormalizers';
+import {
+  API_TIMEOUT_MS,
+  BRANCHES,
+  GAS_API_KEY,
+  GAS_URL,
+  getBranches,
+  getGasUrl,
+  isConfigured,
+  normalizeBranchList,
+  onConfigUpdated,
+  setBranches,
+} from './configState';
 
 let isSyncing = false;
 let isRouteSyncing = false;
@@ -49,123 +64,6 @@ const ROUTE_SYNC_BATCH_SIZE = 100;
 const QUEUEABLE_ACTIONS = ['createParcel', 'confirmReceipt', 'startDelivery', 'releaseDelivery'];
 
 // ── Status normalizer ────────────────────────────────────────────────────────
-function normalizeParcelStatus(parcel: Parcel): Parcel {
-  const raw = parcel as Parcel & Record<string, unknown>;
-  const getString = (keys: string[]) => {
-    for (const key of keys) {
-      const value = raw[key];
-      if (typeof value === 'string' && value.trim()) return value.trim();
-    }
-    return undefined;
-  };
-  const proofPhoto = getString([
-    'รูปยืนยัน',
-    'รูปหลักฐาน',
-    'รูปภาพ',
-    'photoUrl',
-    'photoURL',
-    'PhotoUrl',
-    'PhotoURL',
-    'proofPhotoUrl',
-    'proofPhoto',
-    'imageUrl',
-    'imageURL',
-  ]);
-  const normalizedEvents = Array.isArray(parcel.events)
-    ? parcel.events.map(event => {
-        const eventRaw = event as typeof event & Record<string, unknown>;
-        const eventPhoto = [
-          event.photoUrl,
-          eventRaw['photoURL'],
-          eventRaw['PhotoUrl'],
-          eventRaw['PhotoURL'],
-          eventRaw['proofPhotoUrl'],
-          eventRaw['proofPhoto'],
-          eventRaw['imageUrl'],
-          eventRaw['imageURL'],
-          eventRaw['รูปยืนยัน'],
-          eventRaw['รูปหลักฐาน'],
-        ].find((value): value is string => typeof value === 'string' && value.trim().length > 0);
-        return eventPhoto ? { ...event, photoUrl: eventPhoto.trim() } : event;
-      })
-    : parcel.events;
-
-  return {
-    ...parcel,
-    ...(proofPhoto ? { 'รูปยืนยัน': proofPhoto } : {}),
-    ...(normalizedEvents ? { events: normalizedEvents } : {}),
-  };
-}
-
-function normalizeParcels(parcels: Parcel[]): Parcel[] {
-  return parcels.map(normalizeParcelStatus);
-}
-
-const GAS_URL     = import.meta.env.VITE_GAS_URL     as string | undefined ?? '';
-const GAS_API_KEY = import.meta.env.VITE_GAS_API_KEY as string | undefined ?? '';
-const API_TIMEOUT_MS = 25_000;
-
-// ── Branch list ──────────────────────────────────────────────────────────────
-
-const DEFAULT_BRANCHES = [
-  'MS', 'พระประแดง', 'บางนา', 'มีนบุรี', 'เลียบด่วน',
-  'เดอะมอลล์บางกะปิ', 'วิภาวดี', 'พิบูลสงคราม','เซ็นทรัล พระราม 2',
-  'เดอะมอลล์บางแค', 'มหาชัย', 'ศาลายา', 'กาญจนา',
-  
-];
-
-/** Branches that have known coordinates in TrackingMap. @deprecated ใช้ GPS จริงจาก events แทน */
-export const BRANCHES_WITH_COORDS: string[] = [];
-
-const storedBranches = (() => {
-  try {
-    return JSON.parse(localStorage.getItem('branches') ?? 'null') as string[] | null;
-  } catch {
-    return null;
-  }
-})();
-
-let BRANCHES: string[] = storedBranches ?? DEFAULT_BRANCHES;
-
-const CONFIG_UPDATED_EVENT = 'parcel-config-updated';
-
-export function getBranches(): string[] {
-  return BRANCHES;
-}
-
-export function setBranches(branches: string[]): void {
-  BRANCHES = branches;
-  localStorage.setItem('branches', JSON.stringify(branches));
-  window.dispatchEvent(new Event(CONFIG_UPDATED_EVENT));
-}
-
-function normalizeBranchList(branches: unknown): string[] {
-  if (!Array.isArray(branches)) return [];
-  const seen = new Set<string>();
-  return branches
-    .map(branch => String(branch || '').trim())
-    .filter(branch => {
-      if (!branch || seen.has(branch)) return false;
-      seen.add(branch);
-      return true;
-    });
-}
-
-export function isConfigured(): boolean {
-  return !!GAS_URL && BRANCHES.length > 0;
-}
-
-export function getGasUrl(): string {
-  return GAS_URL;
-}
-
-export function onConfigUpdated(listener: () => void): () => void {
-  window.addEventListener(CONFIG_UPDATED_EVENT, listener);
-  return () => window.removeEventListener(CONFIG_UPDATED_EVENT, listener);
-}
-
-// ── Internal API helper ──────────────────────────────────────────────────────
-
 type CallApiOptions = {
   includeAuth?: boolean;
   dispatchAuthError?: boolean;
@@ -549,98 +447,6 @@ export async function getParcelActivityLogs(input: LogQueryInput = {}): Promise<
 }
 
 // --- Users & RBAC ---
-
-export interface User {
-  employeeId: string;
-  name: string;
-  role: AppRole;
-  token?: string;
-}
-
-export interface UserRow extends User {
-  hasPin: boolean;
-  createdAt: string;
-  status?: 'ACTIVE' | 'DISABLED';
-  updatedAt?: string;
-}
-
-export interface CreateUserInput {
-  employeeId: string;
-  name: string;
-  role: 'ADMIN' | 'MESSENGER';
-  password: string;
-}
-
-export interface UpdateUserInput {
-  targetId: string;
-  name: string;
-  role: 'ADMIN' | 'MESSENGER';
-  password?: string;
-}
-
-export interface BranchRow {
-  name: string;
-  createdAt?: string;
-  createdBy?: string;
-}
-
-export interface AuditLogRow {
-  timestamp: string;
-  actorId: string;
-  action: string;
-  targetId: string;
-  details: string;
-}
-
-export interface ParcelActivityLogRow {
-  id: string;
-  trackingId: string;
-  timestamp: string;
-  eventType: string;
-  location: string;
-  destLocation?: string;
-  person?: string;
-  note?: string;
-  latitude?: number;
-  longitude?: number;
-  deliveryMatchStatus?: string;
-  deliveryMismatchReason?: string;
-}
-
-export interface LogQueryInput {
-  limit?: number;
-  offset?: number;
-  query?: string;
-  action?: string;
-  actorId?: string;
-  targetId?: string;
-  eventType?: string;
-  trackingId?: string;
-}
-
-function normalizeUser(user: User): User {
-  return { ...user, role: normalizeRole(user.role) };
-}
-
-function normalizeAuthResponse<T extends { user?: User; role?: string }>(res: T): T {
-  if (res.user) res.user = normalizeUser(res.user);
-  if (res.role) res.role = normalizeRole(res.role);
-  return res;
-}
-
-// Errors from the backend that mean "this user/password is genuinely wrong"
-// — includes brute force lockout messages
-const REAL_AUTH_ERRORS = [
-  'รหัสผ่านไม่ถูกต้อง',
-  'รหัสผ่านไม่ถูกต้อง',
-  'ไม่พบผู้ใช้งาน',
-  'ไม่พบรหัสพนักงาน',   // not registered
-  'Invalid credentials',
-  'Wrong password',
-  'User not found',
-  'บัญชีถูกล็อคชั่วคราว',
-  'เหลือ',
-];
 
 export async function login(employeeId: string, pin?: string): Promise<{ success: boolean, needsSetup?: boolean, user?: User, error?: string, role?: string, name?: string }> {
   try {

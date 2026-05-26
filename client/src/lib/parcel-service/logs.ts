@@ -1,7 +1,5 @@
 export {
   getAuditLogs,
   getParcelActivityLogs,
-  type AuditLogRow,
-  type LogQueryInput,
-  type ParcelActivityLogRow,
 } from './core';
+export type { AuditLogRow, LogQueryInput, ParcelActivityLogRow } from './types';

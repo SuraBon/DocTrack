@@ -2,5 +2,5 @@ export {
   createBranch,
   deleteBranch,
   loadBranches,
-  type BranchRow,
 } from './core';
+export type { BranchRow } from './types';

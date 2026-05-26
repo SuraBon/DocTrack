@@ -8,8 +8,5 @@ export {
   updateProfile,
   updateUser,
   updateUserRole,
-  type CreateUserInput,
-  type UpdateUserInput,
-  type User,
-  type UserRow,
 } from './core';
+export type { CreateUserInput, UpdateUserInput, User, UserRow } from './types';

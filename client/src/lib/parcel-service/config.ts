@@ -5,4 +5,4 @@ export {
   isConfigured,
   onConfigUpdated,
   setBranches,
-} from './core';
+} from './configState';

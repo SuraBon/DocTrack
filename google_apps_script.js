@@ -1380,6 +1380,7 @@ function handleGetParcelActivityLogs(payload) {
   return createJsonResponse({ success: true, activities: page.rows, totalCount: page.totalCount, hasMore: page.hasMore });
 }
 
+// ---- 51_parcel_reads.gs ----
 function handleGetParcels(payload) {
   const limit = Math.min(Math.max(parseInt(payload.limit) || 50, 1), 100);
   const offset = Math.max(parseInt(payload.offset) || 0, 0);
@@ -1534,6 +1535,7 @@ function handleExportSummary(payload) {
   });
 }
 
+// ---- 52_delivery_handlers.gs ----
 function handleConfirmReceipt(payload) {
   if (!hasAnyRole(payload, ['ADMIN', 'MESSENGER'])) {
     return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง" });
@@ -1961,7 +1963,7 @@ function handleReleaseDelivery(payload) {
   return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง" });
 }
 
-
+// ---- 53_route_search.gs ----
 function sanitizeRouteSampleId(value) {
   return String(value || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 80);
 }

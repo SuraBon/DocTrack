@@ -1,23 +1,16 @@
-import React, { useState, useRef, useEffect, useMemo } from "react";
-import { useParcelStore } from '@/hooks/useParcelStore';
+import React, { useState, useEffect } from "react";
 import { useAuth } from '@/contexts/AuthContext';
-import { useOfflineQueue } from '@/hooks/useOfflineQueue';
 import { useRouteSyncStatus } from '@/hooks/useRouteSyncStatus';
-import type { Parcel } from '@/types/parcel';
-import { formatThaiDateTime, getDateTime } from '@/lib/dateUtils';
 import { normalizeRole, type AppRole } from '@/lib/roles';
 import { toast } from 'sonner';
 import { UI_COPY } from '@/lib/uiCopy';
 import { ProfileDialog } from '@/components/layout/ProfileDialog';
 import {
   BarChart3,
-  Bell,
-  BellRing,
   ClipboardList,
   ChevronDown,
   ChevronUp,
   FileClock,
-  Inbox,
   Loader2,
   LockKeyhole,
   LogIn,
@@ -65,11 +58,8 @@ const NavIcon = ({ icon: Icon, active = false }: { icon: LucideIcon; active?: bo
 );
 
 const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }) => {
-  const { parcels } = useParcelStore();
   const { user, logout, updateUserProfile } = useAuth();
-  const offlineQueue = useOfflineQueue();
-  const { pendingRouteSampleCount, activeRouteCount } = useRouteSyncStatus();
-  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const { activeRouteCount } = useRouteSyncStatus();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMobileNavCollapsed, setIsMobileNavCollapsed] = useState(false);
   const [profileForm, setProfileForm] = useState({ name: '', currentPassword: '', newPassword: '', confirmPassword: '' });
@@ -78,100 +68,6 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
-  const [seenIds, setSeenIds] = useState<Set<string>>(() => {
-    try {
-      const stored = localStorage.getItem('seen_parcel_ids');
-      if (!stored) return new Set();
-      const data = JSON.parse(stored);
-      if (data.timestamp && Date.now() - data.timestamp > 30 * 24 * 60 * 60 * 1000) {
-        localStorage.removeItem('seen_parcel_ids');
-        return new Set();
-      }
-      return new Set(Array.isArray(data.ids) ? data.ids : data);
-    } catch {
-      return new Set();
-    }
-  });
-  const notifRef = useRef<HTMLDivElement>(null);
-
-  const recentParcels = useMemo(() => [...parcels]
-      .sort((a, b) => {
-        const da = getDateTime(a['วันที่รับ'] || a['วันที่สร้าง']);
-        const db = getDateTime(b['วันที่รับ'] || b['วันที่สร้าง']);
-        return db - da;
-      })
-      .slice(0, 8),
-    [parcels],
-  );
-
-  const unreadCount = recentParcels.filter(p => !seenIds.has(p.TrackingID)).length;
-  const pendingOfflineCount = offlineQueue.filter(item => item.status === 'pending' || item.status === 'failed').length;
-  const pendingSyncCount = pendingOfflineCount + pendingRouteSampleCount;
-
-  const markAllSeen = () => {
-    const next = new Set([...Array.from(seenIds), ...recentParcels.map(p => p.TrackingID)]);
-    setSeenIds(next);
-    localStorage.setItem('seen_parcel_ids', JSON.stringify({
-      ids: Array.from(next),
-      timestamp: Date.now(),
-    }));
-  };
-
-  const handleBellClick = () => {
-    const opening = !isNotifOpen;
-    setIsNotifOpen(opening);
-    if (opening) markAllSeen();
-  };
-
-  const handleNotifClick = (trackingId: string) => {
-    setIsNotifOpen(false);
-    
-    const nextSeen = new Set(seenIds);
-    nextSeen.add(trackingId);
-    setSeenIds(nextSeen);
-    try {
-      localStorage.setItem('seen_parcel_ids', JSON.stringify({
-        ids: Array.from(nextSeen),
-        timestamp: Date.now()
-      }));
-    } catch (e) {
-      // ignore
-    }
-
-    const nextPath = `/track?id=${trackingId}`;
-    if (window.location.pathname + window.location.search !== nextPath) {
-      window.history.pushState({}, "", nextPath);
-    }
-    setCurrentPage("track");
-
-    setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('shiptrack:search-parcel', { detail: { trackingId } }));
-    }, 50);
-  };
-
-  useEffect(() => {
-    const handleMouse = (e: MouseEvent) => {
-      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
-        setIsNotifOpen(false);
-      }
-    };
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsNotifOpen(false);
-    };
-    document.addEventListener('mousedown', handleMouse);
-    document.addEventListener('keydown', handleKey);
-    return () => {
-      document.removeEventListener('mousedown', handleMouse);
-      document.removeEventListener('keydown', handleKey);
-    };
-  }, []);
-
-  const getStatusColor = (status: Parcel['สถานะ']) => {
-    if (status === 'ส่งสำเร็จ') return 'bg-emerald-500';
-    if (status === 'กำลังจัดส่ง') return 'bg-blue-500';
-    return 'bg-amber-500';
-  };
-
   const currentRole = normalizeRole(user?.role ?? 'GUEST');
   const hideGuestMobileTopBar = currentRole === 'GUEST' && (currentPage === 'create' || currentPage === 'track');
   const dashboardLabel = currentRole === 'MESSENGER' ? UI_COPY.nav.messengerDashboard : UI_COPY.nav.adminDashboard;
@@ -286,64 +182,6 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
                   </span>
                   <span>บันทึกเส้นทาง ({activeRouteCount})</span>
                 </div>
-              )}
-              {user && (
-              <div className="relative" ref={notifRef}>
-                  <button
-                    onClick={handleBellClick}
-                    className="relative grid h-9 w-9 place-items-center rounded-xl text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900"
-                    aria-label="อัปเดตล่าสุด"
-                  >
-                    <Bell className="h-5 w-5" aria-hidden="true" />
-                    {unreadCount > 0 && (
-                      <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-white bg-destructive px-0.5 text-[9px] font-semibold leading-none text-white">
-                        {unreadCount > 9 ? '9+' : unreadCount}
-                      </span>
-                    )}
-                  </button>
-
-                  {isNotifOpen && (
-                  <div className="fixed right-3 top-16 z-50 w-80 max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-xl border border-outline-variant bg-white shadow-xl animate-in fade-in slide-in-from-top-2 duration-200">
-                    <div className="flex items-center justify-between border-b border-outline-variant/60 px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <BellRing className="h-4 w-4 text-primary" aria-hidden="true" />
-                      <span className="text-sm font-semibold text-primary">อัปเดตล่าสุด</span>
-                      </div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/60">{recentParcels.length} รายการ</span>
-                    </div>
-                    <div className="max-h-72 divide-y divide-outline-variant/50 overflow-y-auto">
-                      {recentParcels.length === 0 ? (
-                        <div className="grid place-items-center gap-2 py-8 text-center text-sm text-on-surface-variant/60">
-                          <Inbox className="h-7 w-7 opacity-50" aria-hidden="true" />
-                          ยังไม่มีรายการ
-                        </div>
-                      ) : recentParcels.map(p => (
-                        <button
-                          key={p.TrackingID}
-                          onClick={() => handleNotifClick(p.TrackingID)}
-                          className="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors cursor-pointer block"
-                        >
-                          <div className="flex items-start gap-3">
-                            <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${getStatusColor(p['สถานะ'])}`} />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between gap-2">
-                                <code className="min-w-0 break-all text-xs font-mono font-black text-primary">{p.TrackingID}</code>
-                                <span className="text-[10px] text-on-surface-variant/40 shrink-0">{p['สถานะ']}</span>
-                              </div>
-                              <p className="text-xs text-on-surface-variant mt-0.5 truncate">
-                                {p['ผู้ส่ง']} → {p['ผู้รับ']}
-                              </p>
-                              <p className="text-[10px] text-on-surface-variant/40 mt-0.5">
-                                {formatThaiDateTime(p['วันที่รับ'] || p['วันที่สร้าง'])}
-                              </p>
-                            </div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  )}
-              </div>
               )}
               {user ? (
                 <>

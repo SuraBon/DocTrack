@@ -1,3 +1,4 @@
+export * from './types';
 export * from './config';
 export * from './branches';
 export * from './parcels';
