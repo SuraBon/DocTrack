@@ -277,22 +277,16 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
             )}
 
             <div className="flex shrink-0 items-center gap-1">
-              {pendingSyncCount > 0 && (
-                <div
-                  className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-800 sm:px-2.5"
-                  title={pendingRouteSampleCount > 0 ? 'มีรายการและเส้นทางรอซิงค์' : 'มีรายการรอซิงค์'}
-                >
-                  <span className="material-symbols-outlined text-sm" aria-hidden="true">sync_problem</span>
-                  <span className="hidden sm:inline">รอซิงค์</span> {pendingSyncCount}
-                </div>
-              )}
               {activeRouteCount > 0 && (
                 <div
-                  className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2 py-1 text-[11px] font-bold text-blue-800 sm:px-2.5"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-red-100 bg-red-50/60 px-2.5 py-1 text-[11px] font-bold text-red-600 sm:px-2.5"
                   title="กำลังบันทึกเส้นทางส่ง"
                 >
-                  <span className="material-symbols-outlined text-sm" aria-hidden="true">near_me</span>
-                  <span className="hidden sm:inline">บันทึกเส้นทาง</span> {activeRouteCount}
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                  </span>
+                  <span>บันทึกเส้นทาง ({activeRouteCount})</span>
                 </div>
               )}
               {user && (

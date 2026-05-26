@@ -2,7 +2,7 @@
  * Track Page
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import StatusBadge from '@/components/StatusBadge';
 import Timeline from '@/components/Timeline';
 import { toast } from 'sonner';
@@ -44,6 +44,7 @@ export default function Track({ embedded = false }: { embedded?: boolean }) {
   const [notFoundQuery, setNotFoundQuery] = useState<string | null>(null);
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [isRefreshingHistory, setIsRefreshingHistory] = useState(false);
+  const lastSearchedIdRef = useRef('');
 
   const handleRefreshHistory = async () => {
     if (isRefreshingHistory) return;
@@ -144,6 +145,7 @@ export default function Track({ embedded = false }: { embedded?: boolean }) {
     if (e) e.preventDefault();
     const id = sanitizeTextInput(searchId ?? trackingId, 100).toUpperCase();
     if (!id) { toast.error('กรุณากรอกหมายเลขติดตาม ชื่อผู้รับ หรือสถานที่ปลายทาง'); return; }
+    lastSearchedIdRef.current = id;
     // ✅ FIX: sync input display with what we're actually searching
     if (searchId && searchId !== trackingId) setTrackingId(searchId);
     setNotFoundQuery(null);
@@ -227,13 +229,16 @@ export default function Track({ embedded = false }: { embedded?: boolean }) {
 
   useEffect(() => {
     const trimmed = trackingId.trim().toUpperCase();
-    if (isValidTrackingId(trimmed) && parcel?.TrackingID !== trimmed) {
+    if (!trimmed) {
+      lastSearchedIdRef.current = '';
+    }
+    if (isValidTrackingId(trimmed) && lastSearchedIdRef.current !== trimmed) {
       const delayDebounceFn = setTimeout(() => {
         void handleSearch(undefined, trimmed);
       }, 400);
       return () => clearTimeout(delayDebounceFn);
     }
-  }, [trackingId, parcel]);
+  }, [trackingId]);
 
   const timelineEvents = useMemo(() => parcel ? parseParcelTimeline(parcel) : [], [parcel]);
   const visibleSearchResults = searchResults.slice(0, visibleSearchResultCount);

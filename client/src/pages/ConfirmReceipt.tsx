@@ -27,24 +27,34 @@ import { stopRouteTracking } from '@/lib/routeTracking';
 
 
 /** Rendered outside the main component so it never remounts on state changes. */
-function StepIndicator({ currentStep }: { currentStep: number }) {
+function StepIndicator({ currentStep, compact = false }: { currentStep: number; compact?: boolean }) {
   return (
-    <div className="flex items-center justify-center mb-8 sm:mb-10">
+    <div className={`flex items-center justify-center ${compact ? 'mb-4 mt-4' : 'mb-8 sm:mb-10'}`}>
       {[1, 2, 3].map((step) => (
         <div key={step} className="flex items-center">
-          <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-500 font-display font-bold text-base sm:text-lg ${
-            currentStep === step
-              ? 'bg-primary text-white shadow-xl shadow-primary/20 scale-110'
-              : currentStep > step
-                ? 'bg-green-500 text-white'
-                : 'bg-surface-container text-on-surface-variant/40'
+          <div className={`flex items-center justify-center transition-all duration-500 font-display font-bold ${
+            compact 
+              ? `w-8 h-8 rounded-lg text-xs ${
+                  currentStep === step 
+                    ? 'bg-slate-900 text-white shadow-md' 
+                    : currentStep > step 
+                      ? 'bg-green-500 text-white' 
+                      : 'bg-slate-100 text-slate-400'
+                }`
+              : `w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl text-base sm:text-lg ${
+                  currentStep === step
+                    ? 'bg-slate-900 text-white shadow-xl shadow-slate-900/10 scale-110'
+                    : currentStep > step
+                      ? 'bg-green-500 text-white'
+                      : 'bg-slate-100 text-slate-400'
+                }`
           }`}>
             {currentStep > step
-              ? <span className="material-symbols-outlined text-xl sm:text-2xl" style={{ fontVariationSettings: "'FILL' 1" }} aria-hidden="true">check_circle</span>
+              ? <span className="material-symbols-outlined text-sm sm:text-base" style={{ fontVariationSettings: "'FILL' 1" }} aria-hidden="true">check_circle</span>
               : step}
           </div>
           {step < 3 && (
-            <div className="w-8 sm:w-12 h-1 mx-1 sm:mx-2 rounded-full overflow-hidden bg-surface-container">
+            <div className={`rounded-full overflow-hidden bg-slate-100 ${compact ? 'w-6 h-0.5 mx-1' : 'w-8 sm:w-12 h-1 mx-1 sm:mx-2 bg-surface-container'}`}>
               <div className={`h-full bg-green-500 transition-all duration-500 ${currentStep > step ? 'w-full' : 'w-0'}`} />
             </div>
           )}
@@ -443,38 +453,52 @@ export default function ConfirmReceipt({
   };
 
   return (
-    <div className={`${embedded ? 'max-w-none pb-4' : 'app-page-narrow'} animate-in fade-in slide-in-from-bottom-4 duration-700`}>
-      {/* Header Section */}
-      <div className={`${embedded ? 'hidden' : 'app-page-header'}`}>
-        <div>
-          <h1 className="app-page-title">งานส่ง</h1>
-          <p className="app-page-subtitle">สแกนหรือกรอกหมายเลข แล้วดูต้นทาง ปลายทาง และผู้รับทันที</p>
-        </div>
-        {pendingOfflineCount > 0 && (
-          <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
-            <span className="material-symbols-outlined text-base" aria-hidden="true">sync_problem</span>
-            รอซิงค์ {pendingOfflineCount} รายการ
+    <div className={`${embedded ? 'max-w-none pb-0 overflow-hidden rounded-[1.75rem]' : 'app-page-narrow'} animate-in fade-in slide-in-from-bottom-4 duration-700`}>
+      {/* Header Section (Standalone) */}
+      {!embedded && (
+        <div className="app-page-header">
+          <div>
+            <h1 className="app-page-title">งานส่ง</h1>
+            <p className="app-page-subtitle">สแกนหรือกรอกหมายเลข แล้วดูต้นทาง ปลายทาง และผู้รับทันที</p>
           </div>
-        )}
-      </div>
-
-      {embedded ? (
-        <div className="mb-5 flex items-center justify-between rounded-2xl bg-slate-50 border border-slate-200/60 px-4 py-2.5 animate-in fade-in duration-300">
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">ขั้นตอน</span>
-            <span className="rounded-full bg-slate-900 px-2.5 py-0.5 text-[10px] font-black text-white leading-none">
-              {currentStep} / 3
-            </span>
-          </div>
-          <span className="text-xs font-bold text-slate-700">
-            {currentStep === 1 && 'ตรวจสอบหมายเลขพัสดุ'}
-            {currentStep === 2 && 'ถ่ายรูปพัสดุ / ระบุตำแหน่ง'}
-            {currentStep === 3 && 'ตรวจสอบและยืนยันข้อมูล'}
-          </span>
+          {pendingOfflineCount > 0 && (
+            <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
+              <span className="material-symbols-outlined text-base" aria-hidden="true">sync_problem</span>
+              รอซิงค์ {pendingOfflineCount} รายการ
+            </div>
+          )}
         </div>
-      ) : (
-        <StepIndicator currentStep={currentStep} />
       )}
+
+      {/* Header Section (Embedded Modal) */}
+      {embedded && (
+        <div className="relative shrink-0 bg-slate-950 px-5 py-4 text-white">
+          {onClose && (
+            <button
+              type="button"
+              onClick={handleCloseStep}
+              className="absolute right-4 top-3 grid h-8 w-8 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+              aria-label="ปิดหน้านี้"
+            >
+              <span className="material-symbols-outlined text-lg" aria-hidden="true">close</span>
+            </button>
+          )}
+          <h2 className="font-display text-sm font-semibold leading-tight text-white">
+            {currentStep === 1 && 'ระบุหมายเลขติดตาม'}
+            {currentStep === 2 && 'ถ่ายรูปหลักฐานการจัดส่ง'}
+            {currentStep === 3 && 'ตรวจสอบและยืนยันข้อมูล'}
+          </h2>
+          <p className="mt-1 min-w-0 pr-8 text-[10px] tracking-wide text-slate-400">
+            {checkedParcel ? (
+              <span className="font-mono">{checkedParcel.TrackingID}</span>
+            ) : (
+              'กรุณาตรวจสอบหมายเลขพัสดุก่อนทำรายการ'
+            )}
+          </p>
+        </div>
+      )}
+
+      <StepIndicator currentStep={currentStep} compact={embedded} />
 
       {isLoading && createPortal(
         <div className="fixed inset-0 bg-white/60 backdrop-blur-sm z-[100] flex flex-col items-center justify-center animate-in fade-in duration-300">
@@ -499,15 +523,20 @@ export default function ConfirmReceipt({
 
       {/* Step 1: Check Tracking ID */}
       {currentStep === 1 && !isAutoPreparingCamera && (
-        <div className="app-panel overflow-hidden animate-in slide-in-from-right-4 duration-500">
-          <div className="app-panel-header p-5 text-center sm:p-6">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
-              <span className="material-symbols-outlined text-4xl" style={{ fontVariationSettings: "'FILL' 1" }} aria-hidden="true">search</span>
-            </div>
-            <h2 className="font-display text-xl font-bold text-primary">ระบุหมายเลขติดตาม</h2>
-            <p className="text-xs text-on-surface-variant uppercase font-bold tracking-widest mt-1">กรอกหมายเลขติดตามเพื่อดูต้นทาง ปลายทาง และผู้รับ</p>
-          </div>
-          <div className="p-5 sm:p-8 space-y-6">
+        <div className="animate-in slide-in-from-right-4 duration-500">
+          <div className={embedded ? "" : "app-panel overflow-hidden"}>
+            {!embedded && (
+              <div className="app-panel-header p-5 border-b border-gray-100 bg-gray-50 flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+                  <span className="material-symbols-outlined text-xl" aria-hidden="true">search</span>
+                </div>
+                <div>
+                  <h2 className="font-display text-base font-bold text-primary">ระบุหมายเลขติดตาม</h2>
+                  <p className="text-xs text-on-surface-variant/60 mt-0.5">กรอกหมายเลขติดตามเพื่อดูต้นทาง ปลายทาง และผู้รับ</p>
+                </div>
+              </div>
+            )}
+            <div className={embedded ? "p-5 space-y-5" : "p-6 sm:p-8 space-y-6"}>
             <div className="space-y-4">
               <div className="relative group">
                 <input
@@ -557,28 +586,26 @@ export default function ConfirmReceipt({
             </button>
           </div>
         </div>
+      </div>
       )}
 
       {/* Step 2: Photo Evidence */}
       {currentStep === 2 && (
-        <div className={`overflow-hidden animate-in slide-in-from-right-4 duration-500 ${embedded ? '' : 'rounded-[1.75rem] border border-gray-100 bg-white shadow-xl'}`}>
-          <div className={`relative bg-slate-950 text-white ${embedded ? 'px-4 py-3' : 'px-5 py-5 sm:px-6'}`}>
-            <button
-              type="button"
-              onClick={handleCloseStep}
-              className={`absolute grid place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 ${embedded ? 'right-3 top-3 size-8' : 'right-4 top-4 size-10'}`}
-              aria-label="ย้อนกลับ"
-            >
-              <span className={`material-symbols-outlined ${embedded ? 'text-xl' : 'text-2xl'}`} aria-hidden="true">close</span>
-            </button>
-            <div className={embedded ? 'pr-10' : 'pr-12'}>
-              <h2 className={`font-display font-black leading-tight text-white ${embedded ? 'text-lg' : 'text-2xl'}`}>ถ่ายรูปหลักฐาน</h2>
-              <p className={`font-mono font-black tracking-wide text-blue-200 ${embedded ? 'mt-1 text-xs' : 'mt-2 text-sm'}`}>{checkedParcel?.TrackingID}</p>
-              <p className={`font-semibold text-slate-300 ${embedded ? 'sr-only' : 'mt-2 text-xs'}`}>ถ่ายรูปสิ่งที่ส่งหรือหลักฐานการจัดส่ง</p>
-            </div>
-          </div>
-          <div className="space-y-4 p-4 sm:p-5">
-            {checkedParcel && <ParcelJobSummary parcel={checkedParcel} />}
+        <div className="animate-in slide-in-from-right-4 duration-500">
+          <div className={embedded ? "" : "app-panel overflow-hidden"}>
+            {!embedded && (
+              <div className="app-panel-header p-5 border-b border-gray-100 bg-gray-50 flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+                  <span className="material-symbols-outlined text-xl" aria-hidden="true">photo_camera</span>
+                </div>
+                <div>
+                  <h2 className="font-display text-base font-bold text-primary">ถ่ายรูปหลักฐานการจัดส่ง</h2>
+                  <p className="text-xs text-on-surface-variant/60 mt-0.5">ถ่ายรูปสิ่งที่ส่งหรือหลักฐานการจัดส่ง (พัสดุ: {checkedParcel?.TrackingID})</p>
+                </div>
+              </div>
+            )}
+            <div className={embedded ? "p-5 space-y-4" : "p-6 sm:p-8 space-y-6"}>
+              {checkedParcel && <ParcelJobSummary parcel={checkedParcel} />}
 
             <input
               ref={fileInputRef}
@@ -723,22 +750,26 @@ export default function ConfirmReceipt({
             </div>
           </div>
         </div>
+      </div>
       )}
 
       {/* Step 3: Final Details & Confirm */}
       {currentStep === 3 && (
-        <div className={`overflow-hidden animate-in slide-in-from-right-4 duration-500 ${embedded ? '' : 'rounded-[1.25rem] border border-gray-100 bg-white shadow-xl'}`}>
-          <div className={`bg-slate-950 px-4 text-white sm:px-5 ${embedded ? 'flex items-center gap-3 py-3 text-left' : 'py-3.5 text-center sm:py-4'}`}>
-            <div className={`${embedded ? 'h-8 w-8 shrink-0' : 'mx-auto mb-2 h-9 w-9'} flex items-center justify-center rounded-xl bg-white/10 text-white`}>
-              <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }} aria-hidden="true">fact_check</span>
-            </div>
-            <div className="min-w-0">
-              <h2 className={`font-display font-black leading-tight text-white ${embedded ? 'text-base' : 'text-lg sm:text-xl'}`}>เช็กปลายทางก่อนบันทึก</h2>
-              <p className={`${embedded ? 'mt-0 text-[10px]' : 'mt-0.5 text-[11px] sm:text-xs'} font-semibold text-slate-300`}>ตรวจต้นทาง ปลายทาง และผู้รับก่อนยืนยัน</p>
-            </div>
-          </div>
-          <div className="space-y-3 p-3.5 sm:p-4">
-            {checkedParcel && <ParcelJobSummary parcel={checkedParcel} />}
+        <div className="animate-in slide-in-from-right-4 duration-500">
+          <div className={embedded ? "" : "app-panel overflow-hidden"}>
+            {!embedded && (
+              <div className="app-panel-header p-5 border-b border-gray-100 bg-gray-50 flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+                  <span className="material-symbols-outlined text-xl" aria-hidden="true">fact_check</span>
+                </div>
+                <div>
+                  <h2 className="font-display text-base font-bold text-primary">เช็กปลายทางก่อนบันทึก</h2>
+                  <p className="text-xs text-on-surface-variant/60 mt-0.5">ตรวจต้นทาง ปลายทาง และผู้รับก่อนยืนยัน (พัสดุ: {checkedParcel?.TrackingID})</p>
+                </div>
+              </div>
+            )}
+            <div className={embedded ? "p-5 space-y-4" : "p-6 sm:p-8 space-y-6"}>
+              {checkedParcel && <ParcelJobSummary parcel={checkedParcel} />}
 
             <div className="grid grid-cols-1 gap-3 rounded-2xl border border-gray-200 bg-white p-3 text-sm sm:grid-cols-2">
               <div className="flex items-center gap-2.5 text-slate-600">
@@ -934,6 +965,7 @@ export default function ConfirmReceipt({
             </div>
           </div>
         </div>
+      </div>
       )}
 
       {/* Confirmation Modal */}
