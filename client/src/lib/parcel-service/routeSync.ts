@@ -1,0 +1,1 @@
+export { syncRouteSamples } from './core';

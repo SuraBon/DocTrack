@@ -1,3 +1,4 @@
+// ---- 00_config_schema.gs ----
 const SHEET_NAME = "Parcels";
 const API_KEY_PROPERTY = "API_KEY";
 const ADMIN_INITIAL_PIN_PROPERTY = "ADMIN_INITIAL_PIN";
@@ -76,6 +77,7 @@ const DEFAULT_BRANCHES = [
 ];
 const AUTO_PICKUP_RADIUS_METERS = 150;
 
+// ---- 10_storage_utils.gs ----
 function getSpreadsheet() {
   try {
     return SpreadsheetApp.getActiveSpreadsheet();
@@ -412,6 +414,8 @@ function getRouteSampleSheetForSpreadsheet(ss) {
 }
 
 var apiKeyCache = null;
+
+// ---- 20_auth_users.gs ----
 function getApiKey() {
   if (apiKeyCache !== null) {
     return apiKeyCache;
@@ -829,6 +833,7 @@ function hasAnyRole(payload, roles) {
   return roles.indexOf(normalizeRole(payload.role)) !== -1;
 }
 
+// ---- 30_entrypoints_routing.gs ----
 function doPost(e) {
   try {
     const rawBody = e && e.postData && e.postData.contents ? String(e.postData.contents) : "";
@@ -960,6 +965,7 @@ function doGet() {
   return createJsonResponse({ success: true });
 }
 
+// ---- 40_parcels_delivery.gs ----
 function handleCreateParcel(payload) {
   if (!hasAnyRole(payload, ['ADMIN', 'MESSENGER', 'GUEST'])) {
     return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง" });
@@ -1270,6 +1276,7 @@ function getActiveDeliveryAssignmentFromEvents(events) {
   return active;
 }
 
+// ---- 50_logs.gs ----
 function normalizeLogLimit(value) {
   return Math.min(Math.max(parseInt(value) || 50, 1), 100);
 }
@@ -2151,6 +2158,7 @@ function handleSearchParcels(payload) {
   return createJsonResponse({ success: true, parcels: parcels });
 }
 
+// ---- 60_auth_handlers.gs ----
 function setupApiKey(value) {
   if (!value) {
     throw new Error("Missing API key value");
@@ -2414,6 +2422,7 @@ function handleSetupPin(payload) {
   return createJsonResponse({ success: false, error: "ไม่พบรหัสพนักงานนี้ในระบบ กรุณาให้ผู้ดูแลระบบเพิ่มบัญชีก่อน" });
 }
 
+// ---- 70_admin_handlers.gs ----
 function handleGetUsers(payload) {
   if (normalizeRole(payload.role) !== 'ADMIN') {
     return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง (เฉพาะผู้ดูแลระบบ)" });
@@ -2812,6 +2821,7 @@ function handleUpdateProfile(payload) {
   return createJsonResponse({ success: false, error: "ไม่พบผู้ใช้งาน" });
 }
 
+// ---- 99_options.gs ----
 function doOptions(e) {
   return ContentService.createTextOutput("")
     .setMimeType(ContentService.MimeType.TEXT);

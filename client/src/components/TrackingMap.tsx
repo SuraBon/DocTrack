@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback, useMemo, memo } from 'react';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { MapView } from './Map';
 import type { TimelineEvent } from '@/types/timeline';
 import type { ParcelRouteSample } from '@/types/parcel';

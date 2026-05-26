@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { deleteParcel, releaseDelivery, startDelivery, syncRouteSamples } from '@/lib/parcelService';
 import { startRouteTracking, stopRouteTracking } from '@/lib/routeTracking';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useDashboardLists } from '@/hooks/useDashboardLists';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import type { Parcel } from '@/types/parcel';
 import { toast } from 'sonner';
@@ -40,17 +41,12 @@ import EmptyState from '@/components/EmptyState';
 
 // Subcomponents and helpers
 import {
-  STATS,
   MESSENGER_BATCH_SIZE,
-  sortAdminParcels,
   resolveDashboardRole,
-  sortMessengerWork,
-  wasAssignedToMe,
   StatsCard,
   TableSkeleton,
   LazyPanelFallback,
   MessengerViewBanner,
-  isParcelStale,
   getTimelineEvents,
   DashboardIcon,
   DashboardActionButton,
@@ -101,13 +97,33 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
   });
   const isFetchingRef = useRef(false);
   const currentEmployeeId = String(user?.employeeId || '').trim().toUpperCase();
-  const stats = useMemo(() => {
-    return STATS.map((stat) => ({
-      ...stat,
-      label: stat.label,
-      count: summary?.[stat.key] ?? 0,
-    }));
-  }, [summary]);
+  const {
+    stats,
+    filteredParcels,
+    messengerWaitingParcels,
+    messengerMineParcels,
+    messengerDoneParcels,
+    adminSortedParcels,
+    adminNeedsAttentionParcels,
+    adminRegularParcels,
+    adminTotalCount,
+    totalPages,
+    paginatedParcels,
+    startIndex,
+    endIndex,
+  } = useDashboardLists({
+    parcels,
+    summary,
+    statusFilter,
+    defaultStatusFilter,
+    debouncedSearch,
+    isMessengerDashboard,
+    currentEmployeeId,
+    adminSort,
+    currentPage,
+    pageSize,
+    totalCount,
+  });
 
   // Single fetch function — loadParcels already recomputes summary internally
   // ✅ FIX: Use ref to avoid stale closure without adding loadParcels to deps
@@ -159,75 +175,6 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
     }, 60 * 1000);
     return () => clearInterval(intervalId);
   }, [isConfigured, fetchData]);
-
-  const filteredParcels = useMemo(() => {
-    let f = parcels;
-    if (!isMessengerDashboard && statusFilter !== 'ทั้งหมด') {
-      f = f.filter(p => p['สถานะ'] === statusFilter);
-    }
-    if (debouncedSearch) {
-      const q = debouncedSearch.toLowerCase();
-      f = f.filter(p =>
-        p.TrackingID.toLowerCase().includes(q) ||
-        p['ผู้ส่ง'].toLowerCase().includes(q) ||
-        p['ผู้รับ'].toLowerCase().includes(q) ||
-        p['สาขาผู้รับ'].toLowerCase().includes(q)
-      );
-    }
-    return f;
-  }, [parcels, statusFilter, debouncedSearch, isMessengerDashboard]);
-
-  const messengerWaitingParcels = useMemo(
-    () => filteredParcels
-      .filter(isAvailableForMessenger)
-      .sort(sortMessengerWork),
-    [filteredParcels],
-  );
-  const messengerMineParcels = useMemo(
-    () => filteredParcels
-      .filter(parcel => isAssignedToCurrentUser(parcel, currentEmployeeId) && parcel['สถานะ'] !== 'ส่งสำเร็จ')
-      .sort(sortMessengerWork),
-    [filteredParcels, currentEmployeeId],
-  );
-  const messengerDoneParcels = useMemo(
-    () => filteredParcels.filter(parcel => parcel['สถานะ'] === 'ส่งสำเร็จ' && wasAssignedToMe(parcel, currentEmployeeId)),
-    [filteredParcels, currentEmployeeId],
-  );
-  const adminSortedParcels = useMemo(
-    () => sortAdminParcels(filteredParcels, adminSort),
-    [filteredParcels, adminSort],
-  );
-  const adminNeedsAttentionParcels = useMemo(
-    () => adminSortedParcels
-      .filter(parcel => parcel['สถานะ'] !== 'ส่งสำเร็จ' || isParcelStale(parcel))
-      .sort((a, b) => {
-        const staleDiff = Number(isParcelStale(b)) - Number(isParcelStale(a));
-        if (staleDiff !== 0) return staleDiff;
-        return sortMessengerWork(a, b);
-      })
-      .slice(0, 6),
-    [adminSortedParcels],
-  );
-
-  // Pagination calculations — use totalCount from backend for accurate total pages
-  const hasAdminFilters = Boolean(debouncedSearch || statusFilter !== defaultStatusFilter);
-  const adminTotalCount = hasAdminFilters ? adminSortedParcels.length : (totalCount || adminSortedParcels.length);
-  const backendTotalPages = Math.max(1, Math.ceil(adminTotalCount / pageSize));
-  const { totalPages, paginatedParcels, startIndex, endIndex } = useMemo(() => {
-    const total = backendTotalPages;
-    const paginated = adminSortedParcels.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-    const start = adminSortedParcels.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
-    const end = Math.min(currentPage * pageSize, adminSortedParcels.length);
-    return { totalPages: total, paginatedParcels: paginated, startIndex: start, endIndex: end };
-  }, [adminSortedParcels, currentPage, pageSize, backendTotalPages]);
-  const adminNeedsAttentionIds = useMemo(
-    () => new Set(adminNeedsAttentionParcels.map(parcel => parcel.TrackingID)),
-    [adminNeedsAttentionParcels],
-  );
-  const adminRegularParcels = useMemo(
-    () => paginatedParcels.filter(parcel => !adminNeedsAttentionIds.has(parcel.TrackingID)),
-    [paginatedParcels, adminNeedsAttentionIds],
-  );
 
   // Reset page when filter changes
   useEffect(() => { setCurrentPage(1); }, [statusFilter, debouncedSearch, adminSort, pageSize]);

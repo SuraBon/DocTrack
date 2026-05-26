@@ -14,9 +14,8 @@ import { formatThaiDateTime } from '@/lib/dateUtils';
 import NativeSelect, { resolveSelectValue } from '@/components/NativeSelect';
 import { sanitizeTextInput, validateRequiredText } from '@/lib/validation';
 import { useGeolocation } from '@/hooks/useGeolocation';
-import { getErrorMessage } from '@/lib/apiErrorHelper';
-import { processProofImageFile } from '@/lib/imageProofHelper';
 import { useOfflineQueue } from '@/hooks/useOfflineQueue';
+import { useProofImage } from '@/hooks/useProofImage';
 import {
   EMPTY_CREATE_PARCEL_DRAFT,
   clearCreateParcelDraft,
@@ -41,9 +40,13 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
   const [isResultOpen, setIsResultOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isProcessingImage, setIsProcessingImage] = useState(false);
-  const [proofPhotoUrl, setProofPhotoUrl] = useState('');
-  const [proofPhotoPreview, setProofPhotoPreview] = useState<string | null>(null);
+  const {
+    imageUrl: proofPhotoUrl,
+    previewUrl: proofPhotoPreview,
+    isProcessingImage,
+    processImageFile: processProofImage,
+    clearImage: clearProofImage,
+  } = useProofImage();
   const pendingOfflineCount = offlineQueue.filter(item => item.status === 'pending' || item.status === 'failed').length;
 
   useEffect(() => {
@@ -91,28 +94,13 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const processProofImage = async (file: File) => {
-    setIsProcessingImage(true);
-    try {
-      const image = await processProofImageFile(file);
-      setProofPhotoPreview(image.dataUrl);
-      setProofPhotoUrl(image.dataUrl);
-      toast.success('แนบรูปหลักฐานแล้ว');
-    } catch (err) {
-      toast.error(getErrorMessage(err, 'เกิดข้อผิดพลาดในการประมวลผลรูปภาพ'));
-    } finally {
-      setIsProcessingImage(false);
-    }
-  };
-
   const handleProofFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) void processProofImage(file);
   };
 
   const clearProofPhoto = () => {
-    setProofPhotoPreview(null);
-    setProofPhotoUrl('');
+    clearProofImage();
     if (proofInputRef.current) proofInputRef.current.value = '';
   };
 
