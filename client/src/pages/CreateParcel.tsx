@@ -77,7 +77,21 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
 
   useEffect(() => {
     saveCreateParcelDraft(formData);
-  }, [formData]);
+    const isDirty = Boolean(
+      formData.senderName ||
+      formData.senderBranch ||
+      formData.receiverName ||
+      formData.receiverBranch ||
+      formData.description ||
+      formData.note ||
+      proofPhotoUrl
+    );
+    if (isDirty) {
+      sessionStorage.setItem('shiptrack:create_parcel_dirty', 'true');
+    } else {
+      sessionStorage.removeItem('shiptrack:create_parcel_dirty');
+    }
+  }, [formData, proofPhotoUrl]);
 
   useEffect(() => {
     if (!isLoading) return;

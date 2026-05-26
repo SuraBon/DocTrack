@@ -458,7 +458,23 @@ export default function ConfirmReceipt({
         )}
       </div>
 
-      {!embedded && <StepIndicator currentStep={currentStep} />}
+      {embedded ? (
+        <div className="mb-5 flex items-center justify-between rounded-2xl bg-slate-50 border border-slate-200/60 px-4 py-2.5 animate-in fade-in duration-300">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">ขั้นตอน</span>
+            <span className="rounded-full bg-slate-900 px-2.5 py-0.5 text-[10px] font-black text-white leading-none">
+              {currentStep} / 3
+            </span>
+          </div>
+          <span className="text-xs font-bold text-slate-700">
+            {currentStep === 1 && 'ตรวจสอบหมายเลขพัสดุ'}
+            {currentStep === 2 && 'ถ่ายรูปพัสดุ / ระบุตำแหน่ง'}
+            {currentStep === 3 && 'ตรวจสอบและยืนยันข้อมูล'}
+          </span>
+        </div>
+      ) : (
+        <StepIndicator currentStep={currentStep} />
+      )}
 
       {isLoading && createPortal(
         <div className="fixed inset-0 bg-white/60 backdrop-blur-sm z-[100] flex flex-col items-center justify-center animate-in fade-in duration-300">

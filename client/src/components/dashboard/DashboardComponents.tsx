@@ -209,6 +209,10 @@ export const getCleanNote = (parcel: Parcel) => {
   return (parcel['หมายเหตุ'] || '').replace(/\[[\s\S]*?\]/g, '').trim();
 };
 
+// Cache for parcel timeline events to prevent re-parsing on every render.
+// Since we use a WeakMap, the cache key (parcel object) is weak. If a parcel object
+// is updated (which replaces the object reference in the store rather than mutating it),
+// the cached entry will automatically garbage collect and re-fetch, avoiding stale cache.
 const timelineCache = new WeakMap<Parcel, TimelineEvent[]>();
 export const getTimelineEvents = (parcel: Parcel): TimelineEvent[] => {
   const cached = timelineCache.get(parcel);
