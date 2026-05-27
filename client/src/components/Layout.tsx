@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouteSyncStatus } from '@/hooks/useRouteSyncStatus';
 import { normalizeRole, type AppRole } from '@/lib/roles';
@@ -65,7 +65,29 @@ const NavIcon = ({ icon: Icon, active = false }: { icon: LucideIcon; active?: bo
 const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }) => {
   const { theme, toggleTheme } = useTheme();
   const { user, logout, updateUserProfile } = useAuth();
-  const { activeRouteCount } = useRouteSyncStatus();
+  const routeSyncStatus = useRouteSyncStatus();
+  const { activeRouteCount } = routeSyncStatus;
+  const [isRoutePopoverOpen, setIsRoutePopoverOpen] = useState(false);
+  const routePopoverRef = useRef<HTMLDivElement>(null);
+
+  const formatSyncTime = (value: string | null) => {
+    if (!value) return '-';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '-';
+    return date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  // ปิด popover เมื่อคลิกนอก
+  useEffect(() => {
+    if (!isRoutePopoverOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (routePopoverRef.current && !routePopoverRef.current.contains(e.target as Node)) {
+        setIsRoutePopoverOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [isRoutePopoverOpen]);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMobileNavCollapsed, setIsMobileNavCollapsed] = useState(false);
   const [profileForm, setProfileForm] = useState({ name: '', currentPassword: '', newPassword: '', confirmPassword: '' });
@@ -195,15 +217,58 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
 
             <div className="flex shrink-0 items-center gap-1">
               {activeRouteCount > 0 && (
-                <div
-                  className="inline-flex items-center gap-1.5 rounded-full border border-red-100 bg-red-50/60 px-2.5 py-1 text-[11px] font-bold text-red-600 sm:px-2.5"
-                  title="กำลังบันทึกเส้นทางส่ง"
-                >
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                  </span>
-                  <span>บันทึกเส้นทาง ({activeRouteCount})</span>
+                <div className="relative" ref={routePopoverRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsRoutePopoverOpen(v => !v)}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/10 px-2.5 py-1 text-[11px] font-bold text-red-400 transition-all hover:bg-red-500/20 hover:text-red-300 sm:px-2.5"
+                    title="กำลังบันทึกเส้นทางส่ง"
+                  >
+                    <span className="relative flex h-2 w-2 shrink-0">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                    </span>
+                    <span>บันทึกเส้นทาง ({activeRouteCount})</span>
+                  </button>
+
+                  {isRoutePopoverOpen && (
+                    <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-2xl border border-white/[0.08] bg-card shadow-xl">
+                      <div className="px-4 py-3 border-b border-white/[0.06]">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-black text-foreground">บันทึกเส้นทาง</p>
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
+                            routeSyncStatus.isRouteSyncing
+                              ? 'bg-blue-500/15 text-blue-400'
+                              : routeSyncStatus.lastRouteSyncError
+                                ? 'bg-red-500/15 text-red-400'
+                                : 'bg-surface-container text-muted-foreground'
+                          }`}>
+                            {routeSyncStatus.isRouteSyncing ? 'กำลังซิงค์' : routeSyncStatus.lastRouteSyncError ? 'ซิงค์ไม่สำเร็จ' : 'พร้อมซิงค์'}
+                          </span>
+                        </div>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          กำลังบันทึกพิกัด {activeRouteCount} งาน
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 p-3">
+                        <div className="rounded-xl bg-surface-container px-2.5 py-2">
+                          <p className="text-[9px] font-black text-muted-foreground">พิกัดค้างส่ง</p>
+                          <p className="mt-0.5 text-sm font-black text-foreground">{routeSyncStatus.pendingRouteSampleCount}</p>
+                        </div>
+                        <div className="rounded-xl bg-surface-container px-2.5 py-2">
+                          <p className="text-[9px] font-black text-muted-foreground">บันทึกล่าสุด</p>
+                          <p className="mt-0.5 text-sm font-black text-foreground">{formatSyncTime(routeSyncStatus.latestRouteSampleAt)}</p>
+                        </div>
+                        <div className="rounded-xl bg-surface-container px-2.5 py-2">
+                          <p className="text-[9px] font-black text-muted-foreground">ซิงค์ล่าสุด</p>
+                          <p className="mt-0.5 text-sm font-black text-foreground">{formatSyncTime(routeSyncStatus.lastRouteSyncAt)}</p>
+                        </div>
+                      </div>
+                      {routeSyncStatus.lastRouteSyncError && (
+                        <p className="px-3 pb-3 text-[11px] font-semibold text-red-400">{routeSyncStatus.lastRouteSyncError}</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
               {offlineQueue.length > 0 && (
@@ -250,7 +315,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
                   <button
                     type="button"
                     onClick={logout}
-                    className="grid h-9 w-9 place-items-center rounded-lg border border-red-200 dark:border-red-900/40 bg-white dark:bg-red-900/20 text-red-600 dark:text-red-400 transition-all hover:bg-red-50 dark:hover:bg-red-900/30 active:scale-95"
+                    className="grid h-9 w-9 place-items-center rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 transition-all hover:bg-red-500/20 hover:text-red-300 active:scale-95"
                     title="ออกจากระบบ"
                     aria-label="ออกจากระบบ"
                   >

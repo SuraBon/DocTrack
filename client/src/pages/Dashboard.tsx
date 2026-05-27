@@ -93,7 +93,6 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [adminSort, setAdminSort] = useState<AdminSortMode>('newest');
-  const [isRouteCardExpanded, setIsRouteCardExpanded] = useState(false);
   
   const isFetchingRef = useRef(false);
   const hasSetInitialView = useRef(false);
@@ -497,63 +496,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
       )}
 
       {/* ── Stats ── */}
-      {isMessengerDashboard && (
-        <div className="overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm">
-          <button
-            type="button"
-            onClick={() => setIsRouteCardExpanded(value => !value)}
-            className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50"
-            aria-expanded={isRouteCardExpanded}
-          >
-            <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${
-              routeSyncStatus.activeRouteCount > 0 ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-400'
-            }`}>
-              <DashboardIcon icon={routeSyncStatus.activeRouteCount > 0 ? 'my_location' : 'location_searching'} className="h-5 w-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-black text-slate-900">บันทึกเส้นทาง</p>
-                <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${
-                  routeSyncStatus.isRouteSyncing
-                    ? 'bg-blue-100 text-blue-700'
-                    : routeSyncStatus.lastRouteSyncError
-                      ? 'bg-red-50 text-red-600'
-                      : 'bg-emerald-50 text-emerald-700'
-                }`}>
-                  {routeSyncStatus.isRouteSyncing ? 'กำลังซิงค์' : routeSyncStatus.lastRouteSyncError ? 'ซิงค์ไม่สำเร็จ' : 'พร้อมซิงค์'}
-                </span>
-              </div>
-              <p className="mt-0.5 truncate text-xs font-semibold text-slate-500">
-                {routeSyncStatus.activeRouteCount > 0
-                  ? `กำลังบันทึกพิกัด ${routeSyncStatus.activeRouteCount} งาน`
-                  : 'ยังไม่มีงานที่กำลังบันทึกพิกัด'}
-              </p>
-            </div>
-            <ChevronDown className={`h-5 w-5 shrink-0 text-slate-400 transition-transform ${isRouteCardExpanded ? 'rotate-180' : ''}`} aria-hidden="true" />
-          </button>
-          {isRouteCardExpanded && (
-            <div className="border-t border-blue-50 px-4 pb-4 pt-3">
-              <div className="grid grid-cols-3 gap-2 text-[11px] font-semibold text-slate-500">
-                <div className="rounded-xl bg-slate-50 px-3 py-2">
-                  <p className="text-[10px] font-black text-slate-400">พิกัดค้างส่ง</p>
-                  <p className="mt-0.5 text-sm font-black text-slate-900">{routeSyncStatus.pendingRouteSampleCount}</p>
-                </div>
-                <div className="rounded-xl bg-slate-50 px-3 py-2">
-                  <p className="text-[10px] font-black text-slate-400">บันทึกล่าสุด</p>
-                  <p className="mt-0.5 text-sm font-black text-slate-900">{formatSyncTime(routeSyncStatus.latestRouteSampleAt)}</p>
-                </div>
-                <div className="rounded-xl bg-slate-50 px-3 py-2">
-                  <p className="text-[10px] font-black text-slate-400">ซิงค์ล่าสุด</p>
-                  <p className="mt-0.5 text-sm font-black text-slate-900">{formatSyncTime(routeSyncStatus.lastRouteSyncAt)}</p>
-                </div>
-              </div>
-              {routeSyncStatus.lastRouteSyncError && (
-                <p className="mt-2 text-[11px] font-semibold text-red-600">{routeSyncStatus.lastRouteSyncError}</p>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+      {isMessengerDashboard && null}
 
       {!isMessengerDashboard && (() => {
         const isFirstLoad = loading && !lastUpdatedAt;
