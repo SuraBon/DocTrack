@@ -62,16 +62,16 @@ export default function Timeline({ events, className = '', compact = false }: Ti
   const getCardStyle = (status: TimelineEvent['status'], title: string) => {
     switch (status) {
       case 'completed':
-        return 'bg-white border-outline-variant/30 hover:border-primary/20 hover:bg-surface-container-low/20';
+        return 'bg-white dark:bg-card border-outline-variant/30 hover:border-primary/20 hover:bg-surface-container-low/20';
       case 'current': {
         const isCurrentTransit = title.includes('จัดส่ง') || title.includes('เดินทาง');
         const colorClass = isCurrentTransit ? 'border-blue-500 shadow-blue-500/5 ring-blue-500/10' : 'border-secondary shadow-secondary/5 ring-secondary/10';
-        return `bg-white ${colorClass} shadow-xl ring-1`;
+        return `bg-white dark:bg-card ${colorClass} shadow-xl ring-1`;
       }
       case 'pending':
         return 'bg-surface-container-lowest border-outline-variant/20 opacity-70';
       default:
-        return 'bg-white border-outline-variant/30';
+        return 'bg-white dark:bg-card border-outline-variant/30';
     }
   };
 
@@ -99,39 +99,39 @@ export default function Timeline({ events, className = '', compact = false }: Ti
       if (isDeliveredEvent) {
         return {
           dot: 'border-emerald-500 bg-emerald-600 text-white shadow-[0_0_0_4px_rgba(16,185,129,0.16)]',
-          card: isLatest ? 'border-emerald-200 bg-emerald-50 shadow-sm' : 'border-emerald-100 bg-white',
-          title: 'text-emerald-900',
-          badge: isLatest ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100',
-          line: 'bg-emerald-200',
+          card: isLatest ? 'border-emerald-200 bg-emerald-50 dark:bg-emerald-900/25 dark:border-emerald-800/50 shadow-sm' : 'border-emerald-100 dark:border-emerald-800/30 bg-white dark:bg-card',
+          title: 'text-emerald-900 dark:text-emerald-300',
+          badge: isLatest ? 'bg-emerald-600 text-white' : 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-100 dark:ring-emerald-800/40',
+          line: 'bg-emerald-200 dark:bg-emerald-800/50',
         };
       }
 
       if (isTransitEvent || event.status === 'current') {
         return {
           dot: 'border-blue-500 bg-blue-600 text-white shadow-[0_0_0_4px_rgba(59,130,246,0.16)]',
-          card: isLatest ? 'border-blue-200 bg-blue-50 shadow-sm' : 'border-blue-100 bg-white',
-          title: 'text-blue-900',
-          badge: isLatest ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-700 ring-1 ring-blue-100',
-          line: 'bg-blue-200',
+          card: isLatest ? 'border-blue-200 bg-blue-50 dark:bg-blue-900/25 dark:border-blue-800/50 shadow-sm' : 'border-blue-100 dark:border-blue-800/30 bg-white dark:bg-card',
+          title: 'text-blue-900 dark:text-blue-300',
+          badge: isLatest ? 'bg-blue-600 text-white' : 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 ring-1 ring-blue-100 dark:ring-blue-800/40',
+          line: 'bg-blue-200 dark:bg-blue-800/50',
         };
       }
 
       if (isWaitingEvent || event.status === 'pending') {
         return {
           dot: 'border-amber-500 bg-amber-500 text-white',
-          card: isLatest ? 'border-amber-200 bg-amber-50 shadow-sm' : 'border-amber-100 bg-white',
-          title: 'text-amber-900',
-          badge: isLatest ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-700 ring-1 ring-amber-100',
-          line: 'bg-amber-200',
+          card: isLatest ? 'border-amber-200 bg-amber-50 dark:bg-amber-900/25 dark:border-amber-800/50 shadow-sm' : 'border-amber-100 dark:border-amber-800/30 bg-white dark:bg-card',
+          title: 'text-amber-900 dark:text-amber-300',
+          badge: isLatest ? 'bg-amber-500 text-white' : 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 ring-1 ring-amber-100 dark:ring-amber-800/40',
+          line: 'bg-amber-200 dark:bg-amber-800/50',
         };
       }
 
       return {
-        dot: event.status === 'completed' ? 'border-slate-400 bg-slate-500 text-white' : 'border-slate-300 bg-white text-slate-400',
-        card: isLatest ? 'border-slate-200 bg-slate-50 shadow-sm' : 'border-slate-100 bg-white',
-        title: 'text-slate-800',
-        badge: 'bg-slate-100 text-slate-600',
-        line: 'bg-slate-200',
+        dot: event.status === 'completed' ? 'border-slate-400 bg-slate-500 text-white' : 'border-slate-300 bg-white dark:bg-card text-slate-400',
+        card: isLatest ? 'border-slate-200 dark:border-outline-variant bg-slate-50 dark:bg-surface-container shadow-sm' : 'border-slate-100 dark:border-outline-variant/50 bg-white dark:bg-card',
+        title: 'text-slate-800 dark:text-foreground',
+        badge: 'bg-slate-100 dark:bg-surface-container text-slate-600 dark:text-muted-foreground',
+        line: 'bg-slate-200 dark:bg-outline-variant/50',
       };
     };
 
@@ -147,14 +147,14 @@ export default function Timeline({ events, className = '', compact = false }: Ti
             const statusLabel = isLatest ? 'ล่าสุด' : event.status === 'completed' ? 'บันทึกแล้ว' : 'รอดำเนินการ';
             return (
               <div key={event.id} className="grid grid-cols-[52px_28px_minmax(0,1fr)] gap-2.5">
-                <div className={`pt-2 text-right leading-none ${isLatest ? 'text-slate-900' : 'text-slate-400'}`}>
+                <div className={`pt-2 text-right leading-none ${isLatest ? 'text-slate-900 dark:text-foreground' : 'text-slate-400 dark:text-muted-foreground'}`}>
                   {day ? (
                     <>
                       <p className="text-[10px] font-black">{day}</p>
                       <p className="mt-1 text-[9px] font-semibold">{time}</p>
                     </>
                   ) : (
-                    <p className="text-[9px] font-bold leading-tight text-slate-300">ไม่ระบุเวลา</p>
+                    <p className="text-[9px] font-bold leading-tight text-slate-300 dark:text-muted-foreground/50">ไม่ระบุเวลา</p>
                   )}
                 </div>
                 <div className="relative flex justify-center">
@@ -178,7 +178,7 @@ export default function Timeline({ events, className = '', compact = false }: Ti
                           </p>
                         </div>
                         {event.description && (
-                          <p className={`${isLatest ? 'line-clamp-3' : 'line-clamp-2'} mt-1.5 break-words text-[11px] font-semibold leading-snug text-slate-500`}>
+                          <p className={`${isLatest ? 'line-clamp-3' : 'line-clamp-2'} mt-1.5 break-words text-[11px] font-semibold leading-snug text-slate-500 dark:text-muted-foreground`}>
                             {event.description}
                           </p>
                         )}
@@ -188,20 +188,20 @@ export default function Timeline({ events, className = '', compact = false }: Ti
                           url={event.imageUrl}
                           title="รูปหลักฐาน"
                           triggerVariant="icon"
-                          className="h-10 w-10 rounded-xl bg-white text-slate-900 shadow-sm ring-1 ring-blue-100 hover:bg-blue-50 hover:text-blue-700"
+                          className="h-10 w-10 rounded-xl bg-white dark:bg-surface-container text-slate-900 dark:text-foreground shadow-sm ring-1 ring-blue-100 dark:ring-outline-variant hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-300"
                         />
                       )}
                     </div>
 
-                    <div className={`${isLatest ? 'mt-2 border-t border-white/70 pt-1.5' : 'mt-2'} flex flex-wrap items-center gap-x-3 gap-y-1`}>
+                    <div className={`${isLatest ? 'mt-2 border-t border-white/70 dark:border-outline-variant/30 pt-1.5' : 'mt-2'} flex flex-wrap items-center gap-x-3 gap-y-1`}>
                       {event.timestamp && (
-                        <span className="inline-flex items-center gap-1 text-[9px] font-bold text-slate-400">
+                        <span className="inline-flex items-center gap-1 text-[9px] font-bold text-slate-400 dark:text-muted-foreground">
                           <span className="material-symbols-outlined text-[12px]" aria-hidden="true">schedule</span>
                           {formatThaiDateTime(event.timestamp)}
                         </span>
                       )}
                       {event.location && (
-                        <span className="inline-flex min-w-0 items-center gap-1 text-[9px] font-bold text-slate-400">
+                        <span className="inline-flex min-w-0 items-center gap-1 text-[9px] font-bold text-slate-400 dark:text-muted-foreground">
                           <span className="material-symbols-outlined text-[12px]" aria-hidden="true">place</span>
                           <span className="truncate">{event.location}</span>
                         </span>
@@ -241,7 +241,7 @@ export default function Timeline({ events, className = '', compact = false }: Ti
     <div className={`relative px-1 ${className}`}>
       {/* Header Summary */}
       {!compact && (
-        <div className="mb-10 rounded-3xl border border-outline-variant/20 bg-white p-6 shadow-md flex flex-col items-center gap-4">
+        <div className="mb-10 rounded-3xl border border-outline-variant/20 bg-white dark:bg-card p-6 shadow-md flex flex-col items-center gap-4">
           <div className={`flex items-center justify-center w-10 h-10 rounded-xl ${headerStyle.color} text-white ${headerStyle.shadow} shadow-lg`}>
             <span className="material-symbols-outlined text-xl" aria-hidden="true">
               {headerStyle.icon}

@@ -124,10 +124,10 @@ export const StatsCard = ({
     type="button"
     onClick={onClick}
     aria-pressed={active}
-    className={`flex min-h-[92px] w-full items-center rounded-2xl border bg-white px-5 py-4 text-left shadow-sm transition-all duration-300 active:scale-[0.99] ${
+    className={`flex min-h-[92px] w-full items-center rounded-2xl border bg-white dark:bg-card px-5 py-4 text-left shadow-sm transition-all duration-300 active:scale-[0.99] ${
       active
-        ? 'border-slate-900/35 ring-2 ring-slate-900/10'
-        : 'border-gray-100 hover:border-slate-300 hover:shadow-md'
+        ? 'border-slate-900/35 dark:border-primary/40 ring-2 ring-slate-900/10 dark:ring-primary/20'
+        : 'border-gray-100 dark:border-outline-variant hover:border-slate-300 dark:hover:border-primary/30 hover:shadow-md'
     }`}
   >
     <div className="flex min-w-0 items-center gap-4">
@@ -149,7 +149,7 @@ export const StatsCard = ({
 export const TableSkeleton = () => (
   <div className="w-full space-y-3 p-3">
     {[...Array(6)].map((_, i) => (
-      <div key={i} className="rounded-2xl border border-outline-variant/15 bg-white p-4">
+      <div key={i} className="rounded-2xl border border-outline-variant/15 bg-white dark:bg-card p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1 space-y-2">
             <Skeleton className="h-5 w-32 rounded-lg" />
@@ -164,7 +164,7 @@ export const TableSkeleton = () => (
 );
 
 export const LazyPanelFallback = ({ label = 'กำลังโหลด...' }: { label?: string }) => (
-  <div className="grid min-h-[220px] place-items-center rounded-2xl bg-white/80 p-6 text-center">
+  <div className="grid min-h-[220px] place-items-center rounded-2xl bg-white/80 dark:bg-card/80 p-6 text-center">
     <div className="flex flex-col items-center gap-3 text-primary">
       <Loader2 className="h-7 w-7 animate-spin" aria-hidden="true" />
       <p className="text-sm font-black">{label}</p>
@@ -173,23 +173,23 @@ export const LazyPanelFallback = ({ label = 'กำลังโหลด...' }: 
 );
 
 export const MessengerRouteSummary = ({ parcel, compact = false }: { parcel: Parcel; compact?: boolean }) => (
-  <div className={`rounded-2xl bg-slate-50 ${compact ? 'p-2.5' : 'p-3'}`}>
+  <div className={`rounded-2xl bg-slate-50 dark:bg-surface-container ${compact ? 'p-2.5' : 'p-3'}`}>
     <div className="space-y-2.5">
       <div className="flex min-w-0 items-start gap-2.5 px-0.5">
         <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-blue-500 shadow-[0_0_0_4px_rgba(59,130,246,0.14)]" />
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-black leading-none text-slate-400">รับจาก</p>
-          <p className="mt-1 min-w-0 truncate text-[13px] font-bold leading-snug text-slate-700">
-            {parcel['สาขาผู้ส่ง'] || '-'} <span className="font-medium text-slate-500">({parcel['ผู้ส่ง'] || '-'})</span>
+          <p className="text-[10px] font-black leading-none text-slate-400 dark:text-muted-foreground">รับจาก</p>
+          <p className="mt-1 min-w-0 truncate text-[13px] font-bold leading-snug text-slate-700 dark:text-foreground">
+            {parcel['สาขาผู้ส่ง'] || '-'} <span className="font-medium text-slate-500 dark:text-muted-foreground">({parcel['ผู้ส่ง'] || '-'})</span>
           </p>
         </div>
       </div>
-      <div className="flex min-w-0 items-start gap-2.5 rounded-xl bg-red-50/70 px-3 py-2.5">
+      <div className="flex min-w-0 items-start gap-2.5 rounded-xl bg-red-50/70 dark:bg-red-900/25 px-3 py-2.5">
         <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-red-500 shadow-[0_0_0_4px_rgba(248,113,113,0.14)]" />
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-black leading-none text-red-500">ต้องไปส่ง</p>
-          <p className="mt-1 min-w-0 truncate text-[15px] font-black leading-snug text-slate-900">
-            {parcel['สาขาผู้รับ'] || '-'} <span className="font-semibold text-slate-600">({parcel['ผู้รับ'] || '-'})</span>
+          <p className="text-[10px] font-black leading-none text-red-500 dark:text-red-400">ต้องไปส่ง</p>
+          <p className="mt-1 min-w-0 truncate text-[15px] font-black leading-snug text-slate-900 dark:text-foreground">
+            {parcel['สาขาผู้รับ'] || '-'} <span className="font-semibold text-slate-600 dark:text-muted-foreground">({parcel['ผู้รับ'] || '-'})</span>
           </p>
         </div>
       </div>
@@ -452,7 +452,7 @@ export const CardActions = ({
       <button
         type="button"
         onClick={onOpen}
-        className={`inline-flex min-w-0 items-center justify-center gap-2 rounded-xl border border-slate-100 bg-white px-3 font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98] ${
+        className={`inline-flex min-w-0 items-center justify-center gap-2 rounded-xl border border-slate-100 dark:border-outline-variant bg-white dark:bg-card px-3 font-semibold text-slate-700 dark:text-foreground shadow-sm transition-all hover:bg-slate-50 dark:hover:bg-surface-container active:scale-[0.98] ${
           compactDetail ? 'h-10 text-xs' : 'h-11 text-sm'
         }`}
       >
@@ -496,13 +496,13 @@ export const DeliveryInfoRow = ({
   };
 
   return (
-    <div className="flex min-w-0 items-start gap-3 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
+    <div className="flex min-w-0 items-start gap-3 rounded-2xl border border-slate-100 dark:border-outline-variant bg-white dark:bg-card p-3 shadow-sm">
       <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${toneClasses[tone]}`}>
         <span className="material-symbols-outlined text-xl" aria-hidden="true">{icon}</span>
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-[10px] font-bold leading-none text-slate-400">{label}</p>
-        <p className="mt-1 whitespace-pre-wrap break-words text-sm font-black leading-snug text-slate-900">
+        <p className="mt-1 whitespace-pre-wrap break-words text-sm font-black leading-snug text-slate-900 dark:text-foreground">
           {value?.trim() || '-'}
         </p>
       </div>

@@ -41,9 +41,9 @@ export default function ParcelTimelineModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="w-[calc(100vw-1.5rem)] max-w-[380px] max-h-[86vh] overflow-hidden rounded-[22px] border-none bg-white p-0 shadow-[0_20px_50px_rgba(0,0,0,0.18)]" showCloseButton={false}>
+      <DialogContent className="w-[calc(100vw-1.5rem)] max-w-[380px] max-h-[86vh] overflow-hidden rounded-[22px] border-none bg-white dark:bg-card p-0 shadow-[0_20px_50px_rgba(0,0,0,0.18)]" showCloseButton={false}>
         <div className="flex max-h-[86vh] flex-col">
-          <DialogHeader className="relative shrink-0 bg-slate-900 px-5 py-4 text-white">
+          <DialogHeader className="relative shrink-0 bg-slate-900 dark:bg-slate-950 px-5 py-4 text-white">
             <button
               type="button"
               onClick={() => setIsOpen(false)}
@@ -58,23 +58,23 @@ export default function ParcelTimelineModal({
             </p>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto bg-gray-50 px-4 py-4">
-            <div className="rounded-2xl border border-blue-100 bg-white px-4 py-3 shadow-sm">
+          <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-surface-container-lowest px-4 py-4">
+            <div className="rounded-2xl border border-blue-100 dark:border-outline-variant bg-white dark:bg-card px-4 py-3 shadow-sm">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-2">
-                  <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-blue-50 text-blue-500">
+                  <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-500 dark:text-blue-400">
                     <span className="material-symbols-outlined text-sm" aria-hidden="true">route</span>
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-black text-gray-800">Milestone การจัดส่ง</p>
-                    <p className="mt-0.5 truncate text-[10px] font-semibold text-gray-400">ล่าสุดอยู่ด้านบน</p>
+                    <p className="text-xs font-black text-gray-800 dark:text-foreground">Milestone การจัดส่ง</p>
+                    <p className="mt-0.5 truncate text-[10px] font-semibold text-gray-400 dark:text-muted-foreground">ล่าสุดอยู่ด้านบน</p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => hasKnownBranches && setIsMapOpen(true)}
                   disabled={!hasKnownBranches}
-                  className="inline-flex h-7 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-gray-100 px-2.5 text-[10px] font-medium text-gray-600 transition-all hover:bg-gray-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-45"
+                  className="inline-flex h-7 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-gray-100 dark:bg-surface-container px-2.5 text-[10px] font-medium text-gray-600 dark:text-muted-foreground transition-all hover:bg-gray-200 dark:hover:bg-surface-container-high active:scale-95 disabled:cursor-not-allowed disabled:opacity-45"
                   title={hasKnownBranches ? 'เปิดแผนที่' : 'ยังไม่มีตำแหน่ง GPS'}
                   aria-label={hasKnownBranches ? 'เปิดแผนที่' : 'ยังไม่มีตำแหน่ง GPS'}
                 >
@@ -92,7 +92,7 @@ export default function ParcelTimelineModal({
       <Dialog open={isMapOpen} onOpenChange={setIsMapOpen}>
         <DialogContent
           showCloseButton={false}
-          className="w-[calc(100vw-1rem)] max-w-3xl overflow-hidden rounded-[1.5rem] border border-gray-100 bg-white p-0 shadow-xl"
+          className="w-[calc(100vw-1rem)] max-w-3xl overflow-hidden rounded-[1.5rem] border border-gray-100 dark:border-outline-variant bg-white dark:bg-card p-0 shadow-xl"
         >
           <div className="flex max-h-[92vh] flex-col">
             <div className="relative bg-slate-950 px-5 py-5 text-white">
@@ -109,7 +109,7 @@ export default function ParcelTimelineModal({
               </DialogTitle>
               <p className="mt-1 break-all font-mono text-sm font-black tracking-wide text-blue-200">{selectedParcel.TrackingID}</p>
             </div>
-            <div className="bg-white p-4">
+            <div className="bg-white dark:bg-card p-4">
               <Suspense fallback={<MapFallback />}>
                 <TrackingMap
                   events={selectedTimelineEvents}
