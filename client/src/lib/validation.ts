@@ -3,12 +3,14 @@ const PASSWORD_REGEX = /^[A-Za-z0-9!@#$%^&*()_\-+=.?]{4,100}$/;
 const TRACKING_ID_REGEX = /^TRK\d{8}\d{4,}$/;
 const DANGEROUS_SHEET_PREFIX_REGEX = /^[=+\-@\t\r]/;
 const CONTROL_CHARS_REGEX = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g;
+const INVISIBLE_UNICODE_REGEX = /[\u200B-\u200D\u202A-\u202E\u2060\u2066-\u2069\uFEFF]/g;
 
 export function sanitizeTextInput(value: unknown, maxLength = 200): string {
   return String(value ?? '')
     .replace(/<[^>]*>/g, '')
     .replace(/[<>"'`]/g, '')
     .replace(CONTROL_CHARS_REGEX, '')
+    .replace(INVISIBLE_UNICODE_REGEX, '')
     .trim()
     .slice(0, maxLength);
 }

@@ -5,24 +5,14 @@
 import { lazy, Suspense, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useParcelStore } from '@/hooks/useParcelStore';
 import { useAuth } from '@/contexts/AuthContext';
-import { deleteParcel, releaseDelivery, startDelivery, syncRouteSamples } from '@/lib/parcelService';
-import { startRouteTracking, stopRouteTracking } from '@/lib/routeTracking';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useDashboardLists } from '@/hooks/useDashboardLists';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { useRealtimeParcel } from '@/hooks/useRealtimeParcel';
 import { useRouteSyncStatus } from '@/hooks/useRouteSyncStatus';
+import { useDashboardActions } from '@/hooks/useDashboardActions';
 import type { Parcel } from '@/types/parcel';
 import { toast } from 'sonner';
-import {
-  canConfirmMessengerJob,
-  canReleaseMessengerJob,
-  getActiveDeliveryAssignment,
-  isAssignedToCurrentUser,
-  isAvailableForMessenger,
-  buildAssignmentNote,
-} from '@/lib/deliveryAssignment';
-import { translateSystemNote } from '@/lib/translationUtils';
 import {
   AlertTriangle,
   ClipboardList,
@@ -35,6 +25,12 @@ import {
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import EmptyState from '@/components/EmptyState';
+import {
+  canConfirmMessengerJob,
+  canReleaseMessengerJob,
+  getActiveDeliveryAssignment,
+  isAvailableForMessenger,
+} from '@/lib/deliveryAssignment';
 
 // Subcomponents and helpers
 import {
@@ -50,8 +46,14 @@ import {
   type AdminSortMode,
 } from '@/components/dashboard/DashboardComponents';
 import { MessengerDeliveryCard } from '@/components/dashboard/MessengerDeliveryCard';
-import { AdminParcelManagementCard } from '@/components/dashboard/AdminParcelManagementCard';
-import { AdminParcelManagementTable } from '@/components/dashboard/AdminParcelManagementTable';
+
+// Lazy load admin components to minimize bundle size for messengers
+const AdminParcelManagementCard = lazy(() =>
+  import('@/components/dashboard/AdminParcelManagementCard').then(m => ({ default: m.AdminParcelManagementCard }))
+);
+const AdminParcelManagementTable = lazy(() =>
+  import('@/components/dashboard/AdminParcelManagementTable').then(m => ({ default: m.AdminParcelManagementTable }))
+);
 
 interface DashboardProps { isConfigured: boolean; }
 
@@ -71,47 +73,37 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
   const debouncedSearch = useDebounce(searchTerm, 300);
   const role = resolveDashboardRole(user?.role);
   const isMessengerDashboard = role === 'MESSENGER';
+  
   const {
     position: messengerPosition,
     status: messengerGeoStatus,
     requestLocation: requestMessengerLocation,
   } = useGeolocation();
+  
   const routeSyncStatus = useRouteSyncStatus();
   const defaultStatusFilter = 'ทั้งหมด';
   const [statusFilter, setStatusFilter] = useState(() => defaultStatusFilter);
-  const [selectedParcel, setSelectedParcel] = useState<Parcel | null>(null);
-  const [isTimelineOpen, setIsTimelineOpen] = useState(false);
-  const [isDeliveryDetailsOpen, setIsDeliveryDetailsOpen] = useState(false);
-  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-  const [confirmTrackingId, setConfirmTrackingId] = useState<string | null>(null);
-  const [isConfirmFlowOpen, setIsConfirmFlowOpen] = useState(false);
-  const [messengerView, setMessengerView] = useState<MessengerView>('mine');
-  const [startingDeliveryId, setStartingDeliveryId] = useState<string | null>(null);
-  const [releasingDeliveryId, setReleasingDeliveryId] = useState<string | null>(null);
+  
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [adminSort, setAdminSort] = useState<AdminSortMode>('newest');
-  const [messengerVisibleCounts, setMessengerVisibleCounts] = useState<Record<MessengerView, number>>({
-    waiting: MESSENGER_BATCH_SIZE,
-    mine: MESSENGER_BATCH_SIZE,
-    done: MESSENGER_BATCH_SIZE,
-  });
+  
   const isFetchingRef = useRef(false);
   const hasSetInitialView = useRef(false);
   const currentEmployeeId = String(user?.employeeId || '').trim().toUpperCase();
+
   const {
     stats,
     filteredParcels,
     messengerWaitingParcels,
     messengerMineParcels,
     messengerDoneParcels,
-    adminSortedParcels,
-    adminNeedsAttentionParcels,
-    adminRegularParcels,
     adminTotalCount,
     totalPages,
     paginatedParcels,
+    adminNeedsAttentionParcels,
+    adminRegularParcels,
     startIndex,
     endIndex,
   } = useDashboardLists({
@@ -128,8 +120,6 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
     totalCount,
   });
 
-  // Single fetch function — loadParcels already recomputes summary internally
-  // ✅ FIX: Use ref to avoid stale closure without adding loadParcels to deps
   const loadParcelsRef = useRef(loadParcels);
   useEffect(() => { loadParcelsRef.current = loadParcels; }, [loadParcels]);
 
@@ -144,7 +134,39 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
     } finally {
       isFetchingRef.current = false;
     }
-  }, []); // ✅ Empty deps — no infinite loop risk
+  }, []);
+
+  // Actions custom hook to keep components clean
+  const {
+    selectedParcel,
+    setSelectedParcel,
+    isTimelineOpen,
+    setIsTimelineOpen,
+    isDeliveryDetailsOpen,
+    setIsDeliveryDetailsOpen,
+    isDeleteConfirmOpen,
+    setIsDeleteConfirmOpen,
+    confirmTrackingId,
+    setConfirmTrackingId,
+    isConfirmFlowOpen,
+    setIsConfirmFlowOpen,
+    messengerView,
+    setMessengerView,
+    startingDeliveryId,
+    releasingDeliveryId,
+    handleRefresh,
+    handleDelete,
+    executeDelete,
+    openConfirmFlow,
+    handleStartDelivery,
+    handleReleaseDelivery,
+  } = useDashboardActions({
+    messengerPosition,
+    messengerGeoStatus,
+    requestMessengerLocation,
+    fetchData,
+    loading,
+  });
 
   // Initial load
   useEffect(() => {
@@ -156,8 +178,6 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
     if (isMessengerDashboard && messengerGeoStatus === 'idle') requestMessengerLocation();
   }, [isMessengerDashboard, messengerGeoStatus, requestMessengerLocation]);
 
-
-
   // Redirect messenger to waiting tab if there are no pending tasks on initial load
   useEffect(() => {
     if (!isConfigured || !isMessengerDashboard) return;
@@ -167,7 +187,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
         setMessengerView('waiting');
       }
     }
-  }, [isConfigured, isMessengerDashboard, lastUpdatedAt, loading, messengerMineParcels.length]);
+  }, [isConfigured, isMessengerDashboard, lastUpdatedAt, loading, messengerMineParcels.length, setMessengerView]);
 
   // Reset initial view check if employee ID changes
   useEffect(() => {
@@ -176,13 +196,6 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
 
   // Reset page when filter changes
   useEffect(() => { setCurrentPage(1); }, [statusFilter, debouncedSearch, adminSort, pageSize]);
-  useEffect(() => {
-    setMessengerVisibleCounts({
-      waiting: MESSENGER_BATCH_SIZE,
-      mine: MESSENGER_BATCH_SIZE,
-      done: MESSENGER_BATCH_SIZE,
-    });
-  }, [debouncedSearch]);
 
   // Clamp currentPage ไม่ให้เกิน totalPages เมื่อข้อมูลเปลี่ยน
   useEffect(() => {
@@ -195,9 +208,9 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
   }, [currentPage]);
 
   // Load more from backend when navigating to a page that needs more data
-  const loadMoreRef = useRef({ adminSortedParcelsLength: adminSortedParcels.length, hasMore, loading, loadMoreParcels });
+  const loadMoreRef = useRef({ adminSortedParcelsLength: filteredParcels.length, hasMore, loading, loadMoreParcels });
   useEffect(() => {
-    loadMoreRef.current = { adminSortedParcelsLength: adminSortedParcels.length, hasMore, loading, loadMoreParcels };
+    loadMoreRef.current = { adminSortedParcelsLength: filteredParcels.length, hasMore, loading, loadMoreParcels };
   });
 
   useEffect(() => {
@@ -207,12 +220,6 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
       fetchMore();
     }
   }, [currentPage, pageSize]);
-
-  const handleRefresh = async () => {
-    if (loading) return; // ป้องกันกดซ้ำระหว่าง loading
-    await fetchData();
-    toast.success('อัปเดตข้อมูลเรียบร้อย');
-  };
 
   const shouldRefreshSelectedParcel = Boolean(
     selectedParcel &&
@@ -230,7 +237,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
     if (!realtimeSelectedParcel || realtimeSelectedParcel === selectedParcel) return;
     setSelectedParcel(current => current?.TrackingID === realtimeSelectedParcel.TrackingID ? realtimeSelectedParcel : current);
     updateParcelLocally(realtimeSelectedParcel.TrackingID, realtimeSelectedParcel);
-  }, [realtimeSelectedParcel, selectedParcel, updateParcelLocally]);
+  }, [realtimeSelectedParcel, selectedParcel, updateParcelLocally, setSelectedParcel]);
 
   const selectedTimelineEvents = useMemo(() =>
     liveSelectedParcel ? getTimelineEvents(liveSelectedParcel) : [], [liveSelectedParcel]);
@@ -245,134 +252,31 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
 
   const clearFilters = () => { setSearchTerm(''); setStatusFilter(defaultStatusFilter); setCurrentPage(1); };
   const hasFilters = !!(searchTerm || statusFilter !== defaultStatusFilter);
+
+  const [messengerVisibleCounts, setMessengerVisibleCounts] = useState<Record<MessengerView, number>>({
+    waiting: MESSENGER_BATCH_SIZE,
+    mine: MESSENGER_BATCH_SIZE,
+    done: MESSENGER_BATCH_SIZE,
+  });
+
+  useEffect(() => {
+    setMessengerVisibleCounts({
+      waiting: MESSENGER_BATCH_SIZE,
+      mine: MESSENGER_BATCH_SIZE,
+      done: MESSENGER_BATCH_SIZE,
+    });
+  }, [debouncedSearch]);
+
   const showMoreMessenger = (view: MessengerView) => {
     setMessengerVisibleCounts(current => ({
       ...current,
       [view]: current[view] + MESSENGER_BATCH_SIZE,
     }));
   };
+
   const visibleMessengerWaitingParcels = messengerWaitingParcels.slice(0, messengerVisibleCounts.waiting);
   const visibleMessengerMineParcels = messengerMineParcels.slice(0, messengerVisibleCounts.mine);
   const visibleMessengerDoneParcels = messengerDoneParcels.slice(0, messengerVisibleCounts.done);
-
-  const handleDelete = async () => {
-    if (!selectedParcel) return;
-    setIsDeleteConfirmOpen(true);
-  };
-
-  const openConfirmFlow = (trackingId: string) => {
-    setIsTimelineOpen(false);
-    setIsDeliveryDetailsOpen(false);
-    setConfirmTrackingId(trackingId);
-    setIsConfirmFlowOpen(true);
-  };
-
-  const handleStartDelivery = async (parcel: Parcel) => {
-    if (startingDeliveryId) return;
-    if (!messengerPosition && messengerGeoStatus !== 'loading') requestMessengerLocation();
-    setStartingDeliveryId(parcel.TrackingID);
-    const res = await startDelivery(
-      parcel.TrackingID,
-      messengerPosition?.latitude,
-      messengerPosition?.longitude,
-    );
-    setStartingDeliveryId(null);
-
-    if (!res.success) {
-      const message = res.error?.includes('มีผู้รับงานแล้ว')
-        ? 'งานนี้มีผู้รับแล้ว กรุณารีเฟรช'
-        : res.error || 'รับงานไม่ได้ กรุณาลองใหม่';
-      toast.error(message);
-      return;
-    }
-
-    const startEvent = {
-      id: `LOCAL-${Date.now()}`,
-      trackingId: parcel.TrackingID,
-      timestamp: new Date().toISOString(),
-      eventType: 'START_DELIVERY' as const,
-      location: parcel['สาขาผู้ส่ง'] || '',
-      destLocation: parcel['สาขาผู้รับ'] || '',
-      person: res.assignedToName || user?.name || user?.employeeId || '',
-      note: buildAssignmentNote(res.assignedToId || currentEmployeeId),
-      latitude: messengerPosition?.latitude,
-      longitude: messengerPosition?.longitude,
-    };
-    const pickupEvent = res.autoPickedUp ? {
-      id: `LOCAL-PICKUP-${Date.now()}`,
-      trackingId: parcel.TrackingID,
-      timestamp: new Date().toISOString(),
-      eventType: 'PICKUP' as const,
-      location: parcel['สาขาผู้ส่ง'] || '',
-      destLocation: parcel['สาขาผู้รับ'] || '',
-      person: res.assignedToName || user?.name || user?.employeeId || '',
-      note: 'autoPickup=originGpsMatched',
-      latitude: messengerPosition?.latitude,
-      longitude: messengerPosition?.longitude,
-    } : null;
-
-    const hasLocalAssignment = Boolean(getActiveDeliveryAssignment(parcel));
-    const nextEvents = res.alreadyStarted && hasLocalAssignment
-      ? parcel.events
-      : [...(parcel.events || []), startEvent, ...(pickupEvent ? [pickupEvent] : [])];
-    updateParcelLocally(parcel.TrackingID, {
-      'สถานะ': 'กำลังจัดส่ง',
-      events: nextEvents,
-    });
-    startRouteTracking(parcel.TrackingID);
-    setMessengerView('mine');
-    toast.success(res.autoPickedUp ? 'รับงานและบันทึกรับของแล้ว' : (res.alreadyStarted ? 'งานนี้อยู่ในรายการที่ต้องส่งแล้ว' : 'รับงานสำเร็จ'));
-    loadParcels(undefined, true).catch(() => {});
-  };
-
-  const handleReleaseDelivery = async (parcel: Parcel) => {
-    if (releasingDeliveryId) return;
-    setReleasingDeliveryId(parcel.TrackingID);
-    const res = await releaseDelivery(parcel.TrackingID);
-    setReleasingDeliveryId(null);
-
-    if (!res.success) {
-      toast.error(res.error || 'คืนงานไม่ได้ กรุณาลองใหม่');
-      return;
-    }
-
-    const releaseEvent = {
-      id: `LOCAL-RELEASE-${Date.now()}`,
-      trackingId: parcel.TrackingID,
-      timestamp: new Date().toISOString(),
-      eventType: 'RELEASE_DELIVERY' as const,
-      location: parcel['สาขาผู้ส่ง'] || '',
-      destLocation: parcel['สาขาผู้รับ'] || '',
-      person: user?.name || user?.employeeId || '',
-      note: buildAssignmentNote(currentEmployeeId),
-    };
-
-    updateParcelLocally(parcel.TrackingID, {
-      'สถานะ': 'รอจัดส่ง',
-      events: [...(parcel.events || []), releaseEvent],
-    });
-    stopRouteTracking(parcel.TrackingID);
-    void syncRouteSamples(parcel.TrackingID);
-    setMessengerView('waiting');
-    toast.success(res.alreadyReleased ? 'งานนี้พร้อมให้ผู้อื่นกดรับแล้ว' : 'คืนงานสำเร็จ');
-    loadParcels(undefined, true).catch(() => {});
-  };
-
-  const executeDelete = async () => {
-    if (!selectedParcel) return;
-    const trackingID = selectedParcel.TrackingID;
-    setIsTimelineOpen(false);
-    setIsDeleteConfirmOpen(false);
-    removeParcelLocally(trackingID);
-    toast.success('กำลังลบรายการ...');
-    const res = await deleteParcel(trackingID);
-    if (res.success) {
-      toast.success('ลบรายการสำเร็จ');
-    } else {
-      toast.error('ไม่สามารถลบรายการได้ จะทำการรีโหลดข้อมูล');
-      loadParcels(undefined, true);
-    }
-  };
 
   if (!isConfigured) {
     return (
@@ -818,30 +722,30 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
               tone="blue"
             />
             {paginatedParcels.length ? (
-              <>
-              <div className="grid grid-cols-1 gap-3 md:hidden">
-                {paginatedParcels.map(parcel => (
-                  <AdminParcelManagementCard
-                    key={parcel.TrackingID}
-                    parcel={parcel}
-                    assignment={getActiveDeliveryAssignment(parcel)}
-                    onOpen={() => { setSelectedParcel(parcel); setIsTimelineOpen(true); }}
-                    onConfirm={() => openConfirmFlow(parcel.TrackingID)}
-                    onDelete={() => { setSelectedParcel(parcel); setIsDeleteConfirmOpen(true); }}
-                    onReleaseDelivery={() => handleReleaseDelivery(parcel)}
-                    isReleasingDelivery={releasingDeliveryId === parcel.TrackingID}
-                  />
-                ))}
-              </div>
-              <AdminParcelManagementTable
-                parcels={paginatedParcels}
-                onOpen={(parcel) => { setSelectedParcel(parcel); setIsTimelineOpen(true); }}
-                onConfirm={(parcel) => openConfirmFlow(parcel.TrackingID)}
-                onDelete={(parcel) => { setSelectedParcel(parcel); setIsDeleteConfirmOpen(true); }}
-                onReleaseDelivery={handleReleaseDelivery}
-                releasingDeliveryId={releasingDeliveryId}
-              />
-              </>
+              <Suspense fallback={<TableSkeleton />}>
+                <div className="grid grid-cols-1 gap-3 md:hidden">
+                  {paginatedParcels.map(parcel => (
+                    <AdminParcelManagementCard
+                      key={parcel.TrackingID}
+                      parcel={parcel}
+                      assignment={getActiveDeliveryAssignment(parcel)}
+                      onOpen={() => { setSelectedParcel(parcel); setIsTimelineOpen(true); }}
+                      onConfirm={() => openConfirmFlow(parcel.TrackingID)}
+                      onDelete={() => { setSelectedParcel(parcel); setIsDeleteConfirmOpen(true); }}
+                      onReleaseDelivery={() => handleReleaseDelivery(parcel)}
+                      isReleasingDelivery={releasingDeliveryId === parcel.TrackingID}
+                    />
+                  ))}
+                </div>
+                <AdminParcelManagementTable
+                  parcels={paginatedParcels}
+                  onOpen={(parcel) => { setSelectedParcel(parcel); setIsTimelineOpen(true); }}
+                  onConfirm={(parcel) => openConfirmFlow(parcel.TrackingID)}
+                  onDelete={(parcel) => { setSelectedParcel(parcel); setIsDeleteConfirmOpen(true); }}
+                  onReleaseDelivery={handleReleaseDelivery}
+                  releasingDeliveryId={releasingDeliveryId}
+                />
+              </Suspense>
             ) : (
               <EmptyState
                 icon="search_off"
@@ -862,10 +766,44 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
                   count={adminNeedsAttentionParcels.length}
                   tone="amber"
                 />
+                <Suspense fallback={<TableSkeleton />}>
+                  <div className="grid grid-cols-1 gap-3 md:hidden">
+                    {adminNeedsAttentionParcels.map(parcel => (
+                      <AdminParcelManagementCard
+                        key={`attention-${parcel.TrackingID}`}
+                        parcel={parcel}
+                        assignment={getActiveDeliveryAssignment(parcel)}
+                        onOpen={() => { setSelectedParcel(parcel); setIsTimelineOpen(true); }}
+                        onConfirm={() => openConfirmFlow(parcel.TrackingID)}
+                        onDelete={() => { setSelectedParcel(parcel); setIsDeleteConfirmOpen(true); }}
+                        onReleaseDelivery={() => handleReleaseDelivery(parcel)}
+                        isReleasingDelivery={releasingDeliveryId === parcel.TrackingID}
+                      />
+                    ))}
+                  </div>
+                  <AdminParcelManagementTable
+                    parcels={adminNeedsAttentionParcels}
+                    onOpen={(parcel) => { setSelectedParcel(parcel); setIsTimelineOpen(true); }}
+                    onConfirm={(parcel) => openConfirmFlow(parcel.TrackingID)}
+                    onDelete={(parcel) => { setSelectedParcel(parcel); setIsDeleteConfirmOpen(true); }}
+                    onReleaseDelivery={handleReleaseDelivery}
+                    releasingDeliveryId={releasingDeliveryId}
+                  />
+                </Suspense>
+              </div>
+            )}
+            <MessengerViewBanner
+              icon="check_circle"
+              title="ส่งสำเร็จแล้ว"
+              subtitle="รายการที่ปิดงานแล้ว ดูรายละเอียดหรือประวัติการส่งได้จากปุ่มรายละเอียด"
+              count={adminRegularParcels.length}
+            />
+            {adminRegularParcels.length ? (
+              <Suspense fallback={<TableSkeleton />}>
                 <div className="grid grid-cols-1 gap-3 md:hidden">
-                  {adminNeedsAttentionParcels.map(parcel => (
+                  {adminRegularParcels.map(parcel => (
                     <AdminParcelManagementCard
-                      key={`attention-${parcel.TrackingID}`}
+                      key={parcel.TrackingID}
                       parcel={parcel}
                       assignment={getActiveDeliveryAssignment(parcel)}
                       onOpen={() => { setSelectedParcel(parcel); setIsTimelineOpen(true); }}
@@ -877,46 +815,14 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
                   ))}
                 </div>
                 <AdminParcelManagementTable
-                  parcels={adminNeedsAttentionParcels}
+                  parcels={adminRegularParcels}
                   onOpen={(parcel) => { setSelectedParcel(parcel); setIsTimelineOpen(true); }}
                   onConfirm={(parcel) => openConfirmFlow(parcel.TrackingID)}
                   onDelete={(parcel) => { setSelectedParcel(parcel); setIsDeleteConfirmOpen(true); }}
                   onReleaseDelivery={handleReleaseDelivery}
                   releasingDeliveryId={releasingDeliveryId}
                 />
-              </div>
-            )}
-            <MessengerViewBanner
-              icon="check_circle"
-              title="ส่งสำเร็จแล้ว"
-              subtitle="รายการที่ปิดงานแล้ว ดูรายละเอียดหรือประวัติการส่งได้จากปุ่มรายละเอียด"
-              count={adminRegularParcels.length}
-            />
-            {adminRegularParcels.length ? (
-              <>
-              <div className="grid grid-cols-1 gap-3 md:hidden">
-                {adminRegularParcels.map(parcel => (
-                  <AdminParcelManagementCard
-                    key={parcel.TrackingID}
-                    parcel={parcel}
-                    assignment={getActiveDeliveryAssignment(parcel)}
-                    onOpen={() => { setSelectedParcel(parcel); setIsTimelineOpen(true); }}
-                    onConfirm={() => openConfirmFlow(parcel.TrackingID)}
-                    onDelete={() => { setSelectedParcel(parcel); setIsDeleteConfirmOpen(true); }}
-                    onReleaseDelivery={() => handleReleaseDelivery(parcel)}
-                    isReleasingDelivery={releasingDeliveryId === parcel.TrackingID}
-                  />
-                ))}
-              </div>
-              <AdminParcelManagementTable
-                parcels={adminRegularParcels}
-                onOpen={(parcel) => { setSelectedParcel(parcel); setIsTimelineOpen(true); }}
-                onConfirm={(parcel) => openConfirmFlow(parcel.TrackingID)}
-                onDelete={(parcel) => { setSelectedParcel(parcel); setIsDeleteConfirmOpen(true); }}
-                onReleaseDelivery={handleReleaseDelivery}
-                releasingDeliveryId={releasingDeliveryId}
-              />
-              </>
+              </Suspense>
             ) : (
               <EmptyState
                 icon="check_circle"

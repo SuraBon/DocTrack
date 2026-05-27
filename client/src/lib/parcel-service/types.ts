@@ -5,6 +5,7 @@ export interface User {
   name: string;
   role: AppRole;
   token?: string;
+  issuedAt?: number;
 }
 
 export interface UserRow extends User {

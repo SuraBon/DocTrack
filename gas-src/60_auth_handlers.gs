@@ -10,11 +10,11 @@ function createJsonResponse(data) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-function generateToken(employeeId, role, secret) {
-  const issuedAt = Date.now();
+function generateToken(employeeId, role, secret, issuedAt) {
+  const finalIssuedAt = issuedAt || Date.now();
   const sessionId = createSessionId(employeeId);
   setActiveSessionId(employeeId, sessionId);
-  const payloadStr = employeeId + "|" + role + "|" + issuedAt + "|" + sessionId;
+  const payloadStr = employeeId + "|" + role + "|" + finalIssuedAt + "|" + sessionId;
   const signatureBytes = Utilities.computeHmacSha256Signature(payloadStr, secret);
   const signature = Utilities.base64Encode(signatureBytes);
   return payloadStr + "|" + signature;
@@ -210,8 +210,9 @@ function handleLogin(payload) {
         sheet.getRange(i + 1, 4).setValue(encodePassword(pin));
       }
       clearLoginAttempts(employeeId);
-      const token = generateToken(employeeId, role, getApiKey());
-      return createJsonResponse({ success: true, user: { employeeId, name, role, token } });
+      const issuedAt = Date.now();
+      const token = generateToken(employeeId, role, getApiKey(), issuedAt);
+      return createJsonResponse({ success: true, user: { employeeId, name, role, token, issuedAt } });
     }
   }
 
@@ -253,8 +254,9 @@ function handleSetupPin(payload) {
       }
       const finalName = name || String(data[i][1]).trim();
 
-      const token = generateToken(employeeId, role, getApiKey());
-      return createJsonResponse({ success: true, user: { employeeId, name: finalName, role, token } });
+      const issuedAt = Date.now();
+      const token = generateToken(employeeId, role, getApiKey(), issuedAt);
+      return createJsonResponse({ success: true, user: { employeeId, name: finalName, role, token, issuedAt } });
     }
   }
 

@@ -18,6 +18,7 @@ import { createUser, deleteUser, disableUser, getUsers, updateUser, updateUserRo
 import { SYSTEM_ROLES, type AppRole, type SystemRole } from '@/lib/roles';
 import { isValidEmployeeId, normalizeEmployeeId, sanitizeTextInput, validatePassword, validateRequiredText } from '@/lib/validation';
 import { formatThaiDateTime } from '@/lib/dateUtils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const USER_MOBILE_BATCH_SIZE = 10;
 const USER_DESKTOP_PAGE_SIZE = 20;
@@ -355,7 +356,24 @@ export default function UserManagement() {
       <div className="app-panel overflow-hidden">
         <div className="sm:hidden">
           {loading ? (
-            <div className="grid place-items-center gap-2 py-16 text-sm text-muted-foreground"><Loader2 className="h-6 w-6 animate-spin" aria-hidden="true" />กำลังโหลด...</div>
+            <div className="divide-y divide-outline-variant/10">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="p-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <Skeleton className="h-11 w-11 rounded-2xl shrink-0" />
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <Skeleton className="h-4 w-24 rounded-md" />
+                      <Skeleton className="h-5 w-3/4 rounded-md" />
+                      <Skeleton className="h-4 w-1/2 rounded-md" />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pl-14 mt-2">
+                    <Skeleton className="h-9 w-20 rounded-lg animate-pulse" />
+                    <Skeleton className="h-9 w-20 rounded-lg animate-pulse" />
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : filtered.length === 0 ? (
             <div className="p-4">
               <EmptyState
@@ -418,7 +436,28 @@ export default function UserManagement() {
             </thead>
             <tbody className="divide-y divide-outline-variant/10">
               {loading ? (
-                <tr><td colSpan={6} className="py-16 text-center text-sm text-muted-foreground"><Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin" aria-hidden="true" />กำลังโหลด...</td></tr>
+                <>
+                  {[...Array(5)].map((_, i) => (
+                    <tr key={i}>
+                      <td className="px-5 py-4"><Skeleton className="h-5 w-24 rounded-md" /></td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-2.5">
+                          <Skeleton className="h-8 w-8 rounded-xl shrink-0" />
+                          <Skeleton className="h-5 w-32 rounded-md" />
+                        </div>
+                      </td>
+                      <td className="px-5 py-4"><Skeleton className="h-9 w-28 rounded-lg" /></td>
+                      <td className="px-5 py-4"><Skeleton className="h-4 w-32 rounded-md" /></td>
+                      <td className="px-5 py-4"><Skeleton className="h-7 w-16 rounded-lg" /></td>
+                      <td className="px-5 py-4">
+                        <div className="flex justify-end gap-1.5">
+                          <Skeleton className="h-9 w-16 rounded-lg animate-pulse" />
+                          <Skeleton className="h-9 w-16 rounded-lg animate-pulse" />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </>
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="p-4">

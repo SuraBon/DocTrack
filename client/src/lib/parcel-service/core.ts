@@ -22,7 +22,7 @@ import type {
 import { applyDerivedStatus, applyDerivedStatuses } from '../parcelStatus';
 import { normalizeRole } from '../roles';
 import { getDeviceId } from '../createdParcelHistory';
-import { getErrorMessage, getServerErrorMessage, isAuthErrorMessage } from '../apiErrorHelper';
+import { getErrorMessage, getServerErrorMessage, isAuthErrorMessage, isNetworkErrorMessage } from '../apiErrorHelper';
 import { createIdempotencyKey } from '../idempotency';
 import {
   OFFLINE_MEDIA_URL_PREFIX,
@@ -40,8 +40,14 @@ import {
   getActiveRouteIds,
   getUnsyncedRouteSamples,
   markRouteSamplesSynced,
+  purgeSyncedRouteSamples,
   type RouteSampleRecord,
 } from '../routeTracking';
+import {
+  cacheParcelsLocally,
+  getCachedParcelLocally,
+  getCachedParcelsLocally,
+} from '../offlineDb';
 import { toast } from 'sonner';
 import type { AuditLogRow, BranchRow, CreateUserInput, LogQueryInput, ParcelActivityLogRow, UpdateUserInput, User, UserRow } from './types';
 import { normalizeParcelStatus, normalizeParcels } from './parcelNormalizers';
@@ -74,9 +80,6 @@ type CallApiOptions = {
 
 const NO_RETRY = 0;
 
-function isNetworkErrorMessage(message: string): boolean {
-  return message.includes('เชื่อมต่อ') || message.includes('เวลา') || message.includes('อินเทอร์เน็ต');
-}
 
 async function prepareOfflinePayload<T extends Record<string, any>>(payload: T): Promise<{ payload: T; localMediaId?: string }> {
   const photoUrl = payload.photoUrl;
@@ -133,9 +136,13 @@ async function callAPI<T>(
   let lastError: Error = new Error('เกิดข้อผิดพลาด');
 
   for (let attempt = 0; attempt <= retries; attempt++) {
-    // Exponential backoff: 0ms, 1000ms, 2000ms
+    // Exponential backoff with random jitter to stagger retry requests
     if (attempt > 0) {
-      await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+      const baseDelay = Math.pow(2, attempt) * 1000; // e.g., 2000ms, 4000ms
+      const jitterRange = baseDelay * 0.25; // 25% jitter range
+      const jitter = (Math.random() * 2 - 1) * jitterRange;
+      const finalDelay = Math.max(500, Math.round(baseDelay + jitter));
+      await new Promise(resolve => setTimeout(resolve, finalDelay));
     }
 
     let response: Response;
@@ -258,10 +265,29 @@ export async function getParcels(status: string = 'ทั้งหมด', limit
       let parcels = normalizeParcels(res.parcels);
       // 2. Apply derived statuses (forward → in-transit) — backend doesn't know about this
       parcels = applyDerivedStatuses(parcels);
+      // Cache the loaded parcels in the local cache store
+      void cacheParcelsLocally(parcels).catch(err => console.error('Failed to cache parcels:', err));
       return { ...res, parcels };
     }
     return { success: false, parcels: [], error: res.error };
   } catch (err) {
+    // If offline, attempt to load from local IndexedDB cache
+    try {
+      const cached = await getCachedParcelsLocally();
+      let filtered = applyDerivedStatuses(normalizeParcels(cached));
+      if (status !== 'ทั้งหมด') {
+        filtered = filtered.filter(p => p.สถานะ === status);
+      }
+      const paginated = filtered.slice(offset, offset + limit);
+      return {
+        success: true,
+        parcels: paginated,
+        totalCount: filtered.length,
+        hasMore: filtered.length > offset + limit,
+      };
+    } catch (cacheErr) {
+      console.error('Failed to read cached parcels:', cacheErr);
+    }
     const message = getErrorMessage(err);
     return { success: false, parcels: [], error: message };
   }
@@ -272,10 +298,22 @@ export async function getParcel(trackingID: string): Promise<GetParcelResponse> 
   try {
     const res = await callAPI<GetParcelResponse>(payload, { includeAuth: true, dispatchAuthError: true });
     if (res.success && res.parcel) {
-      return { success: true, parcel: applyDerivedStatus(normalizeParcelStatus(res.parcel)) };
+      const parsed = applyDerivedStatus(normalizeParcelStatus(res.parcel));
+      // Cache this parcel locally
+      void cacheParcelsLocally([parsed]).catch(err => console.error('Failed to cache parcel:', err));
+      return { success: true, parcel: parsed };
     }
     return { success: false, error: res.error };
   } catch (err) {
+    // If offline, attempt to load this parcel from the local cache
+    try {
+      const cached = await getCachedParcelLocally(trackingID.toUpperCase());
+      if (cached) {
+        return { success: true, parcel: cached };
+      }
+    } catch (cacheErr) {
+      console.error('Failed to read cached parcel:', cacheErr);
+    }
     const message = getErrorMessage(err);
     return { success: false, error: message };
   }
@@ -411,6 +449,16 @@ export async function createBranch(name: string): Promise<{ success: boolean; br
 export async function deleteBranch(name: string): Promise<{ success: boolean; branches?: string[]; error?: string }> {
   try {
     const res = await callAPI<{ success: boolean; branches?: string[]; error?: string }>({ action: 'deleteBranch', name }, {}, NO_RETRY);
+    if (res.success && res.branches) setBranches(normalizeBranchList(res.branches));
+    return res;
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'เกิดข้อผิดพลาด' };
+  }
+}
+
+export async function renameBranch(oldName: string, newName: string): Promise<{ success: boolean; branches?: string[]; error?: string }> {
+  try {
+    const res = await callAPI<{ success: boolean; branches?: string[]; error?: string }>({ action: 'renameBranch', oldName, newName }, {}, NO_RETRY);
     if (res.success && res.branches) setBranches(normalizeBranchList(res.branches));
     return res;
   } catch (err) {
@@ -676,6 +724,7 @@ export async function syncRouteSamples(trackingID?: string): Promise<SyncRouteSa
   dispatchRouteSyncStatus({ status: 'success', trackingID, savedCount, skippedCount });
   if (typeof window !== 'undefined' && (savedCount > 0 || skippedCount > 0)) {
     window.dispatchEvent(new Event('offline-sync-complete'));
+    void purgeSyncedRouteSamples().catch(err => console.error('Failed to purge route samples:', err));
   }
   if (typeof window !== 'undefined' && (await getUnsyncedRouteSamples(trackingID)).length > 0) {
     window.setTimeout(() => {

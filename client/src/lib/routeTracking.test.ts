@@ -6,6 +6,7 @@ import {
   clearRouteSamples,
   getUnsyncedRouteSamples,
   markRouteSamplesSynced,
+  purgeSyncedRouteSamples,
 } from './routeTracking';
 
 const store: Record<string, string> = {};
@@ -140,5 +141,32 @@ describe('routeTracking', () => {
     });
 
     expect(startRouteTracking('TRK6')).toBe(false);
+  });
+
+  it('purges synced samples older than cutoff days', async () => {
+    startRouteTracking('TRK_PURGE');
+    
+    // 1. Emitting a coordinate 4 days ago
+    const fourDaysAgo = Date.now() - 4 * 24 * 60 * 60 * 1000;
+    emitPosition(13.7563, 100.5018, fourDaysAgo);
+    
+    // 2. Emitting a coordinate today
+    const now = Date.now();
+    emitPosition(13.7580, 100.5030, now);
+    
+    const [oldSample, newSample] = await getRouteSamples('TRK_PURGE');
+    expect(oldSample).toBeTruthy();
+    expect(newSample).toBeTruthy();
+    
+    // Mark both as synced
+    await markRouteSamplesSynced([oldSample.id, newSample.id]);
+    
+    // Purge (older than 3 days)
+    await purgeSyncedRouteSamples(3);
+    
+    const remaining = await getRouteSamples('TRK_PURGE');
+    // The old one should be deleted, the new one should remain
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].id).toBe(newSample.id);
   });
 });

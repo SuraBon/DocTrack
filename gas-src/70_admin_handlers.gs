@@ -252,6 +252,41 @@ function handleDeleteBranch(payload) {
   return createJsonResponse({ success: false, error: "ไม่พบแผนก/สาขา" });
 }
 
+function handleRenameBranch(payload) {
+  if (normalizeRole(payload.role) !== 'ADMIN') {
+    return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง (เฉพาะผู้ดูแลระบบ)" });
+  }
+  const oldName = escapeSheetValue(payload.oldName || "");
+  const newName = escapeSheetValue(payload.newName || "");
+  if (!oldName || !newName) return createJsonResponse({ success: false, error: "กรุณาระบุชื่อเดิมและชื่อใหม่" });
+  if (newName.length > 100) return createJsonResponse({ success: false, error: "ชื่อแผนก/สาขายาวเกินไป" });
+
+  const sheet = getBranchesSheet();
+  const data = sheet.getDataRange().getValues();
+  let foundIndex = -1;
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0] || "").trim().toLowerCase() === newName.toLowerCase()) {
+      return createJsonResponse({ success: false, error: "มีแผนก/สาขาชื่อใหม่นี้แล้ว" });
+    }
+    if (String(data[i][0] || "").trim().toLowerCase() === oldName.toLowerCase()) {
+      foundIndex = i;
+    }
+  }
+
+  if (foundIndex === -1) {
+    return createJsonResponse({ success: false, error: "ไม่พบแผนก/สาขาเดิม" });
+  }
+
+  sheet.getRange(foundIndex + 1, 1).setValue(newName);
+  sheet.getRange(foundIndex + 1, 2).setValue(formatThaiDateForSheet(new Date()));
+  sheet.getRange(foundIndex + 1, 3).setValue(payload.employeeId || "");
+
+  writeAuditLog(payload.employeeId, "RENAME_BRANCH", oldName, "newName=" + newName);
+
+  return createJsonResponse({ success: true, branches: readBranches() });
+}
+
 function handleDeleteParcel(payload) {
   if (normalizeRole(payload.role) !== 'ADMIN') {
     return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง (เฉพาะผู้ดูแลระบบ)" });
@@ -385,11 +420,12 @@ function handleUpdateProfile(payload) {
     // Return updated user info (without password)
     const updatedName = newName || String(data[i][1] || "").trim();
     const role = normalizeRole(data[i][2] || "GUEST");
-    const token = generateToken(employeeId, role, getApiKey());
+    const issuedAt = Date.now();
+    const token = generateToken(employeeId, role, getApiKey(), issuedAt);
 
     return createJsonResponse({
       success: true,
-      user: { employeeId, name: updatedName, role, token }
+      user: { employeeId, name: updatedName, role, token, issuedAt }
     });
   }
 

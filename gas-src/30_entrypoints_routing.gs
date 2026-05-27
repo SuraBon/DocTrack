@@ -15,7 +15,7 @@ function doPost(e) {
     }
 
     // --- Token Signature Verification ---
-    const protectedActions = ['confirmReceipt', 'startDelivery', 'releaseDelivery', 'syncRouteSamples', 'getParcels', 'exportSummary', 'getUsers', 'createUser', 'updateUserRole', 'updateUser', 'disableUser', 'deleteUser', 'createBranch', 'deleteBranch', 'deleteParcel', 'editParcel', 'updateProfile', 'getAuditLogs', 'getParcelActivityLogs'];
+    const protectedActions = ['confirmReceipt', 'startDelivery', 'releaseDelivery', 'syncRouteSamples', 'getParcels', 'exportSummary', 'getUsers', 'createUser', 'updateUserRole', 'updateUser', 'disableUser', 'deleteUser', 'createBranch', 'deleteBranch', 'renameBranch', 'deleteParcel', 'editParcel', 'updateProfile', 'getAuditLogs', 'getParcelActivityLogs'];
     if (payload.token) {
       const parts = String(payload.token).split('|');
       if (parts.length === 5) {
@@ -61,7 +61,7 @@ function doPost(e) {
       payload.role = 'GUEST';
     }
 
-    const writeActions = ['createParcel', 'confirmReceipt', 'startDelivery', 'releaseDelivery', 'syncRouteSamples', 'login', 'setupPin', 'createUser', 'updateUserRole', 'updateUser', 'disableUser', 'deleteUser', 'createBranch', 'deleteBranch', 'deleteParcel', 'editParcel', 'updateProfile'];
+    const writeActions = ['createParcel', 'confirmReceipt', 'startDelivery', 'releaseDelivery', 'syncRouteSamples', 'login', 'setupPin', 'createUser', 'updateUserRole', 'updateUser', 'disableUser', 'deleteUser', 'createBranch', 'deleteBranch', 'renameBranch', 'deleteParcel', 'editParcel', 'updateProfile'];
     const isWrite = writeActions.includes(action);
 
     let result;
@@ -116,6 +116,7 @@ function routeAction(action, payload) {
   if (action === 'getBranches') return handleGetBranches(payload);
   if (action === 'createBranch') return handleCreateBranch(payload);
   if (action === 'deleteBranch') return handleDeleteBranch(payload);
+  if (action === 'renameBranch') return handleRenameBranch(payload);
   if (action === 'getAuditLogs') return handleGetAuditLogs(payload);
   if (action === 'getParcelActivityLogs') return handleGetParcelActivityLogs(payload);
   if (action === 'deleteParcel') return handleDeleteParcel(payload);

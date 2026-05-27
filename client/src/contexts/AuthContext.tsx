@@ -17,7 +17,12 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 const SESSION_KEY = 'shiptrack_user';
 const SESSION_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 
-function getTokenIssuedAt(token?: string): number | null {
+function getUserIssuedAt(user?: User | null): number | null {
+  if (!user) return null;
+  if (typeof user.issuedAt === 'number') return user.issuedAt;
+
+  // Legacy fallback: parse token if issuedAt is missing
+  const token = user.token;
   if (!token) return null;
   const parts = token.split('|');
   if (parts.length !== 5) return null;
@@ -25,8 +30,8 @@ function getTokenIssuedAt(token?: string): number | null {
   return Number.isFinite(issuedAt) ? issuedAt : null;
 }
 
-function isSessionExpired(token?: string): boolean {
-  const issuedAt = getTokenIssuedAt(token);
+function isSessionExpired(user?: User | null): boolean {
+  const issuedAt = getUserIssuedAt(user);
   if (!issuedAt) return true;
   return Date.now() - issuedAt > SESSION_MAX_AGE_MS;
 }
@@ -57,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const parsed = JSON.parse(savedUser) as User;
         const normalizedUser = { ...parsed, role: normalizeRole(parsed.role) };
-        if (normalizedUser.role === 'GUEST' || !normalizedUser.token || isSessionExpired(normalizedUser.token)) {
+        if (normalizedUser.role === 'GUEST' || !normalizedUser.token || isSessionExpired(normalizedUser)) {
           clearSession();
         } else {
           setUser(normalizedUser);
@@ -83,8 +88,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!user?.token) return;
-    const issuedAt = getTokenIssuedAt(user.token);
+    if (!user) return;
+    const issuedAt = getUserIssuedAt(user);
     if (!issuedAt) {
       clearSession();
       return;
@@ -100,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       toast.error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
     }, msUntilExpiry);
     return () => window.clearTimeout(timer);
-  }, [user?.token]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loginUser = async (employeeId: string, pin?: string) => {
     const res = await login(employeeId, pin);

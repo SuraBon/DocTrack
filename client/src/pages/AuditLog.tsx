@@ -7,6 +7,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { AUDIT_ACTION_LABELS, translateAuditDetails } from '@/lib/translationUtils';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { parseDateInput } from '@/lib/dateUtils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const PAGE_SIZE = 25;
 
@@ -275,9 +276,28 @@ export default function AuditLog() {
         </div>
 
         {loading ? (
-          <div className="grid place-items-center gap-2 py-16 text-sm text-muted-foreground">
-            <Loader2 className="h-6 w-6 animate-spin" aria-hidden="true" />
-            กำลังโหลด...
+          <div className="grid gap-3 p-3 md:grid-cols-2 xl:grid-cols-3">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="app-compact-card space-y-3 animate-pulse">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 space-y-2 flex-1">
+                    <Skeleton className="h-5 w-32 rounded-md" />
+                    <Skeleton className="h-4 w-24 rounded-md" />
+                  </div>
+                  <Skeleton className="h-7 w-20 rounded-lg shrink-0" />
+                </div>
+                <div className="grid gap-2 text-sm sm:grid-cols-[0.8fr_1.2fr]">
+                  <div className="min-w-0 rounded-xl bg-gray-50/50 p-3 space-y-1">
+                    <Skeleton className="h-3 w-16 rounded-md" />
+                    <Skeleton className="h-4 w-20 rounded-md" />
+                  </div>
+                  <div className="min-w-0 rounded-xl bg-gray-50/50 p-3 space-y-1">
+                    <Skeleton className="h-3 w-28 rounded-md" />
+                    <Skeleton className="h-4 w-3/4 rounded-md" />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : logs.length === 0 ? (
           <div className="p-4">

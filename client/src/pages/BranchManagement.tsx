@@ -1,9 +1,10 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Building2, Edit3, Loader2, Plus, RefreshCw, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { createBranch, deleteBranch } from '@/lib/parcelService';
+import { createBranch, deleteBranch, renameBranch } from '@/lib/parcelService';
 import { useBranches } from '@/hooks/useBranches';
 import EmptyState from '@/components/EmptyState';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -106,21 +107,14 @@ export default function BranchManagement() {
     }
 
     setEditing(true);
-    const createRes = await createBranch(newName);
-    if (createRes.success) {
-      const deleteRes = await deleteBranch(oldName);
-      setEditing(false);
-      if (deleteRes.success) {
-        setBranchToEdit(null);
-        if (!deleteRes.branches) await refreshBranches();
-        toast.success('แก้ไขแผนก/สาขาสำเร็จ');
-      } else {
-        await refreshBranches();
-        toast.error(deleteRes.error || 'ไม่สามารถลบแผนก/สาขาเดิมได้');
-      }
+    const res = await renameBranch(oldName, newName);
+    setEditing(false);
+    if (res.success) {
+      setBranchToEdit(null);
+      if (!res.branches) await refreshBranches();
+      toast.success('แก้ไขแผนก/สาขาสำเร็จ');
     } else {
-      setEditing(false);
-      toast.error(createRes.error || 'ไม่สามารถเพิ่มแผนก/สาขาใหม่ได้');
+      toast.error(res.error || 'ไม่สามารถแก้ไขแผนก/สาขาได้');
     }
   };
 
@@ -176,22 +170,26 @@ export default function BranchManagement() {
           </p>
         </div>
 
-        {loading ? (
-          <div className="grid place-items-center gap-2 py-16 text-sm text-muted-foreground">
-            <Loader2 className="h-6 w-6 animate-spin" aria-hidden="true" />
-            กำลังโหลด...
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="p-4">
-            <EmptyState
-              icon={<Building2 className="h-7 w-7 text-slate-400" />}
-              title="ไม่พบแผนก/สาขา"
-              description="ไม่พบแผนกหรือสาขาที่ตรงกับเงื่อนไขการค้นหา"
-            />
-          </div>
-        ) : (
-          <>
-            <div className="divide-y divide-outline-variant/10 sm:hidden">
+        <div className="sm:hidden">
+          {loading ? (
+            <div className="divide-y divide-outline-variant/10">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="flex items-center gap-3 p-4 animate-pulse">
+                  <Skeleton className="h-10 w-10 rounded-xl shrink-0" />
+                  <Skeleton className="h-5 w-3/4 rounded-md" />
+                </div>
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="p-4">
+              <EmptyState
+                icon={<Building2 className="h-7 w-7 text-slate-400" />}
+                title="ไม่พบแผนก/สาขา"
+                description="ไม่พบแผนกหรือสาขาที่ตรงกับเงื่อนไขการค้นหา"
+              />
+            </div>
+          ) : (
+            <div className="divide-y divide-outline-variant/10">
               {visibleMobileBranches.map(branch => (
                 <div key={branch} className="flex items-center gap-3 p-4">
                   <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-700">
@@ -223,48 +221,76 @@ export default function BranchManagement() {
                 </div>
               ))}
             </div>
+          )}
+        </div>
 
-            <div className="hidden overflow-x-auto sm:block">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50">
-                    <th className="px-5 py-3 text-[11px] font-black uppercase tracking-widest text-muted-foreground">แผนก/สาขา</th>
-                    <th className="w-24 px-5 py-3 text-right text-[11px] font-black uppercase tracking-widest text-muted-foreground">จัดการ</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-outline-variant/10">
-                  {filtered.map(branch => (
-                    <tr key={branch} className="transition-colors hover:bg-surface-container-lowest/60">
-                      <td className="px-5 py-4 text-sm font-semibold text-foreground">{branch}</td>
+        <div className="hidden overflow-x-auto sm:block">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b border-gray-100 bg-gray-50">
+                <th className="px-5 py-3 text-[11px] font-black uppercase tracking-widest text-muted-foreground">แผนก/สาขา</th>
+                <th className="w-24 px-5 py-3 text-right text-[11px] font-black uppercase tracking-widest text-muted-foreground">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-outline-variant/10">
+              {loading ? (
+                <>
+                  {[...Array(5)].map((_, i) => (
+                    <tr key={i}>
+                      <td className="px-5 py-4"><Skeleton className="h-5 w-48 rounded-md" /></td>
                       <td className="px-5 py-4 text-right">
                         <div className="flex justify-end gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setBranchToEdit(branch);
-                              setEditBranchName(branch);
-                            }}
-                            className="inline-flex h-9 items-center gap-2 rounded-lg px-3 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50"
-                          >
-                            <Edit3 className="h-4 w-4" aria-hidden="true" />
-                            แก้ไข
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setBranchToDelete(branch)}
-                            disabled={deletingName === branch}
-                            className="inline-flex h-9 items-center gap-2 rounded-lg px-3 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
-                          >
-                            {deletingName === branch ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Trash2 className="h-4 w-4" aria-hidden="true" />}
-                            ลบ
-                          </button>
+                          <Skeleton className="h-9 w-16 rounded-lg animate-pulse" />
+                          <Skeleton className="h-9 w-16 rounded-lg animate-pulse" />
                         </div>
                       </td>
                     </tr>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </>
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={2} className="p-4">
+                    <EmptyState
+                      icon={<Building2 className="h-7 w-7 text-slate-400" />}
+                      title="ไม่พบแผนก/สาขา"
+                      description="ไม่พบแผนกหรือสาขาที่ตรงกับเงื่อนไขการค้นหา"
+                    />
+                  </td>
+                </tr>
+              ) : (
+                filtered.map(branch => (
+                  <tr key={branch} className="transition-colors hover:bg-surface-container-lowest/60">
+                    <td className="px-5 py-4 text-sm font-semibold text-foreground">{branch}</td>
+                    <td className="px-5 py-4 text-right">
+                      <div className="flex justify-end gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setBranchToEdit(branch);
+                            setEditBranchName(branch);
+                          }}
+                          className="inline-flex h-9 items-center gap-2 rounded-lg px-3 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+                        >
+                          <Edit3 className="h-4 w-4" aria-hidden="true" />
+                          แก้ไข
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setBranchToDelete(branch)}
+                          disabled={deletingName === branch}
+                          className="inline-flex h-9 items-center gap-2 rounded-lg px-3 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+                        >
+                          {deletingName === branch ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Trash2 className="h-4 w-4" aria-hidden="true" />}
+                          ลบ
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
 
             {filtered.length > visibleCount && (
               <div className="border-t border-outline-variant/10 p-3 sm:hidden">
@@ -277,9 +303,9 @@ export default function BranchManagement() {
                 </button>
               </div>
             )}
-          </>
-        )}
       </div>
+
+
 
       <AlertDialog open={!!branchToDelete} onOpenChange={(open) => !open && setBranchToDelete(null)}>
         <AlertDialogContent className="rounded-2xl border border-outline-variant bg-white">

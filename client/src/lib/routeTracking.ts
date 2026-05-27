@@ -210,6 +210,23 @@ export async function clearRouteSamples(trackingID: string): Promise<void> {
   dispatchRouteUpdated(trackingID);
 }
 
+export async function purgeSyncedRouteSamples(olderThanDays: number = 3): Promise<void> {
+  const cutoffTime = Date.now() - olderThanDays * 24 * 60 * 60 * 1000;
+  const records = await idbGetAll<RouteSampleRecord>(OFFLINE_ROUTE_STORE);
+  if (records) {
+    const toDelete = records.filter(sample => sample.synced && Date.parse(sample.timestamp) < cutoffTime);
+    await Promise.all(toDelete.map(sample => idbDelete(OFFLINE_ROUTE_STORE, sample.id)));
+  }
+
+  const fallbackSamples = readFallbackSamples();
+  const nextFallback = fallbackSamples.filter(
+    sample => !(sample.synced && Date.parse(sample.timestamp) < cutoffTime)
+  );
+  if (nextFallback.length !== fallbackSamples.length) {
+    saveFallbackSamples(nextFallback);
+  }
+}
+
 export function resumeActiveRouteTracking(): void {
   for (const trackingID of getActiveRoutes()) {
     startRouteTracking(trackingID);

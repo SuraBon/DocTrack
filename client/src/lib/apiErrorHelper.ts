@@ -27,3 +27,21 @@ export function isAuthErrorMessage(message: unknown): boolean {
     'Session replaced',
   ].some(error => text.includes(error));
 }
+
+export function isNetworkErrorMessage(message: unknown): boolean {
+  const text = String(message || '').toLowerCase();
+  return (
+    text.includes('เชื่อมต่อ') ||
+    text.includes('เวลา') ||
+    text.includes('อินเทอร์เน็ต') ||
+    text.includes('failed to fetch') ||
+    text.includes('network error') ||
+    text.includes('request failed') ||
+    text.includes('aborted') ||
+    text.includes('timeout') ||
+    text.includes('timed out') ||
+    text.includes('offline') ||
+    text.includes('internet') ||
+    text.includes('connection')
+  );
+}

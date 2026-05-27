@@ -1,14 +1,16 @@
 import type { CreateParcelDraft } from './createParcelDraft';
 import type { CreatedParcelHistoryItem } from './createdParcelHistory';
+import type { Parcel } from '@/types/parcel';
 
 const DB_NAME = 'shiptrack_offline';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 export const OFFLINE_QUEUE_STORE = 'offlineQueue';
 export const OFFLINE_MEDIA_STORE = 'offlineMedia';
 export const OFFLINE_DRAFT_STORE = 'drafts';
 export const OFFLINE_HISTORY_STORE = 'createdParcelHistory';
 export const OFFLINE_ROUTE_STORE = 'routeSamples';
+export const OFFLINE_PARCEL_CACHE_STORE = 'parcelsCache';
 
 export const LEGACY_QUEUE_KEY = 'shiptrack_offline_queue';
 export const LEGACY_DRAFT_KEY = 'shiptrack_create_parcel_draft';
@@ -88,6 +90,9 @@ function openDb(): Promise<IDBDatabase | null> {
         const routeStore = db.createObjectStore(OFFLINE_ROUTE_STORE, { keyPath: 'id' });
         routeStore.createIndex('trackingID', 'trackingID', { unique: false });
       }
+      if (!db.objectStoreNames.contains(OFFLINE_PARCEL_CACHE_STORE)) {
+        db.createObjectStore(OFFLINE_PARCEL_CACHE_STORE, { keyPath: 'TrackingID' });
+      }
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => resolve(null);
@@ -157,4 +162,30 @@ export async function idbClear(storeName: string): Promise<boolean> {
     tx.onerror = () => resolve(false);
     tx.onabort = () => resolve(false);
   });
+}
+
+export async function cacheParcelsLocally(parcels: Parcel[]): Promise<boolean> {
+  const db = await openDb();
+  if (!db) return false;
+  return new Promise(resolve => {
+    const tx = db.transaction(OFFLINE_PARCEL_CACHE_STORE, 'readwrite');
+    const store = tx.objectStore(OFFLINE_PARCEL_CACHE_STORE);
+    parcels.forEach(p => {
+      if (p && p.TrackingID) {
+        store.put(p);
+      }
+    });
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => resolve(false);
+    tx.onabort = () => resolve(false);
+  });
+}
+
+export async function getCachedParcelsLocally(): Promise<Parcel[]> {
+  const cached = await idbGetAll<Parcel>(OFFLINE_PARCEL_CACHE_STORE);
+  return cached ?? [];
+}
+
+export async function getCachedParcelLocally(trackingID: string): Promise<Parcel | null> {
+  return idbGet<Parcel>(OFFLINE_PARCEL_CACHE_STORE, trackingID);
 }

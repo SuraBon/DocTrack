@@ -5,6 +5,8 @@ import { normalizeRole, type AppRole } from '@/lib/roles';
 import { toast } from 'sonner';
 import { UI_COPY } from '@/lib/uiCopy';
 import { ProfileDialog } from '@/components/layout/ProfileDialog';
+import { useOfflineQueue } from '@/hooks/useOfflineQueue';
+import { OfflineQueueDialog } from '@/components/layout/OfflineQueueDialog';
 import {
   BarChart3,
   ClipboardList,
@@ -68,6 +70,23 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [isOnline, setIsOnline] = useState(() => typeof navigator !== 'undefined' ? navigator.onLine : true);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  const offlineQueue = useOfflineQueue();
+  const [isOfflineQueueOpen, setIsOfflineQueueOpen] = useState(false);
+
   const currentRole = normalizeRole(user?.role ?? 'GUEST');
   const hideGuestMobileTopBar = currentRole === 'GUEST' && (currentPage === 'create' || currentPage === 'track');
   const dashboardLabel = currentRole === 'MESSENGER' ? UI_COPY.nav.messengerDashboard : UI_COPY.nav.adminDashboard;
@@ -183,6 +202,21 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
                   <span>บันทึกเส้นทาง ({activeRouteCount})</span>
                 </div>
               )}
+              {offlineQueue.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIsOfflineQueueOpen(true)}
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold sm:px-2.5 transition-all ${
+                    offlineQueue.some(item => item.status === 'failed')
+                      ? 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'
+                      : 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100'
+                  }`}
+                  title="ดูรายการจัดส่งออฟไลน์ที่รอซิงค์"
+                >
+                  <span className="material-symbols-outlined text-[14px]" aria-hidden="true">sync_problem</span>
+                  <span>คิวออฟไลน์ ({offlineQueue.length})</span>
+                </button>
+              )}
               {user ? (
                 <>
                   <button
@@ -210,6 +244,16 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
             </div>
           </div>
         </header>
+
+        {!isOnline && (
+          <div className="bg-amber-500 text-white text-xs font-bold text-center py-2 px-4 animate-in slide-in-from-top duration-300 shadow-sm flex items-center justify-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+            </span>
+            <span>โหมดออฟไลน์ — การส่งพัสดุและบันทึกพิกัดจะถูกเก็บไว้ชั่วคราวและซิงค์เมื่อเน็ตกลับมา</span>
+          </div>
+        )}
 
         <main className={`mx-auto w-full max-w-7xl flex-1 px-3 ${mobileBottomPadding} sm:px-5 md:px-6 md:pb-10 lg:px-8 ${hideGuestMobileTopBar ? 'pt-3 md:pt-4' : 'pt-4'}`}>
           {children}
@@ -290,6 +334,13 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
         setShowNewPassword={setShowNewPassword}
         showConfirmPassword={showConfirmPassword}
         setShowConfirmPassword={setShowConfirmPassword}
+      />
+
+      {/* ── Offline Queue Dialog ── */}
+      <OfflineQueueDialog
+        isOpen={isOfflineQueueOpen}
+        onClose={() => setIsOfflineQueueOpen(false)}
+        queue={offlineQueue}
       />
     </div>
   );

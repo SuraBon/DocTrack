@@ -16,8 +16,9 @@ describe('validation helpers', () => {
     expect(isValidEmployeeId('!!!')).toBe(false);
   });
 
-  it('strips dangerous HTML/control characters from text', () => {
+  it('strips dangerous HTML/control/unicode characters from text', () => {
     expect(sanitizeTextInput(' <script>alert(1)</script> สาขา\u0000 ')).toBe('alert(1) สาขา');
+    expect(sanitizeTextInput('test\u200Bzero\u202Awidth\uFEFFchars')).toBe('testzerowidthchars');
   });
 
   it('blocks formula-leading sheet text and passwords', () => {
