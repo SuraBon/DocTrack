@@ -23,6 +23,7 @@ import {
   Undo2,
   FilterX,
   Download,
+  Trash2,
 } from 'lucide-react';
 import { convertParcelsToCSV, downloadCSV } from '@/lib/csvHelper';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -163,6 +164,9 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
     setIsDeliveryDetailsOpen,
     isDeleteConfirmOpen,
     setIsDeleteConfirmOpen,
+    isEditParcelOpen,
+    setIsEditParcelOpen,
+    isSavingParcelEdit,
     confirmTrackingId,
     setConfirmTrackingId,
     isConfirmFlowOpen,
@@ -173,6 +177,9 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
     releasingDeliveryId,
     handleRefresh,
     handleDelete,
+    openEditParcel,
+    submitParcelEdit,
+    executeBatchDelete,
     executeDelete,
     openConfirmFlow,
     handleStartDelivery,
@@ -275,6 +282,43 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
     mine: MESSENGER_BATCH_SIZE,
     done: MESSENGER_BATCH_SIZE,
   });
+  const [selectedAdminParcelIds, setSelectedAdminParcelIds] = useState<Set<string>>(new Set());
+  const [isBatchDeleting, setIsBatchDeleting] = useState(false);
+
+  const toggleSelectedAdminParcel = useCallback((trackingId: string, checked: boolean) => {
+    setSelectedAdminParcelIds(current => {
+      const next = new Set(current);
+      if (checked) next.add(trackingId);
+      else next.delete(trackingId);
+      return next;
+    });
+  }, []);
+
+  const toggleAllVisibleAdminParcels = useCallback((visibleParcels: Parcel[], checked: boolean) => {
+    setSelectedAdminParcelIds(current => {
+      const next = new Set(current);
+      visibleParcels.forEach(parcel => {
+        if (checked) next.add(parcel.TrackingID);
+        else next.delete(parcel.TrackingID);
+      });
+      return next;
+    });
+  }, []);
+
+  const clearSelectedAdminParcels = useCallback(() => {
+    setSelectedAdminParcelIds(new Set());
+  }, []);
+
+  const handleBatchDelete = useCallback(async () => {
+    const trackingIds = Array.from(selectedAdminParcelIds);
+    if (trackingIds.length === 0 || isBatchDeleting) return;
+    const ok = window.confirm(`ลบพัสดุที่เลือก ${trackingIds.length} รายการหรือไม่?`);
+    if (!ok) return;
+    setIsBatchDeleting(true);
+    await executeBatchDelete(trackingIds);
+    setIsBatchDeleting(false);
+    clearSelectedAdminParcels();
+  }, [clearSelectedAdminParcels, executeBatchDelete, isBatchDeleting, selectedAdminParcelIds]);
 
   useEffect(() => {
     setMessengerVisibleCounts({
@@ -283,6 +327,14 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
       done: MESSENGER_BATCH_SIZE,
     });
   }, [debouncedSearch]);
+
+  useEffect(() => {
+    setSelectedAdminParcelIds(current => {
+      const availableIds = new Set(filteredParcels.map(parcel => parcel.TrackingID));
+      const next = new Set(Array.from(current).filter(id => availableIds.has(id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [filteredParcels]);
 
   const showMoreMessenger = (view: MessengerView) => {
     setMessengerVisibleCounts(current => ({
@@ -739,6 +791,20 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
           </div>
         ) : hasFilters ? (
           <div className="space-y-4 pb-4 animate-in fade-in duration-300">
+            {selectedAdminParcelIds.size > 0 && (
+              <div className="sticky top-2 z-30 flex flex-col gap-3 rounded-2xl border border-blue-100 bg-white/95 px-4 py-3 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+                <span className="text-sm font-bold text-slate-700">เลือกแล้ว {selectedAdminParcelIds.size} รายการ</span>
+                <div className="flex gap-2">
+                  <button type="button" onClick={clearSelectedAdminParcels} className="app-secondary-button h-9 px-3 text-xs">
+                    ยกเลิกเลือก
+                  </button>
+                  <button type="button" onClick={handleBatchDelete} disabled={isBatchDeleting} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-red-600 px-3 text-xs font-bold text-white shadow-sm transition-colors hover:bg-red-700 disabled:opacity-60">
+                    {isBatchDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />}
+                    ลบพร้อมกัน
+                  </button>
+                </div>
+              </div>
+            )}
             <MessengerViewBanner
               icon="search"
               title="รายการที่ค้นพบ"
@@ -755,20 +821,27 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
                       parcel={parcel}
                       assignment={getActiveDeliveryAssignment(parcel)}
                       onOpen={() => { setSelectedParcel(parcel); setIsTimelineOpen(true); }}
+                      onEdit={() => openEditParcel(parcel)}
                       onConfirm={() => openConfirmFlow(parcel.TrackingID)}
                       onDelete={() => { setSelectedParcel(parcel); setIsDeleteConfirmOpen(true); }}
                       onReleaseDelivery={() => handleReleaseDelivery(parcel)}
                       isReleasingDelivery={releasingDeliveryId === parcel.TrackingID}
+                      selected={selectedAdminParcelIds.has(parcel.TrackingID)}
+                      onSelectedChange={(checked) => toggleSelectedAdminParcel(parcel.TrackingID, checked)}
                     />
                   ))}
                 </div>
                 <AdminParcelManagementTable
                   parcels={paginatedParcels}
                   onOpen={(parcel) => { setSelectedParcel(parcel); setIsTimelineOpen(true); }}
+                  onEdit={openEditParcel}
                   onConfirm={(parcel) => openConfirmFlow(parcel.TrackingID)}
                   onDelete={(parcel) => { setSelectedParcel(parcel); setIsDeleteConfirmOpen(true); }}
                   onReleaseDelivery={handleReleaseDelivery}
                   releasingDeliveryId={releasingDeliveryId}
+                  selectedIds={selectedAdminParcelIds}
+                  onToggleSelected={toggleSelectedAdminParcel}
+                  onToggleAllVisible={toggleAllVisibleAdminParcels}
                 />
               </Suspense>
             ) : (
@@ -782,6 +855,20 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
           </div>
         ) : (
           <div className="space-y-4 pb-4">
+            {selectedAdminParcelIds.size > 0 && (
+              <div className="sticky top-2 z-30 flex flex-col gap-3 rounded-2xl border border-blue-100 bg-white/95 px-4 py-3 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+                <span className="text-sm font-bold text-slate-700">เลือกแล้ว {selectedAdminParcelIds.size} รายการ</span>
+                <div className="flex gap-2">
+                  <button type="button" onClick={clearSelectedAdminParcels} className="app-secondary-button h-9 px-3 text-xs">
+                    ยกเลิกเลือก
+                  </button>
+                  <button type="button" onClick={handleBatchDelete} disabled={isBatchDeleting} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-red-600 px-3 text-xs font-bold text-white shadow-sm transition-colors hover:bg-red-700 disabled:opacity-60">
+                    {isBatchDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />}
+                    ลบพร้อมกัน
+                  </button>
+                </div>
+              </div>
+            )}
             {adminNeedsAttentionParcels.length > 0 && (
               <div>
                 <MessengerViewBanner
@@ -799,20 +886,27 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
                         parcel={parcel}
                         assignment={getActiveDeliveryAssignment(parcel)}
                         onOpen={() => { setSelectedParcel(parcel); setIsTimelineOpen(true); }}
+                        onEdit={() => openEditParcel(parcel)}
                         onConfirm={() => openConfirmFlow(parcel.TrackingID)}
                         onDelete={() => { setSelectedParcel(parcel); setIsDeleteConfirmOpen(true); }}
                         onReleaseDelivery={() => handleReleaseDelivery(parcel)}
                         isReleasingDelivery={releasingDeliveryId === parcel.TrackingID}
+                        selected={selectedAdminParcelIds.has(parcel.TrackingID)}
+                        onSelectedChange={(checked) => toggleSelectedAdminParcel(parcel.TrackingID, checked)}
                       />
                     ))}
                   </div>
                   <AdminParcelManagementTable
                     parcels={adminNeedsAttentionParcels}
                     onOpen={(parcel) => { setSelectedParcel(parcel); setIsTimelineOpen(true); }}
+                    onEdit={openEditParcel}
                     onConfirm={(parcel) => openConfirmFlow(parcel.TrackingID)}
                     onDelete={(parcel) => { setSelectedParcel(parcel); setIsDeleteConfirmOpen(true); }}
                     onReleaseDelivery={handleReleaseDelivery}
                     releasingDeliveryId={releasingDeliveryId}
+                    selectedIds={selectedAdminParcelIds}
+                    onToggleSelected={toggleSelectedAdminParcel}
+                    onToggleAllVisible={toggleAllVisibleAdminParcels}
                   />
                 </Suspense>
               </div>
@@ -832,20 +926,27 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
                       parcel={parcel}
                       assignment={getActiveDeliveryAssignment(parcel)}
                       onOpen={() => { setSelectedParcel(parcel); setIsTimelineOpen(true); }}
+                      onEdit={() => openEditParcel(parcel)}
                       onConfirm={() => openConfirmFlow(parcel.TrackingID)}
                       onDelete={() => { setSelectedParcel(parcel); setIsDeleteConfirmOpen(true); }}
                       onReleaseDelivery={() => handleReleaseDelivery(parcel)}
                       isReleasingDelivery={releasingDeliveryId === parcel.TrackingID}
+                      selected={selectedAdminParcelIds.has(parcel.TrackingID)}
+                      onSelectedChange={(checked) => toggleSelectedAdminParcel(parcel.TrackingID, checked)}
                     />
                   ))}
                 </div>
                 <AdminParcelManagementTable
                   parcels={adminRegularParcels}
                   onOpen={(parcel) => { setSelectedParcel(parcel); setIsTimelineOpen(true); }}
+                  onEdit={openEditParcel}
                   onConfirm={(parcel) => openConfirmFlow(parcel.TrackingID)}
                   onDelete={(parcel) => { setSelectedParcel(parcel); setIsDeleteConfirmOpen(true); }}
                   onReleaseDelivery={handleReleaseDelivery}
                   releasingDeliveryId={releasingDeliveryId}
+                  selectedIds={selectedAdminParcelIds}
+                  onToggleSelected={toggleSelectedAdminParcel}
+                  onToggleAllVisible={toggleAllVisibleAdminParcels}
                 />
               </Suspense>
             ) : (
@@ -924,7 +1025,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
         )}
       </section>
 
-      {(isDeliveryDetailsOpen || isTimelineOpen || isConfirmFlowOpen || isDeleteConfirmOpen) && (
+      {(isDeliveryDetailsOpen || isTimelineOpen || isConfirmFlowOpen || isDeleteConfirmOpen || isEditParcelOpen) && (
         <Suspense fallback={null}>
           <DashboardDialogs
             selectedParcel={liveSelectedParcel}
@@ -943,6 +1044,10 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
             isDeleteConfirmOpen={isDeleteConfirmOpen}
             setIsDeleteConfirmOpen={setIsDeleteConfirmOpen}
             executeDelete={executeDelete}
+            isEditParcelOpen={isEditParcelOpen}
+            setIsEditParcelOpen={setIsEditParcelOpen}
+            isSavingParcelEdit={isSavingParcelEdit}
+            submitParcelEdit={submitParcelEdit}
           />
         </Suspense>
       )}

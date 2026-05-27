@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParcelStore } from '@/hooks/useParcelStore';
 import { useAuth } from '@/contexts/AuthContext';
-import { deleteParcel, releaseDelivery, startDelivery, syncRouteSamples } from '@/lib/parcelService';
+import { deleteParcel, editParcel, releaseDelivery, startDelivery, syncRouteSamples } from '@/lib/parcelService';
 import { startRouteTracking, stopRouteTracking } from '@/lib/routeTracking';
 import { getActiveDeliveryAssignment, buildAssignmentNote } from '@/lib/deliveryAssignment';
 import type { Parcel } from '@/types/parcel';
@@ -31,6 +31,8 @@ export function useDashboardActions({
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   const [isDeliveryDetailsOpen, setIsDeliveryDetailsOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isEditParcelOpen, setIsEditParcelOpen] = useState(false);
+  const [isSavingParcelEdit, setIsSavingParcelEdit] = useState(false);
   const [confirmTrackingId, setConfirmTrackingId] = useState<string | null>(null);
   const [isConfirmFlowOpen, setIsConfirmFlowOpen] = useState(false);
   const [messengerView, setMessengerView] = useState<MessengerView>('mine');
@@ -48,6 +50,61 @@ export function useDashboardActions({
   const handleDelete = async () => {
     if (!selectedParcel) return;
     setIsDeleteConfirmOpen(true);
+  };
+
+  const openEditParcel = (parcel: Parcel) => {
+    setSelectedParcel(parcel);
+    setIsTimelineOpen(false);
+    setIsDeliveryDetailsOpen(false);
+    setIsEditParcelOpen(true);
+  };
+
+  const submitParcelEdit = async (updates: Partial<Record<string, string>>) => {
+    if (!selectedParcel || isSavingParcelEdit) return;
+    setIsSavingParcelEdit(true);
+    const res = await editParcel(selectedParcel.TrackingID, updates);
+    setIsSavingParcelEdit(false);
+
+    if (!res.success) {
+      toast.error(res.error || 'บันทึกข้อมูลพัสดุไม่สำเร็จ');
+      return;
+    }
+
+    const currentParcel = (selectedParcel as unknown) as Record<string, unknown>;
+    const localUpdates = {
+      'ผู้ส่ง': updates.senderName || currentParcel['ผู้ส่ง'],
+      'สาขาผู้ส่ง': updates.senderBranch || currentParcel['สาขาผู้ส่ง'],
+      'ผู้รับ': updates.receiverName || currentParcel['ผู้รับ'],
+      'สาขาผู้รับ': updates.receiverBranch || currentParcel['สาขาผู้รับ'],
+      'รายละเอียด': updates.description ?? currentParcel['รายละเอียด'],
+    } as Partial<Parcel>;
+    updateParcelLocally(selectedParcel.TrackingID, localUpdates);
+    setSelectedParcel(current => current ? { ...current, ...localUpdates } : current);
+    setIsEditParcelOpen(false);
+    toast.success('บันทึกข้อมูลพัสดุเรียบร้อย');
+  };
+
+  const executeBatchDelete = async (trackingIds: string[]) => {
+    const uniqueIds = Array.from(new Set(trackingIds)).filter(Boolean);
+    if (uniqueIds.length === 0) return { successCount: 0, failedCount: 0 };
+
+    uniqueIds.forEach(removeParcelLocally);
+    toast.success(`กำลังลบ ${uniqueIds.length} รายการ...`);
+
+    const results = await Promise.all(uniqueIds.map(async trackingID => {
+      const res = await deleteParcel(trackingID);
+      return { trackingID, res };
+    }));
+    const failed = results.filter(result => !result.res.success);
+
+    if (failed.length > 0) {
+      toast.error(`ลบไม่สำเร็จ ${failed.length} รายการ กำลังโหลดข้อมูลใหม่`);
+      loadParcels(undefined, true);
+    } else {
+      toast.success(`ลบ ${uniqueIds.length} รายการเรียบร้อย`);
+    }
+
+    return { successCount: uniqueIds.length - failed.length, failedCount: failed.length };
   };
 
   const openConfirmFlow = (trackingId: string) => {
@@ -173,6 +230,9 @@ export function useDashboardActions({
     setIsDeliveryDetailsOpen,
     isDeleteConfirmOpen,
     setIsDeleteConfirmOpen,
+    isEditParcelOpen,
+    setIsEditParcelOpen,
+    isSavingParcelEdit,
     confirmTrackingId,
     setConfirmTrackingId,
     isConfirmFlowOpen,
@@ -183,6 +243,9 @@ export function useDashboardActions({
     releasingDeliveryId,
     handleRefresh,
     handleDelete,
+    openEditParcel,
+    submitParcelEdit,
+    executeBatchDelete,
     executeDelete,
     openConfirmFlow,
     handleStartDelivery,

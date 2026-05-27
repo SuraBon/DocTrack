@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Package } from 'lucide-react';
+import { Edit3, Package } from 'lucide-react';
 import type { Parcel } from '@/types/parcel';
 import type { DeliveryAssignment } from '@/lib/deliveryAssignment';
 import StatusBadge from '@/components/StatusBadge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { formatThaiDateTime } from '@/lib/dateUtils';
 import { translateSystemNote } from '@/lib/translationUtils';
 import {
@@ -17,19 +18,25 @@ import {
 export const AdminParcelManagementCard = ({
   parcel,
   onOpen,
+  onEdit,
   onConfirm,
   onDelete,
   onReleaseDelivery,
   isReleasingDelivery,
   assignment,
+  selected,
+  onSelectedChange,
 }: {
   parcel: Parcel;
   onOpen: () => void;
+  onEdit: () => void;
   onConfirm: () => void;
   onDelete: () => void;
   onReleaseDelivery: () => void;
   isReleasingDelivery: boolean;
   assignment: DeliveryAssignment | null;
+  selected?: boolean;
+  onSelectedChange?: (checked: boolean) => void;
 }) => {
   const note = getCleanNote(parcel);
   const itemDescription = parcel['รายละเอียด'] || '';
@@ -59,9 +66,18 @@ export const AdminParcelManagementCard = ({
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[0_4px_20px_rgba(15,23,42,0.04)] transition-all duration-200 hover:shadow-md">
       <div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-4 py-2">
-        <code className="min-w-0 truncate font-mono text-[10px] font-black tracking-wider text-slate-400">
-          {parcel.TrackingID}
-        </code>
+        <div className="flex min-w-0 items-center gap-2">
+          {onSelectedChange && (
+            <Checkbox
+              checked={selected}
+              onCheckedChange={(checked) => onSelectedChange(checked === true)}
+              aria-label={`เลือก ${parcel.TrackingID}`}
+            />
+          )}
+          <code className="min-w-0 truncate font-mono text-[10px] font-black tracking-wider text-slate-400">
+            {parcel.TrackingID}
+          </code>
+        </div>
         <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusPillClass}`}>
           {statusLabel}
         </span>
@@ -159,6 +175,14 @@ export const AdminParcelManagementCard = ({
             detailLabel="ดูรายละเอียด"
             compactDetail
           />
+          <button
+            type="button"
+            onClick={onEdit}
+            className="app-secondary-button h-10 w-full text-xs"
+          >
+            <Edit3 className="h-4 w-4" aria-hidden="true" />
+            แก้ไขข้อมูล
+          </button>
         </div>
       </div>
     </article>

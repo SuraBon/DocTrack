@@ -14,6 +14,7 @@ import {
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { LazyPanelFallback } from './DashboardComponents';
 import { DeliveryJobDetailsModal } from './DeliveryJobDetailsModal';
+import { AdminEditParcelDialog } from './AdminEditParcelDialog';
 
 const ParcelTimelineModal = lazy(() => import('@/components/ParcelTimelineModal'));
 const ConfirmReceipt = lazy(() => import('@/pages/ConfirmReceipt'));
@@ -35,6 +36,10 @@ type DashboardDialogsProps = {
   isDeleteConfirmOpen: boolean;
   setIsDeleteConfirmOpen: Dispatch<SetStateAction<boolean>>;
   executeDelete: () => void;
+  isEditParcelOpen: boolean;
+  setIsEditParcelOpen: Dispatch<SetStateAction<boolean>>;
+  isSavingParcelEdit: boolean;
+  submitParcelEdit: (updates: Partial<Record<string, string>>) => Promise<void>;
 };
 
 export function DashboardDialogs({
@@ -54,9 +59,21 @@ export function DashboardDialogs({
   isDeleteConfirmOpen,
   setIsDeleteConfirmOpen,
   executeDelete,
+  isEditParcelOpen,
+  setIsEditParcelOpen,
+  isSavingParcelEdit,
+  submitParcelEdit,
 }: DashboardDialogsProps) {
   return (
     <>
+      <AdminEditParcelDialog
+        parcel={selectedParcel}
+        open={isEditParcelOpen}
+        saving={isSavingParcelEdit}
+        onOpenChange={setIsEditParcelOpen}
+        onSubmit={submitParcelEdit}
+      />
+
       <DeliveryJobDetailsModal
         parcel={selectedParcel}
         open={isDeliveryDetailsOpen}
