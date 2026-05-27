@@ -307,29 +307,29 @@ function TrackingMap({ events, trackingID, routeSamples: syncedRouteSamples = []
   }, [isMapReady]);
 
   return (
-    <div className={`relative flex w-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm ${className}`}>
+    <div className={`relative flex w-full flex-col overflow-hidden rounded-2xl border border-gray-100 dark:border-white/10 bg-white dark:bg-[#050915] shadow-sm ${className}`}>
       {!hasRouteData && (
-        <div className="flex items-center gap-2 border-b border-gray-100 bg-blue-50 px-4 py-2.5 text-[11px] font-semibold text-blue-700">
+        <div className="flex items-center gap-2 border-b border-gray-100 dark:border-white/10 bg-blue-50 dark:bg-blue-950/40 px-4 py-2.5 text-[11px] font-semibold text-blue-700 dark:text-blue-200">
           <span className="material-symbols-outlined text-base" aria-hidden="true">info</span>
           ยังไม่มีตำแหน่ง GPS — แผนที่จะแสดงเมื่อมีการสร้างรายการหรือยืนยันส่ง
         </div>
       )}
       {hasRouteData && hasUnresolved && (
-        <div className="flex items-center gap-2 border-b border-amber-100 bg-amber-50 px-4 py-2.5 text-[11px] font-semibold text-amber-700">
+        <div className="flex items-center gap-2 border-b border-amber-100 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-950/40 px-4 py-2.5 text-[11px] font-semibold text-amber-700 dark:text-amber-200">
           <span className="material-symbols-outlined text-base" aria-hidden="true">warning</span>
           บางจุดไม่มีตำแหน่ง GPS จึงไม่แสดงบนแผนที่
         </div>
       )}
       {hasRouteData && (
-        <div className="pointer-events-none absolute left-3 top-3 z-[500] rounded-xl border border-white/80 bg-white/95 px-3 py-2 shadow-sm backdrop-blur">
-          <p className="text-xs font-semibold leading-none text-slate-800">แผนที่การจัดส่ง</p>
-          <p className="mt-1 text-[10px] font-medium text-slate-400">{pathEntries.length} จุดตำแหน่ง</p>
+        <div className="pointer-events-none absolute left-3 top-3 z-[500] rounded-xl border border-white/80 dark:border-white/15 bg-white/95 dark:bg-[#020617]/95 px-3 py-2 shadow-sm backdrop-blur">
+          <p className="text-xs font-semibold leading-none text-slate-800 dark:text-slate-100">แผนที่การจัดส่ง</p>
+          <p className="mt-1 text-[10px] font-medium text-slate-400 dark:text-slate-400">{pathEntries.length} จุดตำแหน่ง</p>
         </div>
       )}
       {hasRouteData && latestRouteTimestamp && (
-        <div className="pointer-events-none absolute right-3 top-3 z-[500] rounded-xl border border-cyan-100 bg-white/95 px-3 py-2 text-right shadow-sm backdrop-blur">
-          <p className="text-[10px] font-black text-cyan-700">ตำแหน่งล่าสุด</p>
-          <p className="mt-1 text-[10px] font-semibold text-slate-500">{latestRouteTimestamp}</p>
+        <div className="pointer-events-none absolute right-3 top-3 z-[500] rounded-xl border border-cyan-100 dark:border-cyan-500/40 bg-white/95 dark:bg-[#020617]/95 px-3 py-2 text-right shadow-sm backdrop-blur">
+          <p className="text-[10px] font-black text-cyan-700 dark:text-cyan-300">ตำแหน่งล่าสุด</p>
+          <p className="mt-1 text-[10px] font-semibold text-slate-500 dark:text-slate-300">{latestRouteTimestamp}</p>
         </div>
       )}
       <MapView
@@ -340,25 +340,25 @@ function TrackingMap({ events, trackingID, routeSamples: syncedRouteSamples = []
         fallbackMessage="โหลดแผนที่ไม่ได้ แต่ข้อมูลรายการส่งยังใช้งานได้ตามปกติ"
       />
       {!hasRouteData && (
-        <div className="pointer-events-none absolute inset-x-4 top-1/2 z-[500] mx-auto max-w-sm -translate-y-1/2 rounded-2xl border border-white/80 bg-white/95 p-4 text-center shadow-sm backdrop-blur">
-          <span className="material-symbols-outlined text-3xl text-slate-300" aria-hidden="true">location_off</span>
-          <p className="mt-2 text-sm font-black text-slate-800">ยังไม่มีพิกัดสำหรับแสดงบนแผนที่</p>
-          <p className="mt-1 text-xs leading-relaxed text-slate-500">ระบบจะแสดงเส้นทางเมื่อมีข้อมูล GPS จากการสร้างรายการหรือยืนยันส่ง</p>
+        <div className="pointer-events-none absolute inset-x-4 top-1/2 z-[500] mx-auto max-w-sm -translate-y-1/2 rounded-2xl border border-white/80 dark:border-white/10 bg-white/95 dark:bg-[#020617]/95 p-4 text-center shadow-sm backdrop-blur">
+          <span className="material-symbols-outlined text-3xl text-slate-300 dark:text-slate-500" aria-hidden="true">location_off</span>
+          <p className="mt-2 text-sm font-black text-slate-800 dark:text-slate-100">ยังไม่มีพิกัดสำหรับแสดงบนแผนที่</p>
+          <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">ระบบจะแสดงเส้นทางเมื่อมีข้อมูล GPS จากการสร้างรายการหรือยืนยันส่ง</p>
         </div>
       )}
-      <div className="flex items-center justify-between gap-3 border-t border-gray-100 bg-white px-4 py-2.5 text-[10px] font-semibold text-slate-400">
+      <div className="flex items-center justify-between gap-3 border-t border-gray-100 dark:border-slate-800 bg-white dark:bg-[#020617] px-4 py-2.5 text-[10px] font-semibold text-slate-400 dark:text-slate-400">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-blue-600" /> จุดเริ่มต้น
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-slate-900" /> กำลังส่ง
+            <span className="h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-400" /> กำลังส่ง
           </span>
           <span className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-green-600" /> ปลายทาง
           </span>
         </div>
-        <span className="hidden text-slate-300 sm:inline">ShipTrack Maps</span>
+        <span className="hidden text-slate-300 sm:inline dark:text-slate-200">ShipTrack Maps</span>
       </div>
     </div>
   );

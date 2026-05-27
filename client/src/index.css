@@ -176,7 +176,8 @@
   --secondary: #1e293b;
   --secondary-foreground: #f8fafc;
   --muted: #1e293b;
-  --muted-foreground: #64748b;
+  /* Slightly brighter for readability on dark backgrounds */
+  --muted-foreground: #94a3b8;
   --accent: #1e293b;
   --accent-foreground: #f8fafc;
   --destructive: #ef4444;
@@ -317,11 +318,11 @@
 }
 
 .dark .text-slate-700 {
-  color: var(--muted-foreground) !important;
+  color: #cbd5e1 !important;
 }
 
 .dark .text-slate-600 {
-  color: var(--muted-foreground) !important;
+  color: #94a3b8 !important;
 }
 
 .dark .text-slate-500 {
@@ -329,11 +330,11 @@
 }
 
 .dark .text-slate-400 {
-  color: #64748b !important;
+  color: #94a3b8 !important;
 }
 
 .dark .text-slate-300 {
-  color: #475569 !important;
+  color: #cbd5e1 !important;
 }
 
 .dark .text-red-500 {

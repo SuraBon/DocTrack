@@ -67,6 +67,20 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
   const { user, logout, updateUserProfile } = useAuth();
   const routeSyncStatus = useRouteSyncStatus();
   const { activeRouteCount } = routeSyncStatus;
+  const routePopoverShouldShow =
+    activeRouteCount > 0 ||
+    routeSyncStatus.pendingRouteSampleCount > 0 ||
+    routeSyncStatus.isRouteSyncing ||
+    !!routeSyncStatus.lastRouteSyncError;
+  const routeButtonCount =
+    activeRouteCount > 0
+      ? activeRouteCount
+      : routeSyncStatus.pendingRouteSampleCount > 0
+        ? routeSyncStatus.pendingRouteSampleCount
+        : routeSyncStatus.isRouteSyncing
+          ? 1
+          : 0;
+  const routeSavingCount = routeButtonCount;
   const [isRoutePopoverOpen, setIsRoutePopoverOpen] = useState(false);
   const routePopoverRef = useRef<HTMLDivElement>(null);
 
@@ -186,7 +200,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
           <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
             <div className="min-w-0">
               <p className="hidden text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant/55 sm:block">{UI_COPY.appName}</p>
-              <h1 className="truncate text-base font-semibold leading-tight text-primary sm:text-lg">
+              <h1 className="truncate text-base font-semibold leading-tight text-primary dark:text-white sm:text-lg">
                 {navItems.find(n => n.id === currentPage)?.label ?? currentPage}
               </h1>
             </div>
@@ -215,39 +229,39 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
               </nav>
             )}
 
-            <div className="flex shrink-0 items-center gap-1">
-              {activeRouteCount > 0 && (
+            <div className="flex shrink-0 items-center gap-1 text-slate-700 dark:text-slate-100">
+              {routePopoverShouldShow && (
                 <div className="relative" ref={routePopoverRef}>
                   <button
                     type="button"
                     onClick={() => setIsRoutePopoverOpen(v => !v)}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/10 px-2.5 py-1 text-[11px] font-bold text-red-400 transition-all hover:bg-red-500/20 hover:text-red-300 sm:px-2.5"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/10 px-2.5 py-1 text-xs font-bold text-red-600 transition-all hover:bg-red-500/20 hover:text-red-500 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20 sm:px-2.5"
                     title="กำลังบันทึกเส้นทางส่ง"
                   >
                     <span className="relative flex h-2 w-2 shrink-0">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                     </span>
-                    <span>บันทึกเส้นทาง ({activeRouteCount})</span>
+                    <span>บันทึกเส้นทาง ({routeButtonCount})</span>
                   </button>
 
                   {isRoutePopoverOpen && (
-                    <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-2xl border border-white/[0.08] bg-card shadow-xl">
-                      <div className="px-4 py-3 border-b border-white/[0.06]">
+                    <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-2xl border border-slate-200/70 dark:border-white/[0.12] bg-card shadow-xl">
+                      <div className="px-4 py-3 border-b border-slate-200/60 dark:border-white/[0.08]">
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-sm font-black text-foreground">บันทึกเส้นทาง</p>
                           <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
                             routeSyncStatus.isRouteSyncing
-                              ? 'bg-blue-500/15 text-blue-400'
+                              ? 'bg-blue-500/10 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300'
                               : routeSyncStatus.lastRouteSyncError
-                                ? 'bg-red-500/15 text-red-400'
+                                ? 'bg-red-500/10 text-red-700 dark:bg-red-500/15 dark:text-red-300'
                                 : 'bg-surface-container text-muted-foreground'
                           }`}>
                             {routeSyncStatus.isRouteSyncing ? 'กำลังซิงค์' : routeSyncStatus.lastRouteSyncError ? 'ซิงค์ไม่สำเร็จ' : 'พร้อมซิงค์'}
                           </span>
                         </div>
                         <p className="mt-0.5 text-xs text-muted-foreground">
-                          กำลังบันทึกพิกัด {activeRouteCount} งาน
+                          กำลังบันทึกพิกัด {routeSavingCount} งาน
                         </p>
                       </div>
                       <div className="grid grid-cols-3 gap-2 p-3">
@@ -265,7 +279,9 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
                         </div>
                       </div>
                       {routeSyncStatus.lastRouteSyncError && (
-                        <p className="px-3 pb-3 text-[11px] font-semibold text-red-400">{routeSyncStatus.lastRouteSyncError}</p>
+                        <p className="px-3 pb-3 text-[11px] font-semibold text-red-700 dark:text-red-300">
+                          {routeSyncStatus.lastRouteSyncError}
+                        </p>
                       )}
                     </div>
                   )}
@@ -275,10 +291,10 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
                 <button
                   type="button"
                   onClick={() => setIsOfflineQueueOpen(true)}
-                  className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold sm:px-2.5 transition-all ${
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold sm:px-2.5 transition-all ${
                     offlineQueue.some(item => item.status === 'failed')
-                      ? 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'
-                      : 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100'
+                      ? 'border-red-500/30 bg-red-500/10 text-red-700 hover:bg-red-500/20 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20'
+                      : 'border-amber-500/30 bg-amber-500/10 text-amber-800 hover:bg-amber-500/20 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200 dark:hover:bg-amber-500/20'
                   }`}
                   title="ดูรายการจัดส่งออฟไลน์ที่รอซิงค์"
                 >
@@ -315,7 +331,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
                   <button
                     type="button"
                     onClick={logout}
-                    className="grid h-9 w-9 place-items-center rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 transition-all hover:bg-red-500/20 hover:text-red-300 active:scale-95"
+                    className="grid h-9 w-9 place-items-center rounded-lg border border-red-500/30 bg-red-500/10 text-red-600 transition-all hover:bg-red-500/20 hover:text-red-500 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20 active:scale-95"
                     title="ออกจากระบบ"
                     aria-label="ออกจากระบบ"
                   >

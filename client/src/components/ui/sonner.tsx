@@ -49,9 +49,10 @@ const Toaster = ({ ...props }: ToasterProps) => {
           msOverflowStyle: 'none',
         },
         classNames: {
-          toast: '!min-h-14 !overflow-hidden !scrollbar-none !rounded-2xl !border !border-gray-100 !bg-white !px-4 !py-3 !text-slate-900 !shadow-lg !shadow-slate-900/10',
-          title: '!text-sm !font-semibold',
-          description: '!text-xs !text-slate-500',
+          toast:
+            '!min-h-14 !overflow-hidden !scrollbar-none !rounded-2xl !border !border-border !bg-popover !px-4 !py-3 !text-popover-foreground !shadow-lg !shadow-black/10 dark:!shadow-black/40',
+          title: '!text-sm !font-semibold !text-popover-foreground',
+          description: '!text-xs !text-muted-foreground',
           actionButton: '!rounded-lg !bg-primary !text-primary-foreground',
           cancelButton: '!rounded-lg !bg-muted !text-muted-foreground',
         },
