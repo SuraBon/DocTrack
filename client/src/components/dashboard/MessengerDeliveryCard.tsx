@@ -60,32 +60,32 @@ export const MessengerDeliveryCard = ({
       ? 'ยืนยันส่ง'
       : '';
 
-  let cardStyles = 'border-slate-100 bg-white shadow-[0_4px_20px_rgba(15,23,42,0.04)]';
+  let cardStyles = 'border-outline-variant/30 bg-card shadow-[0_4px_20px_rgba(15,23,42,0.04)]';
   let iconName = 'person';
-  let accentClass = 'bg-blue-50 text-blue-500';
+  let accentClass = 'bg-surface-container text-on-surface-variant';
   let statusLabel = 'รอดำเนินการ';
-  let statusPillClass = 'bg-slate-100 text-slate-500';
+  let statusPillClass = 'bg-surface-container text-on-surface-variant';
 
   if (isDone) {
-    cardStyles = 'border-emerald-100 bg-white shadow-[0_4px_20px_rgba(15,23,42,0.04)]';
+    cardStyles = 'border-outline-variant/30 bg-card shadow-[0_4px_20px_rgba(15,23,42,0.04)]';
     iconName = 'check_circle';
-    accentClass = 'bg-emerald-50 text-emerald-600';
+    accentClass = 'bg-emerald-500/15 text-emerald-400';
     statusLabel = 'ส่งแล้ว';
-    statusPillClass = 'bg-emerald-100 text-emerald-700';
+    statusPillClass = 'bg-emerald-500/15 text-emerald-400';
   } else if (canConfirmDelivery) {
-    cardStyles = 'border-blue-100 bg-white shadow-[0_4px_20px_rgba(15,23,42,0.04)]';
+    cardStyles = 'border-blue-500/20 bg-card shadow-[0_4px_20px_rgba(15,23,42,0.04)]';
     iconName = 'local_shipping';
-    accentClass = 'bg-blue-50 text-blue-500';
+    accentClass = 'bg-blue-500/15 text-blue-400';
     statusLabel = 'กำลังส่ง';
-    statusPillClass = 'bg-blue-100 text-blue-600';
+    statusPillClass = 'bg-blue-500/15 text-blue-400';
   } else if (canStartDelivery) {
     iconName = 'person';
-    accentClass = 'bg-blue-50 text-blue-500';
+    accentClass = 'bg-surface-container text-on-surface-variant';
     statusLabel = 'งานใหม่';
-    statusPillClass = 'bg-blue-100 text-blue-600';
+    statusPillClass = 'bg-surface-container text-on-surface-variant';
   } else if (isAssignedElsewhere) {
     statusLabel = 'มีผู้รับงานแล้ว';
-    statusPillClass = 'bg-blue-50 text-blue-700';
+    statusPillClass = 'bg-surface-container text-on-surface-variant';
   }
 
   const dateLabel = parcel['วันที่รับ']
@@ -109,7 +109,7 @@ export const MessengerDeliveryCard = ({
               className="size-5 rounded-md"
             />
           )}
-          <code className="min-w-0 truncate font-mono text-[10px] font-black tracking-wider text-slate-400">
+          <code className="min-w-0 truncate font-mono text-[10px] font-black tracking-wider text-muted-foreground">
             {parcel.TrackingID}
           </code>
         </div>
@@ -132,8 +132,8 @@ export const MessengerDeliveryCard = ({
                 )}
               </span>
               <div className="min-w-0">
-                <p className="text-[10px] leading-none text-slate-400">ผู้รับ</p>
-                <h3 className="mt-1 truncate text-base font-black leading-tight text-slate-900">
+                <p className="text-[10px] leading-none text-muted-foreground">ผู้รับ</p>
+                <h3 className="mt-1 truncate text-base font-black leading-tight text-foreground">
                   {parcel['ผู้รับ'] || '-'}
                 </h3>
               </div>
@@ -167,15 +167,15 @@ export const MessengerDeliveryCard = ({
                     onClick={() => itemDescription && setIsItemDescriptionExpanded(!isItemDescriptionExpanded)}
                     className={`flex min-w-0 items-start gap-2.5 rounded-xl bg-slate-50 dark:bg-surface-container px-2.5 py-2 transition-all ${itemDescription ? 'cursor-pointer hover:bg-slate-100 dark:hover:bg-surface-container-high' : 'opacity-40'}`}
                   >
-                    <Package className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+                    <Package className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-[10px] font-bold leading-none text-slate-500">สิ่งที่ส่ง</p>
+                        <p className="text-[10px] font-bold leading-none text-muted-foreground">สิ่งที่ส่ง</p>
                         {itemDescription.length > 25 && (
-                          <span className="shrink-0 text-[8px] font-bold uppercase text-slate-500">{isItemDescriptionExpanded ? 'ย่อ' : 'ดูเพิ่ม'}</span>
+                          <span className="shrink-0 text-[8px] font-bold uppercase text-muted-foreground">{isItemDescriptionExpanded ? 'ย่อ' : 'ดูเพิ่ม'}</span>
                         )}
                       </div>
-                      <p className={`mt-1 min-w-0 text-xs font-semibold leading-relaxed text-slate-800 ${isItemDescriptionExpanded ? 'break-words whitespace-pre-wrap' : 'truncate'}`}>
+                      <p className={`mt-1 min-w-0 text-xs font-semibold leading-relaxed text-foreground ${isItemDescriptionExpanded ? 'break-words whitespace-pre-wrap' : 'truncate'}`}>
                         {itemDescription || '-'}
                       </p>
                     </div>
@@ -183,17 +183,17 @@ export const MessengerDeliveryCard = ({
 
                   <div 
                     onClick={() => note && setIsNoteExpanded(!isNoteExpanded)}
-                    className={`flex min-w-0 items-start gap-2.5 rounded-xl bg-orange-50/70 dark:bg-amber-900/25 px-2.5 py-2 transition-all ${note ? 'cursor-pointer hover:bg-orange-100/70 dark:hover:bg-amber-900/35' : 'opacity-40'}`}
+                    className={`flex min-w-0 items-start gap-2.5 rounded-xl bg-surface-container dark:bg-surface-container px-2.5 py-2 transition-all ${note ? 'cursor-pointer hover:bg-surface-container-high dark:hover:bg-surface-container-high' : 'opacity-40'}`}
                   >
-                    {renderMaterialIcon('sticky_note_2', 'mt-0.5 text-orange-500 text-base leading-none')}
+                    {renderMaterialIcon('sticky_note_2', 'mt-0.5 text-on-surface-variant dark:text-muted-foreground text-base leading-none')}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between">
-                        <p className="text-[10px] font-bold leading-none text-orange-600">หมายเหตุ</p>
+                        <p className="text-[10px] font-bold leading-none text-on-surface-variant dark:text-muted-foreground">หมายเหตุ</p>
                         {translatedNote.length > 25 && (
-                          <span className="text-[8px] text-orange-600 font-bold uppercase">{isNoteExpanded ? 'ย่อ' : 'ดูเพิ่ม'}</span>
+                          <span className="text-[8px] text-on-surface-variant dark:text-muted-foreground font-bold uppercase">{isNoteExpanded ? 'ย่อ' : 'ดูเพิ่ม'}</span>
                         )}
                       </div>
-                      <p className={`mt-1 min-w-0 text-xs font-semibold leading-relaxed text-slate-800 ${isNoteExpanded ? 'break-words' : 'truncate'}`}>
+                      <p className={`mt-1 min-w-0 text-xs font-semibold leading-relaxed text-on-surface dark:text-foreground ${isNoteExpanded ? 'break-words' : 'truncate'}`}>
                         {translatedNote || '-'}
                       </p>
                     </div>
@@ -206,7 +206,7 @@ export const MessengerDeliveryCard = ({
         </div>
 
         <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-50 dark:border-outline-variant/30 pt-3">
-          <div className="flex min-w-0 items-center gap-1 text-[10px] text-slate-300">
+          <div className="flex min-w-0 items-center gap-1 text-[10px] text-muted-foreground/60">
             {renderMaterialIcon('schedule', 'text-[14px]')}
             <span className="truncate">{dateLabel}</span>
           </div>

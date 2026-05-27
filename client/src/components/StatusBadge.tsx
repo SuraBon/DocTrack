@@ -28,11 +28,11 @@ export default function StatusBadge({ status, className = '' }: StatusBadgeProps
   const getStatusStyles = (status: ParcelStatus) => {
     switch (status) {
       case 'รอจัดส่ง':
-        return 'border-amber-200 bg-amber-50 text-amber-900';
+        return 'border-outline-variant/30 bg-surface-container text-on-surface dark:text-foreground';
       case 'กำลังจัดส่ง':
-        return 'border-blue-200 bg-blue-50 text-blue-900';
+        return 'border-blue-500/30 bg-blue-500/10 text-blue-400 dark:text-blue-300';
       case 'ส่งสำเร็จ':
-        return 'border-emerald-200 bg-emerald-50 text-emerald-900';
+        return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 dark:text-emerald-300';
       default:
         return 'border-border bg-muted text-muted-foreground';
     }

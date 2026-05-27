@@ -12,24 +12,24 @@ export interface EmptyStateProps {
 
 const toneMap: Record<EmptyStateTone, { shell: string; iconBg: string; title: string }> = {
   default: {
-    shell: 'border-outline-variant/20 bg-white',
+    shell: 'border-outline-variant/20 bg-white dark:bg-card',
     iconBg: 'bg-primary/8 text-primary',
     title: 'text-primary',
   },
   amber: {
-    shell: 'border-amber-100 bg-amber-50/60',
-    iconBg: 'bg-white text-amber-700 shadow-sm',
-    title: 'text-amber-800',
+    shell: 'border-outline-variant/20 bg-surface-container dark:bg-card',
+    iconBg: 'bg-white dark:bg-surface-container text-on-surface-variant dark:text-muted-foreground shadow-sm',
+    title: 'text-on-surface dark:text-foreground',
   },
   emerald: {
-    shell: 'border-emerald-100 bg-emerald-50/70',
-    iconBg: 'bg-white text-emerald-700 shadow-sm',
-    title: 'text-emerald-800',
+    shell: 'border-outline-variant/20 bg-surface-container dark:bg-card',
+    iconBg: 'bg-white dark:bg-surface-container text-on-surface-variant dark:text-muted-foreground shadow-sm',
+    title: 'text-on-surface dark:text-foreground',
   },
   blue: {
-    shell: 'border-blue-100 bg-blue-50/70',
-    iconBg: 'bg-white text-blue-700 shadow-sm',
-    title: 'text-blue-800',
+    shell: 'border-outline-variant/20 bg-surface-container dark:bg-card',
+    iconBg: 'bg-white dark:bg-surface-container text-on-surface-variant dark:text-muted-foreground shadow-sm',
+    title: 'text-on-surface dark:text-foreground',
   },
 };
 

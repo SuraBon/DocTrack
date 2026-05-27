@@ -159,7 +159,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
       <div className="flex min-h-screen flex-col">
         {/* Top bar */}
         <header
-          className={`sticky top-0 z-40 border-b border-gray-100 bg-white/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85 ${hideGuestMobileTopBar ? 'hidden md:block' : ''}`}
+          className={`sticky top-0 z-40 border-b border-gray-100 dark:border-white/[0.06] bg-white/95 dark:bg-[#091325]/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85 dark:supports-[backdrop-filter]:bg-[#091325]/85 ${hideGuestMobileTopBar ? 'hidden md:block' : ''}`}
         >
           <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
             <div className="min-w-0">
@@ -181,8 +181,8 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
                       aria-current={active ? 'page' : undefined}
                       className={`inline-flex h-9 shrink-0 items-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors ${
                         active
-                          ? 'bg-slate-900 text-white shadow-sm'
-                          : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                          ? 'bg-slate-900 dark:bg-white/10 text-white shadow-sm'
+                          : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-slate-200'
                       }`}
                     >
                       <NavIcon icon={item.icon} active={active} />
@@ -225,7 +225,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
                 <button
                   type="button"
                   onClick={toggleTheme}
-                  className="grid h-9 w-9 place-items-center rounded-lg border border-gray-200 bg-white text-slate-600 transition-all hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 active:scale-95"
+                  className="grid h-9 w-9 place-items-center rounded-lg border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/5 text-slate-600 dark:text-slate-300 transition-all hover:bg-slate-50 dark:hover:bg-white/10 active:scale-95"
                   title={theme === "light" ? "โหมดกลางคืน" : "โหมดสว่าง"}
                   aria-label="เปลี่ยนธีม"
                 >
@@ -250,7 +250,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
                   <button
                     type="button"
                     onClick={logout}
-                    className="grid h-9 w-9 place-items-center rounded-lg border border-red-200 bg-white text-red-600 transition-all hover:bg-red-50 active:scale-95"
+                    className="grid h-9 w-9 place-items-center rounded-lg border border-red-200 dark:border-red-900/40 bg-white dark:bg-red-900/20 text-red-600 dark:text-red-400 transition-all hover:bg-red-50 dark:hover:bg-red-900/30 active:scale-95"
                     title="ออกจากระบบ"
                     aria-label="ออกจากระบบ"
                   >
@@ -280,17 +280,17 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
       </div>
 
       {navItems.length > 1 && (
-        <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-100 bg-white/95 px-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur md:hidden">
+        <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-100 dark:border-white/[0.06] bg-white/95 dark:bg-[#091325]/95 px-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] dark:shadow-[0_-8px_24px_rgba(0,0,0,0.3)] backdrop-blur md:hidden">
           {canCollapseMobileNav && isMobileNavCollapsed ? (
-            <div className="mx-auto flex h-11 max-w-md items-center justify-between gap-3 rounded-2xl bg-slate-50 px-3">
-              <div className="flex min-w-0 items-center gap-2 text-slate-700">
+            <div className="mx-auto flex h-11 max-w-md items-center justify-between gap-3 rounded-2xl bg-slate-50 dark:bg-white/5 px-3">
+              <div className="flex min-w-0 items-center gap-2 text-slate-700 dark:text-slate-200">
                 {currentNavItem && <NavIcon icon={currentNavItem.icon} active />}
                 <span className="truncate text-sm font-black">{currentNavItem?.label ?? currentPage}</span>
               </div>
               <button
                 type="button"
                 onClick={() => setIsMobileNavCollapsed(false)}
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-slate-500 transition-colors hover:bg-white hover:text-slate-900"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-slate-500 dark:text-slate-400 transition-colors hover:bg-white dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-slate-200"
                 aria-label="ขยายเมนู"
                 title="ขยายเมนู"
               >
@@ -303,7 +303,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
                 <button
                   type="button"
                   onClick={() => setIsMobileNavCollapsed(true)}
-                  className="mx-auto mb-1 flex h-6 items-center gap-1 rounded-full px-3 text-[10px] font-bold text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                  className="mx-auto mb-1 flex h-6 items-center gap-1 rounded-full px-3 text-[10px] font-bold text-muted-foreground transition-colors hover:bg-surface-container hover:text-foreground"
                   aria-label="ย่อเมนู"
                   title="ย่อเมนู"
                 >
@@ -322,8 +322,8 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
                       aria-current={active ? 'page' : undefined}
                       className={`flex h-14 min-w-[72px] flex-1 shrink-0 snap-start flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-semibold transition-colors ${
                         active
-                          ? 'bg-slate-900 text-white'
-                          : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'
+                          ? 'bg-white/10 text-white'
+                          : 'text-muted-foreground hover:bg-white/5 hover:text-foreground'
                       }`}
                     >
                       <NavIcon icon={item.icon} active={active} />

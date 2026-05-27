@@ -181,8 +181,8 @@
   --accent-foreground: #f8fafc;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --border: #1e293b;
-  --input: #1e293b;
+  --border: rgba(148, 163, 184, 0.12);
+  --input: rgba(148, 163, 184, 0.12);
   --ring: #38bdf8;
 
   /* Custom component tokens dark overrides */
@@ -192,7 +192,7 @@
   --surface-container: #1e293b;
   --surface-container-low: #1e293b;
   --surface-container-lowest: #0b0f19;
-  --outline-variant: #334155;
+  --outline-variant: rgba(148, 163, 184, 0.15);
   --primary-container: #1e293b;
   --on-primary-container: #94a3b8;
 }
@@ -228,14 +228,6 @@
   background-color: var(--border) !important;
 }
 
-.dark .border-gray-100 {
-  border-color: var(--border) !important;
-}
-
-.dark .border-gray-200 {
-  border-color: var(--border) !important;
-}
-
 .dark .bg-slate-50 {
   background-color: var(--surface-container) !important;
 }
@@ -257,11 +249,11 @@
 .dark .bg-emerald-50,
 .dark .bg-emerald-50\/60,
 .dark .bg-emerald-50\/70 {
-  background-color: rgba(6, 78, 59, 0.34) !important;
+  background-color: rgba(30, 41, 59, 0.8) !important;
 }
 
 .dark .bg-emerald-100 {
-  background-color: rgba(6, 78, 59, 0.44) !important;
+  background-color: rgba(30, 41, 59, 0.9) !important;
 }
 
 .dark .bg-amber-50,
@@ -271,26 +263,26 @@
 .dark .bg-orange-50\/50,
 .dark .bg-orange-50\/60,
 .dark .bg-orange-50\/70 {
-  background-color: rgba(120, 53, 15, 0.34) !important;
+  background-color: rgba(30, 41, 59, 0.8) !important;
 }
 
 .dark .bg-orange-100,
 .dark .bg-amber-100 {
-  background-color: rgba(120, 53, 15, 0.44) !important;
+  background-color: rgba(30, 41, 59, 0.9) !important;
 }
 
 .dark .bg-red-50,
 .dark .bg-red-50\/70,
 .dark .bg-red-50\/60 {
-  background-color: rgba(127, 29, 29, 0.35) !important;
+  background-color: rgba(30, 41, 59, 0.8) !important;
 }
 
 .dark .bg-red-100 {
-  background-color: rgba(127, 29, 29, 0.45) !important;
+  background-color: rgba(30, 41, 59, 0.9) !important;
 }
 
 .dark .bg-green-50 {
-  background-color: rgba(6, 78, 59, 0.28) !important;
+  background-color: rgba(30, 41, 59, 0.8) !important;
 }
 
 .dark .border-blue-100,
@@ -305,8 +297,10 @@
 .dark .border-red-200,
 .dark .border-slate-100,
 .dark .border-slate-200,
-.dark .border-green-100 {
-  border-color: rgba(71, 85, 105, 0.75) !important;
+.dark .border-green-100,
+.dark .border-gray-100,
+.dark .border-gray-200 {
+  border-color: rgba(148, 163, 184, 0.13) !important;
 }
 
 /* Timeline compact card backgrounds */

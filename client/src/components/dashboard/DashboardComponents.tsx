@@ -184,7 +184,7 @@ export const MessengerRouteSummary = ({ parcel, compact = false }: { parcel: Par
           </p>
         </div>
       </div>
-      <div className="flex min-w-0 items-start gap-2.5 rounded-xl bg-red-50/70 dark:bg-red-900/25 px-3 py-2.5">
+      <div className="flex min-w-0 items-start gap-2.5 rounded-xl bg-red-50/70 dark:bg-surface-container-lowest px-3 py-2.5">
         <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-red-500 shadow-[0_0_0_4px_rgba(248,113,113,0.14)]" />
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-black leading-none text-red-500 dark:text-red-400">ต้องไปส่ง</p>
@@ -340,24 +340,24 @@ export const MessengerViewBanner = ({
 }) => {
   const toneMap: Record<SectionTone, { shell: string; icon: string; badge: string }> = {
     default: {
-      shell: 'border-slate-100 bg-slate-50/70',
-      icon: 'bg-white text-slate-700',
-      badge: 'border-slate-100 bg-white text-slate-700',
+      shell: 'border-outline-variant/20 bg-surface-container dark:bg-card',
+      icon: 'bg-surface-container-low dark:bg-surface-container text-on-surface-variant',
+      badge: 'border-outline-variant/30 bg-surface-container-low dark:bg-surface-container text-on-surface-variant',
     },
     amber: {
-      shell: 'border-orange-100 bg-orange-50/50',
-      icon: 'bg-orange-100 text-orange-600',
-      badge: 'border-orange-100 bg-white text-orange-600',
+      shell: 'border-outline-variant/20 bg-surface-container dark:bg-card',
+      icon: 'bg-surface-container-low dark:bg-surface-container text-on-surface-variant',
+      badge: 'border-outline-variant/30 bg-surface-container-low dark:bg-surface-container text-on-surface-variant',
     },
     emerald: {
-      shell: 'border-emerald-100 bg-emerald-50/60',
-      icon: 'bg-emerald-100 text-emerald-700',
-      badge: 'border-emerald-100 bg-white text-emerald-700',
+      shell: 'border-outline-variant/20 bg-surface-container dark:bg-card',
+      icon: 'bg-surface-container-low dark:bg-surface-container text-on-surface-variant',
+      badge: 'border-outline-variant/30 bg-surface-container-low dark:bg-surface-container text-on-surface-variant',
     },
     blue: {
-      shell: 'border-blue-100 bg-blue-50/60',
-      icon: 'bg-blue-100 text-blue-700',
-      badge: 'border-blue-100 bg-white text-blue-700',
+      shell: 'border-outline-variant/20 bg-surface-container dark:bg-card',
+      icon: 'bg-surface-container-low dark:bg-surface-container text-on-surface-variant',
+      badge: 'border-outline-variant/30 bg-surface-container-low dark:bg-surface-container text-on-surface-variant',
     },
   };
   const classes = toneMap[tone];
@@ -368,10 +368,10 @@ export const MessengerViewBanner = ({
       </div>
       <div className="min-w-0 flex-1">
         <div className="mb-1 flex items-center justify-between gap-2">
-          <h3 className="truncate text-sm font-bold text-gray-800">{title}</h3>
+          <h3 className="truncate text-sm font-bold text-on-surface dark:text-foreground">{title}</h3>
           <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold ${classes.badge}`}>{count} งาน</span>
         </div>
-        <p className="text-[11px] leading-relaxed text-gray-500">{subtitle}</p>
+        <p className="text-[11px] leading-relaxed text-on-surface-variant dark:text-muted-foreground">{subtitle}</p>
       </div>
     </div>
   );
