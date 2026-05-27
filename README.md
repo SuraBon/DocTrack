@@ -1,37 +1,127 @@
-# doc track
+# Doc Track / ShipTrack
 
-ระบบติดตามพัสดุแบบ React + Google Apps Script + Google Sheet
+ระบบติดตามรายการส่งเอกสารและพัสดุภายในสาขา พัฒนาเป็นเว็บแอป React + Vite + PWA และใช้ Google Apps Script เชื่อมกับ Google Sheets/Drive เป็น backend
+
+## Features
+
+- สร้างรายการส่ง พร้อมข้อมูลต้นทาง ปลายทาง รายละเอียด และรูปหลักฐาน
+- ค้นหาและติดตามสถานะรายการส่งด้วยหมายเลขติดตาม ผู้รับ หรือปลายทาง
+- Dashboard สำหรับผู้ดูแลและพนักงานส่ง
+- รับงาน/คืนงาน/ยืนยันส่ง พร้อมบันทึกประวัติการเคลื่อนไหว
+- แผนที่แสดง GPS จริงของรายการส่งและเส้นทางการนำส่ง
+- ติดตามงานที่กำลังจัดส่งแบบ near real-time
+  - เครื่องคนขับบันทึกพิกัดไว้ในเครื่อง และ sync ขึ้นระบบเมื่อมีอินเทอร์เน็ต
+  - คนดูรายการที่กำลังจัดส่งจะเห็นข้อมูลอัปเดตเป็นระยะโดยไม่ต้องปิดเปิดหน้าใหม่
+- รองรับ offline queue สำหรับบาง action และ PWA สำหรับติดตั้งบนมือถือ
+- ไอคอน PWA ใช้โลโก้ ShipTrack เดียวกับหน้าจอโหลดเข้าแอป
+
+## Tech Stack
+
+- Frontend: React, TypeScript, Vite, Tailwind CSS
+- PWA: `vite-plugin-pwa`
+- Maps: Leaflet
+- Backend: Google Apps Script
+- Storage: Google Sheets และ Google Drive
 
 ## Setup
 
-1. คัดลอก `.env.example` เป็น `.env`
-2. ตั้งค่า `VITE_GAS_URL` และ `VITE_GAS_API_KEY`
-3. ใน Google Apps Script ให้รัน `setupApiKey('คีย์แบบสุ่มยาว')` หรือบันทึก Script Property ชื่อ `API_KEY` ให้ตรงกับ `VITE_GAS_API_KEY`
-4. ถ้าต้องการเก็บไฟล์/ชีตรายปีในโฟลเดอร์ Drive เฉพาะ ให้ตั้ง Script Property ชื่อ `DOC_TRACK_FOLDER_ID`
-5. ติดตั้ง dependency และรัน
+1. ติดตั้ง dependencies
 
 ```bash
-npm install
-npm run dev
+pnpm install
 ```
 
-## Deploy (Vercel)
+2. คัดลอกไฟล์ environment
 
-- Import repo เข้า Vercel แล้วตั้งค่า
-  - **Framework Preset**: Vite
-  - **Build Command**: `pnpm build` (หรือ `npm run build`)
-  - **Output Directory**: `dist`
-- ตัวโปรเจกต์มี `vercel.json` เพื่อทำ SPA routing (refresh แล้วไม่ 404)
-- อย่าลืมตั้ง Environment Variables ใน Vercel:
-  - `VITE_GAS_URL`
-  - `VITE_GAS_API_KEY`
-- `VITE_GAS_API_KEY` อยู่ฝั่ง browser จึงไม่ใช่ secret ที่แท้จริง ควรใช้ร่วมกับ token login, role checks, และ rate limiting ใน Apps Script เสมอ
+```bash
+cp .env.example .env
+```
+
+3. ตั้งค่าใน `.env`
+
+```env
+VITE_GAS_URL=your_google_apps_script_web_app_url
+VITE_GAS_API_KEY=your_api_key
+```
+
+4. ตั้งค่า API key ใน Google Apps Script ให้ตรงกับ `VITE_GAS_API_KEY`
+
+```js
+setupApiKey('your_api_key')
+```
+
+หรือบันทึก Script Property ชื่อ `API_KEY`
+
+5. ถ้าต้องการเก็บไฟล์/ชีตรายปีใน Google Drive folder เฉพาะ ให้ตั้ง Script Property:
+
+```text
+DOC_TRACK_FOLDER_ID
+```
+
+6. รันโปรเจกต์
+
+```bash
+pnpm run dev
+```
+
+ค่า dev server ปกติจะอยู่ที่ `http://localhost:3000`
+
+## Google Apps Script
+
+โค้ดต้นทางอยู่ใน `gas-src/` และ bundle รวมอยู่ที่ `google_apps_script.js`
+
+หลังแก้ไฟล์ใน `gas-src/` ให้ build bundle:
+
+```bash
+pnpm run build:gas
+```
+
+จากนั้นนำ `google_apps_script.js` ไป deploy ใน Apps Script และทำตาม [GAS_DEPLOY_CHECKLIST.md](./GAS_DEPLOY_CHECKLIST.md)
+
+## PWA Icons
+
+ไฟล์ไอคอนหลักอยู่ที่:
+
+- `client/public/favicon.svg`
+- `client/public/apple-touch-icon-v2.png`
+- `client/public/icon-192-v2.png`
+- `client/public/icon-512-v2.png`
+
+ถ้าแก้ `favicon.svg` แล้วต้องการสร้าง PNG ใหม่:
+
+```bash
+node generateIcons.js
+```
+
+หมายเหตุ: มือถือมัก cache ไอคอน PWA เดิมไว้ หากเปลี่ยนไอคอนแล้วเครื่องยังแสดงรูปเก่า ให้ลบ PWA เดิมออกจากหน้าจอ แล้ว Add to Home Screen ใหม่
 
 ## Scripts
 
-- `npm run dev` - รัน local development
-- `npm run build` - build frontend
-- `npm run check` - TypeScript check
-- `npm run lint` - alias ไปที่ type-check
-- `npm run test` - watch tests
-- `npm run test:run` - run tests ครั้งเดียว
+- `pnpm run dev` - รัน local development
+- `pnpm run build` - build frontend ไปที่ `dist/`
+- `pnpm run check` - TypeScript check
+- `pnpm run lint` - alias ไปที่ type-check
+- `pnpm run test` - รัน test แบบ watch
+- `pnpm run test:run` - รัน test ครั้งเดียว
+- `pnpm run build:gas` - รวมไฟล์ `gas-src/` เป็น `google_apps_script.js`
+
+## Deploy To Vercel
+
+ตั้งค่าโปรเจกต์ใน Vercel:
+
+- Framework Preset: `Vite`
+- Build Command: `pnpm run build`
+- Output Directory: `dist`
+
+Environment Variables:
+
+- `VITE_GAS_URL`
+- `VITE_GAS_API_KEY`
+
+โปรเจกต์มี `vercel.json` สำหรับ SPA routing เพื่อให้ refresh หน้า route ต่าง ๆ แล้วไม่เจอ 404
+
+## Security Notes
+
+- `VITE_GAS_API_KEY` อยู่ฝั่ง browser จึงไม่ใช่ secret ที่แท้จริง
+- Apps Script ต้องตรวจ token, role และ rate limit ทุก action ที่สำคัญ
+- Action ที่เกี่ยวกับงานส่งและข้อมูลผู้ใช้ควรเรียกผ่านผู้ใช้ที่ login แล้วเท่านั้น

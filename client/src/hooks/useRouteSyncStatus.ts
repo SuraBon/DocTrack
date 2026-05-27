@@ -1,9 +1,15 @@
 import { useEffect, useState } from 'react';
-import { getActiveRouteIds, getUnsyncedRouteSamples } from '@/lib/routeTracking';
+import { getActiveRouteIds, getRouteSamples, getUnsyncedRouteSamples } from '@/lib/routeTracking';
+
+const ROUTE_SYNC_STATUS_EVENT = 'shiptrack-route-sync-status';
 
 export function useRouteSyncStatus() {
   const [pendingRouteSampleCount, setPendingRouteSampleCount] = useState(0);
   const [activeRouteCount, setActiveRouteCount] = useState(0);
+  const [latestRouteSampleAt, setLatestRouteSampleAt] = useState<string | null>(null);
+  const [lastRouteSyncAt, setLastRouteSyncAt] = useState<string | null>(null);
+  const [isRouteSyncing, setIsRouteSyncing] = useState(false);
+  const [lastRouteSyncError, setLastRouteSyncError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -11,13 +17,44 @@ export function useRouteSyncStatus() {
       void getUnsyncedRouteSamples().then(samples => {
         if (active) setPendingRouteSampleCount(samples.length);
       });
-      setActiveRouteCount(getActiveRouteIds().length);
+      const activeRouteIds = getActiveRouteIds();
+      setActiveRouteCount(activeRouteIds.length);
+      void Promise.all(activeRouteIds.map(id => getRouteSamples(id))).then(sampleGroups => {
+        if (!active) return;
+        const latest = sampleGroups
+          .flat()
+          .map(sample => sample.timestamp)
+          .filter(Boolean)
+          .sort((a, b) => Date.parse(b) - Date.parse(a))[0] ?? null;
+        setLatestRouteSampleAt(latest);
+      });
+    };
+
+    const handleSyncStatus = (event: Event) => {
+      const detail = (event as CustomEvent<{
+        status?: 'start' | 'success' | 'error';
+        error?: string;
+      }>).detail;
+      if (detail?.status === 'start') {
+        setIsRouteSyncing(true);
+        setLastRouteSyncError(null);
+      } else if (detail?.status === 'success') {
+        setIsRouteSyncing(false);
+        setLastRouteSyncAt(new Date().toISOString());
+        setLastRouteSyncError(null);
+        refresh();
+      } else if (detail?.status === 'error') {
+        setIsRouteSyncing(false);
+        setLastRouteSyncError(detail.error || 'ซิงค์พิกัดไม่สำเร็จ');
+        refresh();
+      }
     };
 
     refresh();
     window.addEventListener('shiptrack-route-samples-updated', refresh);
     window.addEventListener('shiptrack-route-tracking-updated', refresh);
     window.addEventListener('offline-sync-complete', refresh);
+    window.addEventListener(ROUTE_SYNC_STATUS_EVENT, handleSyncStatus);
     window.addEventListener('online', refresh);
     const intervalId = window.setInterval(refresh, 30_000);
     return () => {
@@ -25,10 +62,18 @@ export function useRouteSyncStatus() {
       window.removeEventListener('shiptrack-route-samples-updated', refresh);
       window.removeEventListener('shiptrack-route-tracking-updated', refresh);
       window.removeEventListener('offline-sync-complete', refresh);
+      window.removeEventListener(ROUTE_SYNC_STATUS_EVENT, handleSyncStatus);
       window.removeEventListener('online', refresh);
       window.clearInterval(intervalId);
     };
   }, []);
 
-  return { pendingRouteSampleCount, activeRouteCount };
+  return {
+    pendingRouteSampleCount,
+    activeRouteCount,
+    latestRouteSampleAt,
+    lastRouteSyncAt,
+    isRouteSyncing,
+    lastRouteSyncError,
+  };
 }

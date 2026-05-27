@@ -140,6 +140,8 @@ function TrackingMap({ events, trackingID, routeSamples: syncedRouteSamples = []
   }, [events, routeSamples, syncedRouteSamples]);
 
   const hasRouteData = pathEntries.length > 0;
+  const latestRouteEntry = [...pathEntries].reverse().find(entry => entry.isRouteSample) ?? pathEntries[pathEntries.length - 1];
+  const latestRouteTimestamp = latestRouteEntry?.event.timestamp ? formatThaiDateTime(latestRouteEntry.event.timestamp) : null;
   const hasCreatedPoint = pathEntries.some(entry => entry.event.title === 'สร้างรายการส่ง');
 
   const handleMapReady = useCallback((map: L.Map) => {
@@ -168,17 +170,20 @@ function TrackingMap({ events, trackingID, routeSamples: syncedRouteSamples = []
       const safeLabel     = escapeHtml(label || 'GPS');
       const isDeliveredPoint = event.title === 'ส่งสำเร็จ';
       const isRouteSample = entry.isRouteSample;
+      const isLatestRoutePoint = isLast && isRouteSample;
       const isStartPoint = !isDeliveredPoint && (
         event.title === 'สร้างรายการส่ง' ||
         (!hasCreatedPoint && index === 0)
       );
-      const iconName = isStartPoint ? 'inventory_2' : isDeliveredPoint ? 'task_alt' : isRouteSample ? 'near_me' : 'local_shipping';
-      const markerColor = isStartPoint ? '#2563eb' : isDeliveredPoint ? '#16a34a' : isRouteSample ? '#7c3aed' : '#0f172a';
+      const iconName = isStartPoint ? 'inventory_2' : isDeliveredPoint ? 'task_alt' : isLatestRoutePoint ? 'my_location' : isRouteSample ? 'near_me' : 'local_shipping';
+      const markerColor = isStartPoint ? '#2563eb' : isDeliveredPoint ? '#16a34a' : isLatestRoutePoint ? '#0891b2' : isRouteSample ? '#7c3aed' : '#0f172a';
       const markerRing  = isStartPoint
         ? 'rgba(37,99,235,0.18)'
         : isDeliveredPoint
           ? 'rgba(22,163,74,0.18)'
-          : 'rgba(15,23,42,0.18)';
+          : isLatestRoutePoint
+            ? 'rgba(8,145,178,0.20)'
+            : 'rgba(15,23,42,0.18)';
 
       const html = `<div title="${safeLabel}" style="position:relative;width:42px;height:42px;filter:drop-shadow(0 10px 18px rgba(15,23,42,.22));">
         <div style="position:absolute;inset:0;border-radius:16px;background:${markerRing};"></div>
@@ -186,7 +191,7 @@ function TrackingMap({ events, trackingID, routeSamples: syncedRouteSamples = []
           <span class="material-symbols-outlined" aria-hidden="true" style="font-size:17px;line-height:1;">${iconName}</span>
         </div>
         <div style="position:absolute;left:18px;top:37px;width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-top:8px solid ${markerColor};filter:drop-shadow(0 2px 1px rgba(15,23,42,.12));"></div>
-        ${isLast ? '<div style="position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%);border-radius:16px;border:2px solid rgba(15,23,42,.22);animation:logitrack-pin-pulse 1.6s infinite;"></div>' : ''}
+        ${isLast ? `<div style="position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%);border-radius:16px;border:2px solid ${isLatestRoutePoint ? 'rgba(8,145,178,.38)' : 'rgba(15,23,42,.22)'};animation:logitrack-pin-pulse 1.6s infinite;"></div>` : ''}
       </div>`;
 
       const marker = L.marker([lat, lng], {
@@ -206,6 +211,8 @@ function TrackingMap({ events, trackingID, routeSamples: syncedRouteSamples = []
       const badge = document.createElement('div');
       badge.style.cssText = `display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;background:${isStartPoint ? '#eff6ff' : isDeliveredPoint ? '#f0fdf4' : '#0f172a'};color:${isStartPoint ? '#2563eb' : isDeliveredPoint ? '#15803d' : '#ffffff'};font-size:11px;font-weight:900;margin-bottom:8px`;
       badge.textContent = isStartPoint ? 'จุดเริ่มต้น' : isDeliveredPoint ? 'ปลายทาง' : isRouteSample ? 'เส้นทางจริง' : 'กำลังจัดส่ง';
+
+      if (isLatestRoutePoint) badge.textContent = 'ตำแหน่งล่าสุด';
 
       const title = document.createElement('div');
       title.style.cssText = 'font-weight:900;color:#091426;font-size:15px;line-height:1.25';
@@ -317,6 +324,12 @@ function TrackingMap({ events, trackingID, routeSamples: syncedRouteSamples = []
         <div className="pointer-events-none absolute left-3 top-3 z-[500] rounded-xl border border-white/80 bg-white/95 px-3 py-2 shadow-sm backdrop-blur">
           <p className="text-xs font-semibold leading-none text-slate-800">แผนที่การจัดส่ง</p>
           <p className="mt-1 text-[10px] font-medium text-slate-400">{pathEntries.length} จุดตำแหน่ง</p>
+        </div>
+      )}
+      {hasRouteData && latestRouteTimestamp && (
+        <div className="pointer-events-none absolute right-3 top-3 z-[500] rounded-xl border border-cyan-100 bg-white/95 px-3 py-2 text-right shadow-sm backdrop-blur">
+          <p className="text-[10px] font-black text-cyan-700">ตำแหน่งล่าสุด</p>
+          <p className="mt-1 text-[10px] font-semibold text-slate-500">{latestRouteTimestamp}</p>
         </div>
       )}
       <MapView

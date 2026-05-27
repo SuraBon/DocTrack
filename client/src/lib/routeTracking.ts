@@ -13,6 +13,7 @@ const ACTIVE_ROUTES_KEY = 'shiptrack_active_routes';
 const ROUTE_UPDATED_EVENT = 'shiptrack-route-samples-updated';
 const ROUTE_TRACKING_UPDATED_EVENT = 'shiptrack-route-tracking-updated';
 const MIN_SAMPLE_INTERVAL_MS = 15_000;
+const BACKGROUND_MIN_SAMPLE_INTERVAL_MS = 60_000;
 const MIN_SAMPLE_DISTANCE_M = 25;
 const MAX_ACCEPTED_ACCURACY_M = 150;
 const MAX_STORED_ROUTE_SAMPLES = 2000;
@@ -106,7 +107,10 @@ function shouldSaveSample(next: RouteSampleRecord): boolean {
   const previous = lastSamples.get(next.trackingID);
   if (!previous) return true;
   const elapsed = Date.parse(next.timestamp) - Date.parse(previous.timestamp);
-  if (elapsed < MIN_SAMPLE_INTERVAL_MS) return false;
+  const minInterval = typeof document !== 'undefined' && document.visibilityState === 'hidden'
+    ? BACKGROUND_MIN_SAMPLE_INTERVAL_MS
+    : MIN_SAMPLE_INTERVAL_MS;
+  if (elapsed < minInterval) return false;
   return distanceMeters(previous, next) >= MIN_SAMPLE_DISTANCE_M;
 }
 

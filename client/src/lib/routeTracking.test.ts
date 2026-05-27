@@ -40,6 +40,12 @@ Object.defineProperty(globalThis, 'window', {
   },
   writable: true,
 });
+Object.defineProperty(globalThis, 'document', {
+  value: {
+    visibilityState: 'visible',
+  },
+  writable: true,
+});
 Object.defineProperty(globalThis, 'navigator', {
   value: { geolocation: geolocationMock },
   writable: true,
@@ -67,6 +73,7 @@ describe('routeTracking', () => {
     vi.clearAllMocks();
     localStorageMock.clear();
     watchSuccess = null;
+    (globalThis.document as any).visibilityState = 'visible';
   });
 
   it('starts tracking and stores route samples', async () => {
@@ -113,6 +120,18 @@ describe('routeTracking', () => {
 
     expect(startRouteTracking('TRK5')).toBe(true);
     expect(() => emitPosition(13.7563, 100.5018, 1_000)).not.toThrow();
+  });
+
+  it('uses a slower sample interval while the document is hidden', async () => {
+    expect(startRouteTracking('TRK7')).toBe(true);
+    emitPosition(13.7563, 100.5018, 1_000);
+    (globalThis.document as any).visibilityState = 'hidden';
+    emitPosition(13.7700, 100.5200, 50_000);
+    emitPosition(13.7800, 100.5300, 70_000);
+
+    const samples = await getRouteSamples('TRK7');
+    expect(samples).toHaveLength(2);
+    expect(samples[1]).toMatchObject({ latitude: 13.78, longitude: 100.53 });
   });
 
   it('returns false when geolocation watch cannot start', () => {

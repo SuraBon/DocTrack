@@ -37,6 +37,7 @@ import {
   type SyncResult,
 } from '../offlineQueue';
 import {
+  getActiveRouteIds,
   getUnsyncedRouteSamples,
   markRouteSamplesSynced,
   type RouteSampleRecord,
@@ -63,6 +64,7 @@ let isRouteSyncing = false;
 const ROUTE_SYNC_BATCH_SIZE = 100;
 const QUEUEABLE_ACTIONS = ['createParcel', 'confirmReceipt', 'startDelivery', 'releaseDelivery'];
 const ROUTE_BACKGROUND_SYNC_MS = 30_000;
+const ROUTE_SYNC_STATUS_EVENT = 'shiptrack-route-sync-status';
 
 // ── Status normalizer ────────────────────────────────────────────────────────
 type CallApiOptions = {
@@ -609,6 +611,18 @@ type SyncRouteSamplesResponse = {
   error?: string;
 };
 
+function dispatchRouteSyncStatus(detail: {
+  status: 'start' | 'success' | 'error';
+  trackingID?: string;
+  savedCount?: number;
+  skippedCount?: number;
+  pendingCount?: number;
+  error?: string;
+}): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(ROUTE_SYNC_STATUS_EVENT, { detail }));
+}
+
 export async function syncRouteSamples(trackingID?: string): Promise<SyncRouteSamplesResponse> {
   if (isRouteSyncing) return { success: true, savedCount: 0, skippedCount: 0 };
   const samples = await getUnsyncedRouteSamples(trackingID);
@@ -622,6 +636,11 @@ export async function syncRouteSamples(trackingID?: string): Promise<SyncRouteSa
   isRouteSyncing = true;
   let savedCount = 0;
   let skippedCount = 0;
+  dispatchRouteSyncStatus({
+    status: 'start',
+    trackingID,
+    pendingCount: samples.length,
+  });
   try {
     for (const [groupTrackingID, groupSamples] of Object.entries(groups)) {
       const res = await callAPI<SyncRouteSamplesResponse>({
@@ -632,7 +651,9 @@ export async function syncRouteSamples(trackingID?: string): Promise<SyncRouteSa
       }, {}, NO_RETRY);
 
       if (!res.success) {
-        return { success: false, error: res.error || 'ซิงค์เส้นทางไม่สำเร็จ', savedCount, skippedCount };
+        const error = res.error || 'ซิงค์เส้นทางไม่สำเร็จ';
+        dispatchRouteSyncStatus({ status: 'error', trackingID, savedCount, skippedCount, error });
+        return { success: false, error, savedCount, skippedCount };
       }
 
       await markRouteSamplesSynced(groupSamples.slice(0, ROUTE_SYNC_BATCH_SIZE).map(sample => sample.id));
@@ -640,9 +661,11 @@ export async function syncRouteSamples(trackingID?: string): Promise<SyncRouteSa
       skippedCount += res.skippedCount ?? 0;
     }
   } catch (err) {
+    const error = err instanceof Error ? err.message : 'ซิงค์เส้นทางไม่สำเร็จ';
+    dispatchRouteSyncStatus({ status: 'error', trackingID, savedCount, skippedCount, error });
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'ซิงค์เส้นทางไม่สำเร็จ',
+      error,
       savedCount,
       skippedCount,
     };
@@ -650,6 +673,7 @@ export async function syncRouteSamples(trackingID?: string): Promise<SyncRouteSa
     isRouteSyncing = false;
   }
 
+  dispatchRouteSyncStatus({ status: 'success', trackingID, savedCount, skippedCount });
   if (typeof window !== 'undefined' && (savedCount > 0 || skippedCount > 0)) {
     window.dispatchEvent(new Event('offline-sync-complete'));
   }
@@ -756,7 +780,10 @@ if (typeof window !== 'undefined') {
       void syncRouteSamples();
     }
   });
-  window.setInterval(() => {
-    if (navigator.onLine) void syncRouteSamples();
+  window.setInterval(async () => {
+    if (!navigator.onLine) return;
+    const activeRouteCount = getActiveRouteIds().length;
+    const pendingCount = (await getUnsyncedRouteSamples()).length;
+    if (activeRouteCount > 0 || pendingCount > 0) void syncRouteSamples();
   }, ROUTE_BACKGROUND_SYNC_MS);
 }

@@ -11,6 +11,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { useDashboardLists } from '@/hooks/useDashboardLists';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { useRealtimeParcel } from '@/hooks/useRealtimeParcel';
+import { useRouteSyncStatus } from '@/hooks/useRouteSyncStatus';
 import type { Parcel } from '@/types/parcel';
 import { toast } from 'sonner';
 import {
@@ -56,6 +57,13 @@ interface DashboardProps { isConfigured: boolean; }
 
 const DashboardDialogs = lazy(() => import('@/components/dashboard/DashboardDialogs'));
 
+const formatSyncTime = (value: string | null) => {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+};
+
 export default function Dashboard({ isConfigured }: DashboardProps) {
   const { user } = useAuth();
   const { parcels, summary, loading, error, loadParcels, hasMore, loadMoreParcels, totalCount, removeParcelLocally, updateParcelLocally } = useParcelStore();
@@ -68,6 +76,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
     status: messengerGeoStatus,
     requestLocation: requestMessengerLocation,
   } = useGeolocation();
+  const routeSyncStatus = useRouteSyncStatus();
   const defaultStatusFilter = 'ทั้งหมด';
   const [statusFilter, setStatusFilter] = useState(() => defaultStatusFilter);
   const [selectedParcel, setSelectedParcel] = useState<Parcel | null>(null);
@@ -401,6 +410,51 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
       )}
 
       {/* ── Stats ── */}
+      {isMessengerDashboard && (
+        <div className="rounded-2xl border border-blue-100 bg-white px-4 py-3 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${
+              routeSyncStatus.activeRouteCount > 0 ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-400'
+            }`}>
+              <DashboardIcon icon={routeSyncStatus.activeRouteCount > 0 ? 'my_location' : 'location_searching'} className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-black text-slate-900">
+                  {routeSyncStatus.activeRouteCount > 0 ? 'กำลังบันทึกพิกัดงานส่ง' : 'ยังไม่มีงานที่กำลังบันทึกพิกัด'}
+                </p>
+                <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${
+                  routeSyncStatus.isRouteSyncing
+                    ? 'bg-blue-100 text-blue-700'
+                    : routeSyncStatus.lastRouteSyncError
+                      ? 'bg-red-50 text-red-600'
+                      : 'bg-emerald-50 text-emerald-700'
+                }`}>
+                  {routeSyncStatus.isRouteSyncing ? 'กำลังซิงค์' : routeSyncStatus.lastRouteSyncError ? 'ซิงค์ไม่สำเร็จ' : 'พร้อมซิงค์'}
+                </span>
+              </div>
+              <div className="mt-2 grid grid-cols-3 gap-2 text-[11px] font-semibold text-slate-500">
+                <div className="rounded-xl bg-slate-50 px-3 py-2">
+                  <p className="text-[10px] font-black text-slate-400">พิกัดค้างส่ง</p>
+                  <p className="mt-0.5 text-sm font-black text-slate-900">{routeSyncStatus.pendingRouteSampleCount}</p>
+                </div>
+                <div className="rounded-xl bg-slate-50 px-3 py-2">
+                  <p className="text-[10px] font-black text-slate-400">บันทึกล่าสุด</p>
+                  <p className="mt-0.5 text-sm font-black text-slate-900">{formatSyncTime(routeSyncStatus.latestRouteSampleAt)}</p>
+                </div>
+                <div className="rounded-xl bg-slate-50 px-3 py-2">
+                  <p className="text-[10px] font-black text-slate-400">ซิงค์ล่าสุด</p>
+                  <p className="mt-0.5 text-sm font-black text-slate-900">{formatSyncTime(routeSyncStatus.lastRouteSyncAt)}</p>
+                </div>
+              </div>
+              {routeSyncStatus.lastRouteSyncError && (
+                <p className="mt-2 text-[11px] font-semibold text-red-600">{routeSyncStatus.lastRouteSyncError}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {!isMessengerDashboard && (() => {
         const isFirstLoad = loading && !lastUpdatedAt;
         return (

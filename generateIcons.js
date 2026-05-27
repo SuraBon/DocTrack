@@ -32,28 +32,28 @@ async function run() {
   const sharp = (await import('sharp')).default;
 
   const svgPath = path.resolve(PUBLIC_DIR, 'favicon.svg');
-  const out180 = path.resolve(PUBLIC_DIR, 'apple-touch-icon.png');
-  const out192 = path.resolve(PUBLIC_DIR, 'icon-192.png');
-  const out512 = path.resolve(PUBLIC_DIR, 'icon-512.png');
+  const out180 = path.resolve(PUBLIC_DIR, 'apple-touch-icon-v2.png');
+  const out192 = path.resolve(PUBLIC_DIR, 'icon-192-v2.png');
+  const out512 = path.resolve(PUBLIC_DIR, 'icon-512-v2.png');
 
   if (!fs.existsSync(svgPath)) {
     console.error('favicon.svg not found at ' + svgPath);
     process.exit(1);
   }
 
-  console.log('Generating apple-touch-icon.png...');
+  console.log('Generating apple-touch-icon-v2.png...');
   await sharp(svgPath)
     .resize(180, 180)
     .png()
     .toFile(out180);
 
-  console.log('Generating transparent icon-192.png...');
+  console.log('Generating transparent icon-192-v2.png...');
   await sharp(svgPath)
     .resize(192, 192)
     .png()
     .toFile(out192);
 
-  console.log('Generating transparent icon-512.png...');
+  console.log('Generating transparent icon-512-v2.png...');
   await sharp(svgPath)
     .resize(512, 512)
     .png()

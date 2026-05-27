@@ -11,9 +11,9 @@ const plugins = [
     registerType: "autoUpdate",
     includeAssets: [
       "favicon.svg",
-      "apple-touch-icon.png",
-      "icon-192.png",
-      "icon-512.png",
+      "apple-touch-icon-v2.png",
+      "icon-192-v2.png",
+      "icon-512-v2.png",
     ],
     workbox: {
       globIgnores: ["**/fonts/**", "**/map-*.js", "**/map-*.css"],
@@ -29,12 +29,12 @@ const plugins = [
       start_url: "/",
       icons: [
         {
-          src: "icon-192.png",
+          src: "icon-192-v2.png",
           sizes: "192x192",
           type: "image/png"
         },
         {
-          src: "icon-512.png",
+          src: "icon-512-v2.png",
           sizes: "512x512",
           type: "image/png",
           purpose: "any maskable"
