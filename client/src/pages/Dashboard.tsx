@@ -22,7 +22,9 @@ import {
   Search,
   Undo2,
   FilterX,
+  Download,
 } from 'lucide-react';
+import { convertParcelsToCSV, downloadCSV } from '@/lib/csvHelper';
 import { Skeleton } from '@/components/ui/skeleton';
 import EmptyState from '@/components/EmptyState';
 import {
@@ -135,6 +137,21 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
       isFetchingRef.current = false;
     }
   }, []);
+
+  const handleExportCSV = useCallback(() => {
+    if (!filteredParcels || filteredParcels.length === 0) {
+      toast.error('ไม่มีข้อมูลให้ออกรายงาน');
+      return;
+    }
+    try {
+      const csv = convertParcelsToCSV(filteredParcels);
+      downloadCSV(csv, `shiptrack-parcels-${new Date().toISOString().slice(0, 10)}.csv`);
+      toast.success('ดาวน์โหลดรายงาน CSV สำเร็จ');
+    } catch (err) {
+      console.error(err);
+      toast.error('ไม่สามารถส่งออกรายงานได้');
+    }
+  }, [filteredParcels]);
 
   // Actions custom hook to keep components clean
   const {
@@ -489,6 +506,14 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
                 <option value={50}>50 / หน้า</option>
               </select>
             </label>
+            <button
+              type="button"
+              onClick={handleExportCSV}
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+            >
+              <Download className="h-3.5 w-3.5" aria-hidden="true" />
+              ดาวน์โหลด CSV
+            </button>
             {hasFilters && (
               <button
                 type="button"

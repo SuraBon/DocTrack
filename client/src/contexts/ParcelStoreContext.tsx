@@ -79,9 +79,9 @@ export function ParcelStoreProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      const [res, rawSummary] = await Promise.all([
+      const [res, summaryRes] = await Promise.all([
         parcelService.getParcels(status, 10, offsetRef.current),
-        reset ? parcelService.getParcels('ทั้งหมด', 500, 0) : Promise.resolve(null),
+        reset ? parcelService.exportSummary() : Promise.resolve(null),
       ]);
 
       if (res.success) {
@@ -92,9 +92,21 @@ export function ParcelStoreProvider({ children }: { children: ReactNode }) {
         offsetRef.current += incomingParcels.length;
         
         if (reset) {
-          // Use all parcels (up to 500) for accurate summary counts
-          const allParcels = rawSummary?.success ? (rawSummary.parcels || []) : incomingParcels;
-          setSummary(summarizeParcels(allParcels));
+          if (summaryRes) {
+            setSummary(summaryRes);
+          } else {
+            // Offline fallback: try to calculate from local cache
+            try {
+              const cached = await parcelService.getCachedParcelsLocally();
+              if (cached && cached.length > 0) {
+                setSummary(summarizeParcels(cached));
+              } else {
+                setSummary(summarizeParcels(incomingParcels));
+              }
+            } catch {
+              setSummary(summarizeParcels(incomingParcels));
+            }
+          }
         }
         setError(null);
       } else {

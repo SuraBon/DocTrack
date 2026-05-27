@@ -1,6 +1,6 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -9,7 +9,8 @@ import Login from "./pages/Login";
 import { isConfigured, loadBranches, onConfigUpdated } from "./lib/parcelService";
 import { useAuth } from "./contexts/AuthContext";
 import { normalizeRole } from "./lib/roles";
-import { canAccessPage, getVisiblePage, type PageId } from "./lib/permissionHelper";
+import { canAccessPage, getVisiblePage } from "./lib/permissionHelper";
+import { useAppRouter } from "./hooks/useAppRouter";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const CreateParcel = lazy(() => import("./pages/CreateParcel"));
@@ -18,35 +19,6 @@ const ParcelActivityLog = lazy(() => import("./pages/ParcelActivityLog"));
 const AuditLog = lazy(() => import("./pages/AuditLog"));
 const UserManagement = lazy(() => import("./pages/UserManagement"));
 const BranchManagement = lazy(() => import("./pages/BranchManagement"));
-
-const pagePaths: Record<PageId, string> = {
-  dashboard: "/dashboard",
-  create: "/create",
-  track: "/track",
-  parcelActivity: "/parcel-activity",
-  auditLogs: "/audit-logs",
-  users: "/users",
-  branches: "/branches",
-  login: "/login",
-};
-
-const pathPages: Record<string, PageId> = {
-  "/": "dashboard",
-  "/dashboard": "dashboard",
-  "/create": "create",
-  "/track": "track",
-  "/parcel-activity": "parcelActivity",
-  "/audit-logs": "auditLogs",
-  "/users": "users",
-  "/branches": "branches",
-  "/login": "login",
-};
-
-const getRouteFromLocation = (): { page: PageId; isKnownPath: boolean } => {
-  const path = window.location.pathname.replace(/\/+$/, "") || "/";
-  const page = pathPages[path];
-  return page ? { page, isKnownPath: true } : { page: "create", isKnownPath: false };
-};
 
 const AppLoading = ({ fullScreen = false }: { fullScreen?: boolean }) => (
   <div className={`grid place-items-center bg-background px-4 ${fullScreen ? "min-h-screen" : "min-h-[56vh]"}`}>
@@ -71,13 +43,7 @@ const PageFallback = () => <AppLoading />;
 
 function App() {
   const { user, loading } = useAuth();
-  const [currentPage, setCurrentPage] = useState<PageId>(() => {
-    const route = getRouteFromLocation();
-    if (!route.isKnownPath) {
-      window.history.replaceState({}, "", pagePaths.create);
-    }
-    return route.page;
-  });
+  const { currentPage, navigateToPage } = useAppRouter();
   const [isConfiguredState, setIsConfiguredState] = useState(isConfigured());
   const [, setConfigVersion] = useState(0);
 
@@ -120,38 +86,7 @@ function App() {
     return unsubscribe;
   }, []);
 
-  useEffect(() => {
-    const handlePopState = () => {
-      const route = getRouteFromLocation();
-      if (currentPage === "create" && route.page !== "create" && sessionStorage.getItem("shiptrack:create_parcel_dirty") === "true") {
-        const confirmLeave = window.confirm("คุณมีข้อมูลที่กำลังกรอกค้างอยู่ ต้องการออกจากหน้านี้หรือไม่? (ข้อมูลร่างของคุณจะยังคงอยู่)");
-        if (!confirmLeave) {
-          window.history.pushState({}, "", pagePaths.create);
-          return;
-        }
-      }
-      setCurrentPage(route.page);
-      if (!route.isKnownPath) {
-        window.history.replaceState({}, "", pagePaths.create);
-      }
-    };
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, [currentPage]);
 
-  const navigateToPage = useCallback((page: PageId) => {
-    if (currentPage === "create" && page !== "create" && sessionStorage.getItem("shiptrack:create_parcel_dirty") === "true") {
-      const confirmLeave = window.confirm("คุณมีข้อมูลที่กำลังกรอกค้างอยู่ ต้องการออกจากหน้านี้หรือไม่? (ข้อมูลร่างของคุณจะยังคงอยู่)");
-      if (!confirmLeave) {
-        return;
-      }
-    }
-    setCurrentPage(page);
-    const nextPath = pagePaths[page];
-    if (window.location.pathname !== nextPath) {
-      window.history.pushState({}, "", nextPath);
-    }
-  }, [currentPage]);
 
   useEffect(() => {
     if (loading) return;
@@ -170,7 +105,7 @@ function App() {
   if (!user && currentPage === "login") {
     return (
       <ErrorBoundary>
-        <ThemeProvider defaultTheme="light">
+        <ThemeProvider defaultTheme="light" switchable={true}>
           <Toaster />
           <Login />
         </ThemeProvider>
@@ -204,7 +139,7 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="light">
+      <ThemeProvider defaultTheme="light" switchable={true}>
         <TooltipProvider>
           <Toaster />
           <Layout currentPage={visiblePage} setCurrentPage={navigateToPage}>

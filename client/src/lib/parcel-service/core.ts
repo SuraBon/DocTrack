@@ -48,6 +48,7 @@ import {
   getCachedParcelLocally,
   getCachedParcelsLocally,
 } from '../offlineDb';
+export { getCachedParcelsLocally };
 import { toast } from 'sonner';
 import type { AuditLogRow, BranchRow, CreateUserInput, LogQueryInput, ParcelActivityLogRow, UpdateUserInput, User, UserRow } from './types';
 import { normalizeParcelStatus, normalizeParcels } from './parcelNormalizers';

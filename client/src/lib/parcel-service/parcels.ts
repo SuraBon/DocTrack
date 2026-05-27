@@ -9,4 +9,5 @@ export {
   releaseDelivery,
   searchParcels,
   startDelivery,
+  getCachedParcelsLocally,
 } from './core';

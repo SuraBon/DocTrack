@@ -24,8 +24,11 @@ import {
   Users,
   Building2,
   X,
+  Sun,
+  Moon,
   type LucideIcon,
 } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
 
 type PageId = "dashboard" | "create" | "track" | "parcelActivity" | "auditLogs" | "users" | "branches" | "login";
 
@@ -60,6 +63,7 @@ const NavIcon = ({ icon: Icon, active = false }: { icon: LucideIcon; active?: bo
 );
 
 const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }) => {
+  const { theme, toggleTheme } = useTheme();
   const { user, logout, updateUserProfile } = useAuth();
   const { activeRouteCount } = useRouteSyncStatus();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -215,6 +219,21 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
                 >
                   <span className="material-symbols-outlined text-[14px]" aria-hidden="true">sync_problem</span>
                   <span>คิวออฟไลน์ ({offlineQueue.length})</span>
+                </button>
+              )}
+              {toggleTheme && (
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  className="grid h-9 w-9 place-items-center rounded-lg border border-gray-200 bg-white text-slate-600 transition-all hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 active:scale-95"
+                  title={theme === "light" ? "โหมดกลางคืน" : "โหมดสว่าง"}
+                  aria-label="เปลี่ยนธีม"
+                >
+                  {theme === "light" ? (
+                    <Moon className="h-4.5 w-4.5" aria-hidden="true" />
+                  ) : (
+                    <Sun className="h-4.5 w-4.5" aria-hidden="true" />
+                  )}
                 </button>
               )}
               {user ? (
