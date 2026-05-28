@@ -865,22 +865,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
                   count={messengerDoneParcels.length}
                   tone="emerald"
                 />
-                {messengerDoneParcels.length > 0 && (
-                  <div className="mb-4 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4 text-emerald-950 shadow-sm">
-                    <div className="flex items-start gap-3">
-                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-emerald-700 shadow-sm">
-                        <DashboardIcon icon="check_circle" className="h-5 w-5" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-black">ส่งงานสำเร็จ {messengerDoneParcels.length} รายการ</p>
-                        <p className="mt-1 text-xs font-semibold leading-relaxed text-emerald-800/80">
-                          แตะ “ดู Milestone” เพื่อดูรูปหลักฐานและประวัติการส่งของแต่ละรายการ
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {messengerDoneParcels.length ? (
+                 {messengerDoneParcels.length ? (
                   <>
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
                     {visibleMessengerDoneParcels.map(parcel => (

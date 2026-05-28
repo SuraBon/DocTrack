@@ -3,7 +3,7 @@ type AppLoadingProps = {
   label?: string;
 };
 
-export function AppLoading({ fullScreen = false, label = 'กำลังโหลดข้อมูล' }: AppLoadingProps) {
+export function AppLoading({ fullScreen = true, label = 'กำลังโหลดข้อมูล' }: AppLoadingProps) {
   return (
     <div
       className={`grid place-items-center bg-[#091426] px-4 text-white ${

@@ -131,7 +131,6 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
   const [isOfflineQueueOpen, setIsOfflineQueueOpen] = useState(false);
 
   const currentRole = normalizeRole(user?.role ?? 'GUEST');
-  const hideGuestMobileTopBar = currentRole === 'GUEST' && (currentPage === 'create' || currentPage === 'track');
   const dashboardLabel = currentRole === 'MESSENGER' ? UI_COPY.nav.messengerDashboard : UI_COPY.nav.adminDashboard;
   const dashboardIcon =
     currentRole === 'MESSENGER'
@@ -208,7 +207,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
       <div className="flex min-h-screen flex-col">
         {/* Top bar */}
         <header
-          className={`sticky top-0 z-40 border-b border-gray-100 dark:border-white/[0.06] bg-white/95 dark:bg-[#091325]/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85 dark:supports-[backdrop-filter]:bg-[#091325]/85 ${hideGuestMobileTopBar ? 'hidden md:block' : ''}`}
+          className="sticky top-0 z-40 border-b border-gray-100 dark:border-white/[0.06] bg-white/95 dark:bg-[#091325]/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85 dark:supports-[backdrop-filter]:bg-[#091325]/85"
         >
           <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
             <div className="min-w-0">
@@ -401,7 +400,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
           </div>
         )}
 
-        <main className={`mx-auto w-full max-w-7xl flex-1 px-3 ${mobileBottomPadding} sm:px-5 md:px-6 md:pb-10 lg:px-8 ${hideGuestMobileTopBar ? 'pt-3 md:pt-4' : 'pt-4'}`}>
+        <main className={`mx-auto w-full max-w-7xl flex-1 px-3 ${mobileBottomPadding} sm:px-5 md:px-6 md:pb-10 lg:px-8 pt-4`}>
           {children}
         </main>
       </div>
