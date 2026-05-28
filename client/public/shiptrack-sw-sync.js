@@ -1,5 +1,5 @@
 /* eslint-disable no-restricted-globals */
-/** Workbox importScripts companion — nudges open clients to run offline/route sync. */
+/** Workbox importScripts companion — nudges open clients to run offline sync. */
 self.addEventListener('sync', event => {
   if (!event || event.tag !== 'shiptrack-offline-sync') return;
   event.waitUntil(

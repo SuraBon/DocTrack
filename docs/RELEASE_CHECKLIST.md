@@ -10,15 +10,13 @@
 
 ## IndexedDB
 
-- Current DB: `shiptrack_offline` version **3**
-- Stores: `offlineQueue`, `offlineMedia`, `drafts`, `createdParcelHistory`, `routeSamples`, `parcelsCache`
-- Route samples use index `trackingID` on `routeSamples`
+- Current DB: `shiptrack_offline` version **5**
+- Stores: `offlineQueue`, `offlineMedia`, `drafts`, `createdParcelHistory`, `parcelsCache`
 - If schema changes: bump `DB_VERSION` in `client/src/lib/offlineDb.ts` and add `onupgradeneeded` migration
 
-## GAS maintenance (optional triggers)
+## GAS maintenance
 
-- **Route sample retention**: install time-driven trigger for `purgeOldRouteSamples` (daily) — see `gas-src/53_route_search.gs`
-- Monitor `AuditLog` for `SYNC_ROUTE_SAMPLES` spikes / failures
+- Monitor `AuditLog` for action failures / spikes
 
 ## PWA
 

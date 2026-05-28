@@ -109,28 +109,6 @@ export async function idbGetAll<T>(storeName: string): Promise<T[] | null> {
   return result ?? null;
 }
 
-export async function idbGetByIndex<T>(
-  storeName: string,
-  indexName: string,
-  query: IDBValidKey | IDBKeyRange,
-): Promise<T[] | null> {
-  const db = await openDb();
-  if (!db) return null;
-
-  return new Promise(resolve => {
-    const tx = db.transaction(storeName, 'readonly');
-    const store = tx.objectStore(storeName);
-    if (!store.indexNames.contains(indexName)) {
-      resolve(null);
-      return;
-    }
-    const request = store.index(indexName).getAll(query) as IDBRequest<T[]>;
-    request.onsuccess = () => resolve(request.result ?? []);
-    request.onerror = () => resolve(null);
-    tx.onerror = () => resolve(null);
-  });
-}
-
 export async function idbGet<T>(storeName: string, key: IDBValidKey): Promise<T | null> {
   return withStore<T>(storeName, 'readonly', store => store.get(key) as IDBRequest<T>);
 }

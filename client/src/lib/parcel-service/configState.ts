@@ -6,13 +6,9 @@ export const API_TIMEOUT_MS = 25_000;
 
 const DEFAULT_BRANCHES = [
   'MS', 'พระประแดง', 'บางนา', 'มีนบุรี', 'เลียบด่วน',
-  'เดอะมอลล์บางกะปิ', 'วิภาวดี', 'พิบูลสงคราม','เซ็นทรัล พระราม 2',
+  'เดอะมอลล์บางกะปิ', 'วิภาวดี', 'พิบูลสงคราม', 'เซ็นทรัล พระราม 2',
   'เดอะมอลล์บางแค', 'มหาชัย', 'ศาลายา', 'กาญจนา',
-  
 ];
-
-/** Branches that have known coordinates in TrackingMap. @deprecated ใช้ GPS จริงจาก events แทน */
-export const BRANCHES_WITH_COORDS: string[] = [];
 
 const storedBranches = (() => {
   try {
