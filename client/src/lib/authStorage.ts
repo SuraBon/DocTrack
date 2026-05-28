@@ -67,6 +67,32 @@ function serializeAuthUser(user: User, lastActivityAt = Date.now()): string {
   });
 }
 
+function writeStoredAuthUser(user: User, lastActivityAt = Date.now()): 'local' | 'session' | null {
+  const wrappedUser = serializeAuthUser(user, lastActivityAt);
+  const local = getLocalStorage();
+  const session = getSessionStorage();
+
+  try {
+    if (!local) throw new Error('localStorage unavailable');
+    local.setItem(AUTH_SESSION_KEY, wrappedUser);
+    local.setItem(AUTH_LAST_ACTIVITY_KEY, String(lastActivityAt));
+    session?.removeItem(AUTH_SESSION_KEY);
+    session?.removeItem(AUTH_LAST_ACTIVITY_KEY);
+    return 'local';
+  } catch {
+    // Fall back to session storage for restricted/private browsing contexts.
+  }
+
+  try {
+    if (!session) return null;
+    session.setItem(AUTH_SESSION_KEY, wrappedUser);
+    session.setItem(AUTH_LAST_ACTIVITY_KEY, String(lastActivityAt));
+    return 'session';
+  } catch {
+    return null;
+  }
+}
+
 function readWrappedLastActivity(raw: string | null): number | null {
   if (!raw) return null;
   try {
@@ -98,14 +124,8 @@ export function readAuthUser(): User | null {
 
   const legacyUser = safeParseUser(session?.getItem(AUTH_SESSION_KEY) ?? null);
   if (legacyUser) {
-    try {
-      const lastActivityAt = readAuthLastActivityAt(legacyUser) ?? Date.now();
-      local?.setItem(AUTH_SESSION_KEY, serializeAuthUser(legacyUser, lastActivityAt));
-      local?.setItem(AUTH_LAST_ACTIVITY_KEY, String(lastActivityAt));
-      session?.removeItem(AUTH_SESSION_KEY);
-    } catch {
-      // If local storage is unavailable, keep the session-only legacy token for this tab.
-    }
+    const lastActivityAt = readAuthLastActivityAt(legacyUser) ?? Date.now();
+    writeStoredAuthUser(legacyUser, lastActivityAt);
     return legacyUser;
   }
 
@@ -114,42 +134,14 @@ export function readAuthUser(): User | null {
 }
 
 export function writeAuthUser(user: User): void {
-  const local = getLocalStorage();
-  const session = getSessionStorage();
-  const lastActivityAt = Date.now();
-  try {
-    if (!local) throw new Error('localStorage unavailable');
-    local?.setItem(AUTH_SESSION_KEY, serializeAuthUser(user, lastActivityAt));
-    local?.setItem(AUTH_LAST_ACTIVITY_KEY, String(lastActivityAt));
-  } catch {
-    try {
-      session?.setItem(AUTH_SESSION_KEY, serializeAuthUser(user, lastActivityAt));
-      session?.setItem(AUTH_LAST_ACTIVITY_KEY, String(lastActivityAt));
-    } catch {
-      // Storage can fail in restricted/private contexts.
-    }
-  }
-  session?.removeItem(AUTH_SESSION_KEY);
+  writeStoredAuthUser(user);
 }
 
 export function touchAuthActivity(user?: User | null): number | null {
   const activeUser = user ?? readAuthUser();
   if (!activeUser) return null;
   const now = Date.now();
-  try {
-    const local = getLocalStorage();
-    if (!local) throw new Error('localStorage unavailable');
-    local.setItem(AUTH_SESSION_KEY, serializeAuthUser(activeUser, now));
-    local.setItem(AUTH_LAST_ACTIVITY_KEY, String(now));
-  } catch {
-    try {
-      getSessionStorage()?.setItem(AUTH_SESSION_KEY, serializeAuthUser(activeUser, now));
-      getSessionStorage()?.setItem(AUTH_LAST_ACTIVITY_KEY, String(now));
-    } catch {
-      return null;
-    }
-  }
-  return now;
+  return writeStoredAuthUser(activeUser, now) ? now : null;
 }
 
 export function clearAuthUser(): void {
