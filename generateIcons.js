@@ -41,23 +41,33 @@ async function run() {
     process.exit(1);
   }
 
-  console.log('Generating apple-touch-icon-v2.png...');
-  await sharp(svgPath)
-    .resize(180, 180)
-    .png()
-    .toFile(out180);
+  const generatePaddedIcon = async (outPath, size, scale = 0.6) => {
+    const logoSize = Math.round(size * scale);
+    const logoBuffer = await sharp(svgPath)
+      .resize(logoSize, logoSize)
+      .toBuffer();
 
-  console.log('Generating transparent icon-192-v2.png...');
-  await sharp(svgPath)
-    .resize(192, 192)
-    .png()
-    .toFile(out192);
+    await sharp({
+      create: {
+        width: size,
+        height: size,
+        channels: 4,
+        background: '#091426'
+      }
+    })
+      .composite([{ input: logoBuffer, gravity: 'centre' }])
+      .png()
+      .toFile(outPath);
+  };
 
-  console.log('Generating transparent icon-512-v2.png...');
-  await sharp(svgPath)
-    .resize(512, 512)
-    .png()
-    .toFile(out512);
+  console.log('Generating apple-touch-icon-v2.png with padding and background...');
+  await generatePaddedIcon(out180, 180, 0.6);
+
+  console.log('Generating icon-192-v2.png with padding and background...');
+  await generatePaddedIcon(out192, 192, 0.6);
+
+  console.log('Generating icon-512-v2.png with padding and background...');
+  await generatePaddedIcon(out512, 512, 0.6);
 
   console.log('Successfully generated transparent icons!');
 }
