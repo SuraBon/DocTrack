@@ -10,6 +10,16 @@ import { useRouteSamples } from '@/hooks/useRouteSamples';
 
 const DEFAULT_CENTER = { lat: 13.7563, lng: 100.5018 }; // กรุงเทพฯ
 
+type RouteEntry = {
+  lat: number;
+  lng: number;
+  label: string;
+  isGps: boolean;
+  isLast: boolean;
+  isRouteSample?: boolean;
+  event: TimelineEvent;
+};
+
 /** Escape a string so it is safe to embed in HTML attribute/text context. */
 function escapeHtml(str: string): string {
   return str
@@ -53,7 +63,7 @@ function TrackingMap({ events, trackingID, routeSamples: syncedRouteSamples = []
   // Derive the ordered list of coordinate-bearing events from the timeline.
   // ใช้เฉพาะ GPS จริงจาก events — ไม่ fallback ไปหา branch coordinates
   const { pathEntries, hasUnresolved } = useMemo(() => {
-    const entries: { lat: number; lng: number; label: string; isGps: boolean; isLast: boolean; isRouteSample?: boolean; event: TimelineEvent }[] = [];
+    const entries: RouteEntry[] = [];
     const hasSyncedRouteSamples = syncedRouteSamples.some(sample =>
       typeof sample.latitude === 'number' &&
       typeof sample.longitude === 'number' &&
@@ -143,9 +153,26 @@ function TrackingMap({ events, trackingID, routeSamples: syncedRouteSamples = []
   }, [events, routeSamples, syncedRouteSamples]);
 
   const hasRouteData = pathEntries.length > 0;
+  const markerEntries = useMemo(() => {
+    const seen = new Set<string>();
+    return pathEntries.filter(entry => {
+      const eventType = entry.event.eventType;
+      const isMainMarker =
+        eventType === 'CREATED' ||
+        eventType === 'PICKUP' ||
+        eventType === 'START_DELIVERY' ||
+        eventType === 'FORWARD' ||
+        eventType === 'DELIVERED' ||
+        eventType === 'PROXY';
+      if (!isMainMarker) return false;
+      const key = `${entry.lat},${entry.lng},${eventType}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [pathEntries]);
   const latestRouteEntry = [...pathEntries].reverse().find(entry => entry.isRouteSample) ?? pathEntries[pathEntries.length - 1];
   const latestRouteTimestamp = latestRouteEntry?.event.timestamp ? formatThaiDateTime(latestRouteEntry.event.timestamp) : null;
-  const hasCreatedPoint = pathEntries.some(entry => entry.event.title === 'สร้างรายการส่ง');
 
   const handleMapReady = useCallback((map: L.Map) => {
     mapRef.current = map;
@@ -172,27 +199,23 @@ function TrackingMap({ events, trackingID, routeSamples: syncedRouteSamples = []
     }
 
     const nextIds = new Set<string>();
-    const makeMarkerId = (entry: typeof pathEntries[number]) => `${entry.event.id ?? `${entry.lat},${entry.lng},${entry.event.timestamp}`}`;
+    const makeMarkerId = (entry: RouteEntry) => `${entry.event.eventType ?? 'point'}:${entry.event.id ?? `${entry.lat},${entry.lng},${entry.event.timestamp}`}`;
 
-    pathEntries.forEach((entry, index) => {
+    markerEntries.forEach((entry) => {
       const { lat, lng, label, isGps, isLast, event } = entry;
       const eventDate = event.timestamp ? formatThaiDateTime(event.timestamp) : '';
       const safeLabel     = escapeHtml(label || 'GPS');
-      const isDeliveredPoint = event.title === 'ส่งสำเร็จ';
-      const isRouteSample = entry.isRouteSample;
-      const isLatestRoutePoint = isLast && isRouteSample;
-      const isStartPoint = !isDeliveredPoint && (
-        event.title === 'สร้างรายการส่ง' ||
-        (!hasCreatedPoint && index === 0)
-      );
-      const iconName = isStartPoint ? 'inventory_2' : isDeliveredPoint ? 'task_alt' : isLatestRoutePoint ? 'my_location' : isRouteSample ? 'near_me' : 'local_shipping';
-      const markerColor = isStartPoint ? '#2563eb' : isDeliveredPoint ? '#16a34a' : isLatestRoutePoint ? '#0891b2' : isRouteSample ? '#7c3aed' : '#0f172a';
+      const isStartPoint = event.eventType === 'CREATED';
+      const isDeliveredPoint = event.eventType === 'DELIVERED' || event.eventType === 'PROXY';
+      const isForwardPoint = event.eventType === 'FORWARD';
+      const iconName = isStartPoint ? 'inventory_2' : isDeliveredPoint ? 'task_alt' : isForwardPoint ? 'storefront' : 'local_shipping';
+      const markerColor = isStartPoint ? '#2563eb' : isDeliveredPoint ? '#16a34a' : isForwardPoint ? '#7c3aed' : '#0f172a';
       const markerRing  = isStartPoint
         ? 'rgba(37,99,235,0.18)'
         : isDeliveredPoint
           ? 'rgba(22,163,74,0.18)'
-          : isLatestRoutePoint
-            ? 'rgba(8,145,178,0.20)'
+          : isForwardPoint
+            ? 'rgba(124,58,237,0.18)'
             : 'rgba(15,23,42,0.18)';
 
       const html = `<div title="${safeLabel}" style="position:relative;width:42px;height:42px;filter:drop-shadow(0 10px 18px rgba(15,23,42,.22));">
@@ -201,7 +224,7 @@ function TrackingMap({ events, trackingID, routeSamples: syncedRouteSamples = []
           <span class="material-symbols-outlined" aria-hidden="true" style="font-size:17px;line-height:1;">${iconName}</span>
         </div>
         <div style="position:absolute;left:18px;top:37px;width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-top:8px solid ${markerColor};filter:drop-shadow(0 2px 1px rgba(15,23,42,.12));"></div>
-        ${isLast ? `<div style="position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%);border-radius:16px;border:2px solid ${isLatestRoutePoint ? 'rgba(8,145,178,.38)' : 'rgba(15,23,42,.22)'};animation:logitrack-pin-pulse 1.6s infinite;"></div>` : ''}
+        ${isLast ? `<div style="position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%);border-radius:16px;border:2px solid rgba(15,23,42,.22);animation:logitrack-pin-pulse 1.6s infinite;"></div>` : ''}
       </div>`;
 
       const markerId = makeMarkerId(entry);
@@ -229,9 +252,7 @@ function TrackingMap({ events, trackingID, routeSamples: syncedRouteSamples = []
 
       const badge = document.createElement('div');
       badge.style.cssText = `display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;background:${isStartPoint ? '#eff6ff' : isDeliveredPoint ? '#f0fdf4' : '#0f172a'};color:${isStartPoint ? '#2563eb' : isDeliveredPoint ? '#15803d' : '#ffffff'};font-size:11px;font-weight:900;margin-bottom:8px`;
-      badge.textContent = isStartPoint ? 'จุดเริ่มต้น' : isDeliveredPoint ? 'ปลายทาง' : isRouteSample ? 'เส้นทางจริง' : 'กำลังจัดส่ง';
-
-      if (isLatestRoutePoint) badge.textContent = 'ตำแหน่งล่าสุด';
+      badge.textContent = isStartPoint ? 'จุดเริ่มต้น' : isDeliveredPoint ? 'ปลายทาง' : isForwardPoint ? 'ส่งต่อสาขา' : 'จุดรับพัสดุ';
 
       const title = document.createElement('div');
       title.style.cssText = 'font-weight:900;color:#091426;font-size:15px;line-height:1.25';
@@ -276,7 +297,7 @@ function TrackingMap({ events, trackingID, routeSamples: syncedRouteSamples = []
 
       const footer = document.createElement('div');
       footer.style.cssText = 'margin-top:10px;padding-top:10px;border-top:1px solid #eef1f6;font-size:11px;color:#855300;font-weight:900';
-      footer.textContent = isRouteSample ? 'บันทึกจาก GPS ระหว่างพนักงานส่ง' : 'คลิกหมุดอื่นเพื่อดูรายละเอียดจุดนั้น';
+      footer.textContent = 'หมุดเหตุการณ์หลักของเส้นทาง';
 
       popupEl.appendChild(footer);
       marker.on('click', () => {
@@ -326,7 +347,7 @@ function TrackingMap({ events, trackingID, routeSamples: syncedRouteSamples = []
       const latest = coords[coords.length - 1];
       map.panTo(latest, { animate: true });
     }
-  }, [followLatest, hasRouteData, isMapReady, pathEntries]);
+  }, [followLatest, hasRouteData, isMapReady, markerEntries, pathEntries]);
 
   useEffect(() => {
     // Reset bounds fitting when tracking changes
@@ -369,7 +390,7 @@ function TrackingMap({ events, trackingID, routeSamples: syncedRouteSamples = []
       {hasRouteData && (
         <div className="pointer-events-none absolute left-3 top-3 z-[500] rounded-xl border border-white/80 dark:border-white/15 bg-white/95 dark:bg-[#020617]/95 px-3 py-2 shadow-sm backdrop-blur">
           <p className="text-xs font-semibold leading-none text-slate-800 dark:text-slate-100">แผนที่การจัดส่ง</p>
-          <p className="mt-1 text-[10px] font-medium text-slate-400 dark:text-slate-400">{pathEntries.length} จุดตำแหน่ง</p>
+          <p className="mt-1 text-[10px] font-medium text-slate-400 dark:text-slate-400">{markerEntries.length} หมุดหลัก</p>
         </div>
       )}
       {hasRouteData && latestRouteTimestamp && (
@@ -399,6 +420,9 @@ function TrackingMap({ events, trackingID, routeSamples: syncedRouteSamples = []
           </span>
           <span className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-400" /> กำลังส่ง
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-violet-600" /> ส่งต่อ
           </span>
           <span className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-green-600" /> ปลายทาง

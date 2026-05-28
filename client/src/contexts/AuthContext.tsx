@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useRef, ReactNode } fro
 import { User, login, setupPin, updateProfile } from '@/lib/parcelService';
 import { normalizeRole } from '@/lib/roles';
 import { toast } from 'sonner';
-import { clearAuthUser, readAuthUser, writeAuthUser } from '@/lib/authStorage';
+import { clearAuthUser, readAuthLastActivityAt, readAuthUser, touchAuthActivity, writeAuthUser } from '@/lib/authStorage';
 
 interface AuthContextValue {
   user: User | null;
@@ -30,20 +30,27 @@ function getUserIssuedAt(user?: User | null): number | null {
   return Number.isFinite(issuedAt) ? issuedAt : null;
 }
 
+function getUserLastActivityAt(user?: User | null): number | null {
+  return readAuthLastActivityAt(user) ?? getUserIssuedAt(user);
+}
+
 function isSessionExpired(user?: User | null): boolean {
-  const issuedAt = getUserIssuedAt(user);
-  if (!issuedAt) return true;
-  return Date.now() - issuedAt > SESSION_MAX_AGE_MS;
+  const lastActivityAt = getUserLastActivityAt(user);
+  if (!lastActivityAt) return true;
+  return Date.now() - lastActivityAt > SESSION_MAX_AGE_MS;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lastActivityAt, setLastActivityAt] = useState<number | null>(null);
   const authTransitionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastActivityWriteRef = useRef(0);
 
   const clearSession = () => {
     if (authTransitionTimer.current) clearTimeout(authTransitionTimer.current);
     setUser(null);
+    setLastActivityAt(null);
     clearAuthUser();
   };
 
@@ -52,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     writeAuthUser(authenticatedUser);
     authTransitionTimer.current = setTimeout(() => {
       setUser(authenticatedUser);
+      setLastActivityAt(readAuthLastActivityAt(authenticatedUser));
       authTransitionTimer.current = null;
     }, 900);
   };
@@ -65,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           clearSession();
         } else {
           setUser(normalizedUser);
-          writeAuthUser(normalizedUser);
+          setLastActivityAt(touchAuthActivity(normalizedUser));
         }
       } catch {
         clearAuthUser();
@@ -88,12 +96,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!user) return;
-    const issuedAt = getUserIssuedAt(user);
-    if (!issuedAt) {
+    const expiresFrom = lastActivityAt ?? getUserLastActivityAt(user);
+    if (!expiresFrom) {
       clearSession();
       return;
     }
-    const msUntilExpiry = issuedAt + SESSION_MAX_AGE_MS - Date.now();
+    const msUntilExpiry = expiresFrom + SESSION_MAX_AGE_MS - Date.now();
     if (msUntilExpiry <= 0) {
       clearSession();
       toast.error('เซสชันการใช้งานหมดอายุ กรุณาเข้าสู่ระบบใหม่อีกครั้ง');
@@ -104,7 +112,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       toast.error('เซสชันการใช้งานหมดอายุ กรุณาเข้าสู่ระบบใหม่อีกครั้ง');
     }, msUntilExpiry);
     return () => window.clearTimeout(timer);
-  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [lastActivityAt, user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!user) return;
+    const markActivity = () => {
+      const now = Date.now();
+      if (now - lastActivityWriteRef.current < 30_000) return;
+      lastActivityWriteRef.current = now;
+      const touchedAt = touchAuthActivity(user);
+      if (touchedAt) setLastActivityAt(touchedAt);
+    };
+    const events = ['click', 'keydown', 'touchstart', 'visibilitychange', 'focus'];
+    events.forEach(eventName => window.addEventListener(eventName, markActivity, { passive: true }));
+    return () => {
+      events.forEach(eventName => window.removeEventListener(eventName, markActivity));
+    };
+  }, [user]);
 
   const loginUser = async (employeeId: string, pin?: string) => {
     const res = await login(employeeId, pin);
@@ -131,6 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (res.success && res.user) {
       setUser(res.user);
       writeAuthUser(res.user);
+      setLastActivityAt(readAuthLastActivityAt(res.user));
     }
     return { success: res.success, error: res.error };
   };

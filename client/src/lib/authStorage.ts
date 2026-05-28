@@ -1,6 +1,7 @@
 import type { User } from './parcel-service/types';
 
 export const AUTH_SESSION_KEY = 'shiptrack_user';
+const AUTH_LAST_ACTIVITY_KEY = 'shiptrack_last_activity_at';
 const INTEGRITY_SALT = 'shiptrack_secure_salt_98765';
 
 function calculateChecksum(payload: string): string {
@@ -56,53 +57,112 @@ function getLocalStorage(): Storage | null {
   }
 }
 
+function serializeAuthUser(user: User, lastActivityAt = Date.now()): string {
+  const serializedUser = JSON.stringify(user);
+  const checksum = calculateChecksum(serializedUser);
+  return JSON.stringify({
+    value: user,
+    checksum,
+    lastActivityAt,
+  });
+}
+
+function readWrappedLastActivity(raw: string | null): number | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    const value = Number(parsed?.lastActivityAt);
+    return Number.isFinite(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+export function readAuthLastActivityAt(user?: User | null): number | null {
+  const local = getLocalStorage();
+  const session = getSessionStorage();
+  const wrappedActivity =
+    readWrappedLastActivity(local?.getItem(AUTH_SESSION_KEY) ?? null) ??
+    readWrappedLastActivity(session?.getItem(AUTH_SESSION_KEY) ?? null);
+  if (wrappedActivity) return wrappedActivity;
+  const storedActivity = Number(local?.getItem(AUTH_LAST_ACTIVITY_KEY) ?? session?.getItem(AUTH_LAST_ACTIVITY_KEY) ?? '');
+  if (Number.isFinite(storedActivity) && storedActivity > 0) return storedActivity;
+  return typeof user?.issuedAt === 'number' ? user.issuedAt : null;
+}
+
 export function readAuthUser(): User | null {
   const session = getSessionStorage();
   const local = getLocalStorage();
-  const sessionUser = safeParseUser(session?.getItem(AUTH_SESSION_KEY) ?? null);
-  if (sessionUser) return sessionUser;
+  const localUser = safeParseUser(local?.getItem(AUTH_SESSION_KEY) ?? null);
+  if (localUser) return localUser;
 
-  const legacyUser = safeParseUser(local?.getItem(AUTH_SESSION_KEY) ?? null);
+  const legacyUser = safeParseUser(session?.getItem(AUTH_SESSION_KEY) ?? null);
   if (legacyUser) {
     try {
-      session?.setItem(AUTH_SESSION_KEY, JSON.stringify(legacyUser));
-      local?.removeItem(AUTH_SESSION_KEY);
+      const lastActivityAt = readAuthLastActivityAt(legacyUser) ?? Date.now();
+      local?.setItem(AUTH_SESSION_KEY, serializeAuthUser(legacyUser, lastActivityAt));
+      local?.setItem(AUTH_LAST_ACTIVITY_KEY, String(lastActivityAt));
+      session?.removeItem(AUTH_SESSION_KEY);
     } catch {
-      // If session storage is unavailable, avoid keeping the legacy token permanently.
-      local?.removeItem(AUTH_SESSION_KEY);
+      // If local storage is unavailable, keep the session-only legacy token for this tab.
     }
     return legacyUser;
   }
 
-  local?.removeItem(AUTH_SESSION_KEY);
+  session?.removeItem(AUTH_SESSION_KEY);
   return null;
 }
 
 export function writeAuthUser(user: User): void {
-  const session = getSessionStorage();
   const local = getLocalStorage();
+  const session = getSessionStorage();
+  const lastActivityAt = Date.now();
   try {
-    const serializedUser = JSON.stringify(user);
-    const checksum = calculateChecksum(serializedUser);
-    const wrapped = {
-      value: user,
-      checksum: checksum
-    };
-    session?.setItem(AUTH_SESSION_KEY, JSON.stringify(wrapped));
+    if (!local) throw new Error('localStorage unavailable');
+    local?.setItem(AUTH_SESSION_KEY, serializeAuthUser(user, lastActivityAt));
+    local?.setItem(AUTH_LAST_ACTIVITY_KEY, String(lastActivityAt));
   } catch {
-    // Session storage can fail in restricted/private contexts.
+    try {
+      session?.setItem(AUTH_SESSION_KEY, serializeAuthUser(user, lastActivityAt));
+      session?.setItem(AUTH_LAST_ACTIVITY_KEY, String(lastActivityAt));
+    } catch {
+      // Storage can fail in restricted/private contexts.
+    }
   }
-  local?.removeItem(AUTH_SESSION_KEY);
+  session?.removeItem(AUTH_SESSION_KEY);
+}
+
+export function touchAuthActivity(user?: User | null): number | null {
+  const activeUser = user ?? readAuthUser();
+  if (!activeUser) return null;
+  const now = Date.now();
+  try {
+    const local = getLocalStorage();
+    if (!local) throw new Error('localStorage unavailable');
+    local.setItem(AUTH_SESSION_KEY, serializeAuthUser(activeUser, now));
+    local.setItem(AUTH_LAST_ACTIVITY_KEY, String(now));
+  } catch {
+    try {
+      getSessionStorage()?.setItem(AUTH_SESSION_KEY, serializeAuthUser(activeUser, now));
+      getSessionStorage()?.setItem(AUTH_LAST_ACTIVITY_KEY, String(now));
+    } catch {
+      return null;
+    }
+  }
+  return now;
 }
 
 export function clearAuthUser(): void {
   getSessionStorage()?.removeItem(AUTH_SESSION_KEY);
+  getSessionStorage()?.removeItem(AUTH_LAST_ACTIVITY_KEY);
   getLocalStorage()?.removeItem(AUTH_SESSION_KEY);
+  getLocalStorage()?.removeItem(AUTH_LAST_ACTIVITY_KEY);
 }
 
 export function readAuthPayload(): { employeeId?: string; role?: string; token?: string } {
   const user = readAuthUser();
   if (!user) return {};
+  touchAuthActivity(user);
   return {
     employeeId: user.employeeId,
     role: user.role,

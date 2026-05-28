@@ -51,6 +51,7 @@ export function parseParcelTimeline(parcel: Parcel): TimelineEvent[] {
       if (evt.eventType === 'CREATED') {
         events.push({
           id: String(idCounter++),
+          eventType: 'CREATED',
           status: 'completed',
           title: 'สร้างรายการส่ง',
           description: `ผู้ส่ง: ${evt.person || parcel['ผู้ส่ง'] || '-'} → ผู้รับ: ${parcel['ผู้รับ'] || evt.destLocation || '-'}`,
@@ -64,6 +65,7 @@ export function parseParcelTimeline(parcel: Parcel): TimelineEvent[] {
       } else if (evt.eventType === 'FORWARD') {
         events.push({
           id: String(idCounter++),
+          eventType: 'FORWARD',
           status: 'completed',
           title: 'ส่งต่อไปจุดถัดไป',
           description: `ส่งต่อโดย: ${evt.person || '-'} ไปยังแผนก/สาขา: ${evt.destLocation || '-'}`,
@@ -77,6 +79,7 @@ export function parseParcelTimeline(parcel: Parcel): TimelineEvent[] {
       } else if (evt.eventType === 'START_DELIVERY') {
         events.push({
           id: String(idCounter++),
+          eventType: 'START_DELIVERY',
           status: 'completed',
           title: 'รับงานจัดส่ง',
           description: `ผู้รับงาน: ${evt.person || '-'}`,
@@ -89,6 +92,7 @@ export function parseParcelTimeline(parcel: Parcel): TimelineEvent[] {
       } else if (evt.eventType === 'PICKUP') {
         events.push({
           id: String(idCounter++),
+          eventType: 'PICKUP',
           status: 'completed',
           title: 'รับของแล้ว',
           description: `ผู้รับของ: ${evt.person || '-'}`,
@@ -101,6 +105,7 @@ export function parseParcelTimeline(parcel: Parcel): TimelineEvent[] {
       } else if (evt.eventType === 'RELEASE_DELIVERY') {
         events.push({
           id: String(idCounter++),
+          eventType: 'RELEASE_DELIVERY',
           status: 'completed',
           title: 'คืนงานจัดส่ง',
           description: `คืนงานโดย: ${evt.person || '-'}`,
@@ -111,6 +116,7 @@ export function parseParcelTimeline(parcel: Parcel): TimelineEvent[] {
       } else if (evt.eventType === 'PROXY') {
         events.push({
           id: String(idCounter++),
+          eventType: 'PROXY',
           status: 'completed',
           title: 'ส่งสำเร็จ',
           description: appendDeliveryConfirmation(`รับแทนโดย: ${evt.person || '-'}`, evt),
@@ -125,6 +131,7 @@ export function parseParcelTimeline(parcel: Parcel): TimelineEvent[] {
       } else if (evt.eventType === 'DELIVERED') {
         events.push({
           id: String(idCounter++),
+          eventType: 'DELIVERED',
           status: 'completed',
           title: 'ส่งสำเร็จ',
           description: appendDeliveryConfirmation('ส่งถึงปลายทางเรียบร้อย', evt),
@@ -139,6 +146,7 @@ export function parseParcelTimeline(parcel: Parcel): TimelineEvent[] {
       } else if (evt.eventType === 'ROUTE_SAMPLE') {
         events.push({
           id: String(idCounter++),
+          eventType: 'ROUTE_SAMPLE',
           kind: 'routeSample',
           status: 'completed',
           title: 'ตำแหน่งระหว่างส่ง',
@@ -174,6 +182,7 @@ export function parseParcelTimeline(parcel: Parcel): TimelineEvent[] {
   const isCreationCurrent = parcel['สถานะ'] === 'รอจัดส่ง';
   events.push({
     id: String(idCounter++),
+    eventType: 'CREATED',
     status: isCreationCurrent ? 'current' : 'completed',
     title: 'สร้างรายการส่ง',
     description: `ผู้ส่ง: ${parcel['ผู้ส่ง']} → ผู้รับ: ${parcel['ผู้รับ']}`,
@@ -188,6 +197,7 @@ export function parseParcelTimeline(parcel: Parcel): TimelineEvent[] {
   if (parcel['สถานะ'] === 'ส่งสำเร็จ') {
     events.push({
       id: String(idCounter++),
+      eventType: 'DELIVERED',
       status: 'completed',
       title: 'ส่งสำเร็จ',
       description: 'ส่งถึงปลายทางเรียบร้อย',

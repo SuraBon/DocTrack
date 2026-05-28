@@ -229,6 +229,20 @@ export const getLatestTimelineSummary = (parcel: Parcel) => {
   return `${latest.title}${latest.description ? `: ${latest.description}` : ''}`;
 };
 
+export const getPreferredParcelImage = (parcel: Parcel): string | undefined => {
+  const events = getTimelineEvents(parcel);
+  const destinationImage = [...events]
+    .reverse()
+    .find(event => (event.eventType === 'DELIVERED' || event.eventType === 'PROXY') && event.imageUrl)
+    ?.imageUrl;
+  if (destinationImage) return destinationImage;
+
+  const latestImage = [...events].reverse().find(event => event.imageUrl)?.imageUrl;
+  if (latestImage) return latestImage;
+
+  return events.find(event => event.eventType === 'CREATED' && event.imageUrl)?.imageUrl;
+};
+
 export const getParcelAgeDays = (parcel: Parcel) => {
   const createdAt = getDateTime(parcel['วันที่สร้าง']);
   if (!createdAt) return 0;

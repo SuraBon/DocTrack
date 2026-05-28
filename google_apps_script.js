@@ -873,7 +873,8 @@ function doPost(e) {
         if (isNaN(issuedAt)) {
           return createJsonResponse({ success: false, error: "Malformed token" });
         }
-        if (Date.now() - issuedAt > TOKEN_MAX_AGE_MS) {
+        const sessionLastActivityAt = getActiveSessionLastActivityAt(parts[0]) || issuedAt;
+        if (Date.now() - sessionLastActivityAt > TOKEN_MAX_AGE_MS) {
           return createJsonResponse({ success: false, error: "Session expired" });
         }
         const sessionId = String(parts[3] || "");
@@ -890,6 +891,7 @@ function doPost(e) {
           if (getActiveSessionId(userRecord.employeeId) !== sessionId) {
             return createJsonResponse({ success: false, error: "Session replaced" });
           }
+          touchActiveSession(userRecord.employeeId, sessionId);
           // Role/name always come from sheet — stale tokens cannot keep old privileges.
           // Use distinct property names to prevent overwriting request parameters.
           payload.employeeId = userRecord.employeeId;
@@ -2460,12 +2462,37 @@ function createSessionId(employeeId) {
 
 function getActiveSessionId(employeeId) {
   const key = "active_session_" + normalizeEmployeeId(employeeId);
-  return PropertiesService.getScriptProperties().getProperty(key) || "";
+  const raw = PropertiesService.getScriptProperties().getProperty(key) || "";
+  try {
+    const parsed = JSON.parse(raw);
+    return String(parsed.sessionId || "");
+  } catch (e) {
+    return raw;
+  }
+}
+
+function getActiveSessionLastActivityAt(employeeId) {
+  const key = "active_session_" + normalizeEmployeeId(employeeId);
+  const raw = PropertiesService.getScriptProperties().getProperty(key) || "";
+  try {
+    const parsed = JSON.parse(raw);
+    const value = Number(parsed.lastActivityAt || 0);
+    return isNaN(value) ? 0 : value;
+  } catch (e) {
+    return 0;
+  }
 }
 
 function setActiveSessionId(employeeId, sessionId) {
   const key = "active_session_" + normalizeEmployeeId(employeeId);
-  PropertiesService.getScriptProperties().setProperty(key, String(sessionId || ""));
+  PropertiesService.getScriptProperties().setProperty(key, JSON.stringify({
+    sessionId: String(sessionId || ""),
+    lastActivityAt: Date.now()
+  }));
+}
+
+function touchActiveSession(employeeId, sessionId) {
+  setActiveSessionId(employeeId, sessionId);
 }
 
 // ── Audit Log ─────────────────────────────────────────────────────────────────

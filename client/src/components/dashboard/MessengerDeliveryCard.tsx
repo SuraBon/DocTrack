@@ -13,7 +13,7 @@ import {
   StaleBadge,
   CardActions,
   getCleanNote,
-  getTimelineEvents,
+  getPreferredParcelImage,
   isParcelStale,
 } from './DashboardComponents';
 
@@ -53,7 +53,7 @@ export const MessengerDeliveryCard = ({
   const translatedNote = translateSystemNote(note);
   const isDone = parcel['สถานะ'] === 'ส่งสำเร็จ';
   const isAssignedElsewhere = Boolean(assignment && !canConfirmDelivery && !isDone);
-  const proofImageUrl = getTimelineEvents(parcel).find(event => event.imageUrl)?.imageUrl;
+  const proofImageUrl = getPreferredParcelImage(parcel);
   const actionLabel = canStartDelivery
     ? (isStartingDelivery ? 'กำลังรับงาน' : 'รับงาน')
     : canConfirmDelivery
