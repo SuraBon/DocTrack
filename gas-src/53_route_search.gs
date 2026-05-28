@@ -137,6 +137,21 @@ function purgeOldRouteSamples(daysToKeep) {
   return { success: true, deleted: deleted };
 }
 
+function installPurgeOldRouteSamplesTrigger() {
+  const handler = "purgeOldRouteSamples";
+  const exists = ScriptApp.getProjectTriggers().some(function (trigger) {
+    return trigger.getHandlerFunction && trigger.getHandlerFunction() === handler;
+  });
+  if (!exists) {
+    ScriptApp.newTrigger(handler)
+      .timeBased()
+      .everyDays(1)
+      .atHour(3)
+      .create();
+  }
+  return { success: true, installed: !exists };
+}
+
 function handleSearchParcels(payload) {
   const query = sanitizeText(payload.query || "");
   if (!query) {

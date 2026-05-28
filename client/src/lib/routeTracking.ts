@@ -1,6 +1,7 @@
 import {
   OFFLINE_ROUTE_STORE,
   idbDelete,
+  idbGet,
   idbGetAll,
   idbGetByIndex,
   idbPut,
@@ -10,6 +11,8 @@ import {
 import { logTelemetry } from './telemetry';
 
 export type { RouteSampleRecord } from './offlineDb';
+
+type RouteSampleSyncState = 0 | 1;
 
 const ACTIVE_ROUTES_KEY = 'shiptrack_active_routes';
 const ROUTE_UPDATED_EVENT = 'shiptrack-route-samples-updated';
@@ -24,6 +27,27 @@ const MAX_STORED_ROUTE_SAMPLES = 2000;
 const activeWatchIds = new Map<string, number>();
 const lastSamples = new Map<string, RouteSampleRecord>();
 
+function getSampleSyncState(sample: RouteSampleRecord): RouteSampleSyncState {
+  return sample.syncState === 1 || sample.synced === true ? 1 : 0;
+}
+
+function normalizeRouteSample(sample: RouteSampleRecord): RouteSampleRecord {
+  const syncState = getSampleSyncState(sample);
+  return {
+    ...sample,
+    syncState,
+    synced: syncState === 1,
+  };
+}
+
+function isSampleUnsynced(sample: RouteSampleRecord): boolean {
+  return getSampleSyncState(sample) === 0;
+}
+
+function isSampleSynced(sample: RouteSampleRecord): boolean {
+  return getSampleSyncState(sample) === 1;
+}
+
 function dispatchRouteUpdated(trackingID: string): void {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new CustomEvent(ROUTE_UPDATED_EVENT, { detail: { trackingID } }));
@@ -33,7 +57,7 @@ function readFallbackSamples(): RouteSampleRecord[] {
   try {
     if (typeof localStorage === 'undefined') return [];
     const parsed = JSON.parse(localStorage.getItem('shiptrack_route_samples') ?? '[]');
-    return Array.isArray(parsed) ? parsed.filter(isRouteSample) : [];
+    return Array.isArray(parsed) ? parsed.filter(isRouteSample).map(normalizeRouteSample) : [];
   } catch {
     return [];
   }
@@ -42,7 +66,7 @@ function readFallbackSamples(): RouteSampleRecord[] {
 function saveFallbackSamples(samples: RouteSampleRecord[]): void {
   try {
     if (typeof localStorage === 'undefined') return;
-    localStorage.setItem('shiptrack_route_samples', JSON.stringify(samples.slice(-MAX_STORED_ROUTE_SAMPLES)));
+    localStorage.setItem('shiptrack_route_samples', JSON.stringify(samples.map(normalizeRouteSample).slice(-MAX_STORED_ROUTE_SAMPLES)));
   } catch {
     // Storage quota/private mode failure should not break the delivery flow.
   }
@@ -97,13 +121,14 @@ function distanceMeters(a: RouteSampleRecord, b: RouteSampleRecord): number {
 }
 
 async function saveRouteSample(sample: RouteSampleRecord): Promise<void> {
-  if (isIndexedDbAvailable() && await idbPut(OFFLINE_ROUTE_STORE, sample)) {
-    dispatchRouteUpdated(sample.trackingID);
+  const normalized = normalizeRouteSample(sample);
+  if (isIndexedDbAvailable() && await idbPut(OFFLINE_ROUTE_STORE, normalized)) {
+    dispatchRouteUpdated(normalized.trackingID);
     return;
   }
-  const next = [...readFallbackSamples(), sample].slice(-MAX_STORED_ROUTE_SAMPLES);
+  const next = [...readFallbackSamples(), normalized].slice(-MAX_STORED_ROUTE_SAMPLES);
   saveFallbackSamples(next);
-  dispatchRouteUpdated(sample.trackingID);
+  dispatchRouteUpdated(normalized.trackingID);
 }
 
 function shouldSaveSample(next: RouteSampleRecord): boolean {
@@ -138,6 +163,7 @@ export function startRouteTracking(trackingID: string): boolean {
           speed,
           heading,
           timestamp: new Date(position.timestamp || Date.now()).toISOString(),
+          syncState: 0,
           synced: false,
         };
         if (!shouldSaveSample(sample)) return;
@@ -194,7 +220,7 @@ async function readRouteSamplesForTracking(trackingID: string): Promise<RouteSam
   if (isIndexedDbAvailable()) {
     const indexed = await idbGetByIndex<RouteSampleRecord>(OFFLINE_ROUTE_STORE, 'trackingID', trackingID);
     if (indexed) {
-      return indexed.sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
+      return indexed.map(normalizeRouteSample).sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
     }
   }
   return readFallbackSamples()
@@ -207,30 +233,44 @@ export async function getRouteSamples(trackingID: string): Promise<RouteSampleRe
 }
 
 export async function getUnsyncedRouteSamples(trackingID?: string): Promise<RouteSampleRecord[]> {
-  const records = await idbGetAll<RouteSampleRecord>(OFFLINE_ROUTE_STORE);
-  const source = records ?? readFallbackSamples();
-  return source
-    .filter(sample => !sample.synced && (!trackingID || sample.trackingID === trackingID))
+  if (isIndexedDbAvailable()) {
+    if (trackingID) {
+      const byTracking = await idbGetByIndex<RouteSampleRecord>(OFFLINE_ROUTE_STORE, 'trackingID', trackingID);
+      if (byTracking) {
+        return byTracking
+          .map(normalizeRouteSample)
+          .filter(isSampleUnsynced)
+          .sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
+      }
+    }
+    const unsynced = await idbGetByIndex<RouteSampleRecord>(OFFLINE_ROUTE_STORE, 'syncState', 0);
+    if (unsynced) {
+      return unsynced
+        .map(normalizeRouteSample)
+        .sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
+    }
+  }
+
+  return readFallbackSamples()
+    .filter(sample => isSampleUnsynced(sample) && (!trackingID || sample.trackingID === trackingID))
     .sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
 }
 
 export async function markRouteSamplesSynced(ids: string[]): Promise<void> {
   if (ids.length === 0) return;
-  const idSet = new Set(ids);
-  const records = await idbGetAll<RouteSampleRecord>(OFFLINE_ROUTE_STORE);
-  if (records) {
-    await Promise.all(
-      records
-        .filter(sample => idSet.has(sample.id))
-        .map(sample => idbPut(OFFLINE_ROUTE_STORE, { ...sample, synced: true })),
+  if (isIndexedDbAvailable()) {
+    const samples = (await Promise.all(ids.map(id => idbGet<RouteSampleRecord>(OFFLINE_ROUTE_STORE, id)))).filter(
+      (sample): sample is RouteSampleRecord => !!sample,
     );
-    const trackingIds = new Set(records.filter(sample => idSet.has(sample.id)).map(sample => sample.trackingID));
+    await Promise.all(samples.map(sample => idbPut(OFFLINE_ROUTE_STORE, normalizeRouteSample({ ...sample, syncState: 1, synced: true }))));
+    const trackingIds = new Set(samples.map(sample => sample.trackingID));
     trackingIds.forEach(dispatchRouteUpdated);
-    return;
+    if (samples.length > 0) return;
   }
 
+  const idSet = new Set(ids);
   const fallbackSamples = readFallbackSamples();
-  const nextSamples = fallbackSamples.map(sample => idSet.has(sample.id) ? { ...sample, synced: true } : sample);
+  const nextSamples = fallbackSamples.map(sample => idSet.has(sample.id) ? normalizeRouteSample({ ...sample, syncState: 1, synced: true }) : sample);
   saveFallbackSamples(nextSamples);
   new Set(fallbackSamples.filter(sample => idSet.has(sample.id)).map(sample => sample.trackingID)).forEach(dispatchRouteUpdated);
 }
@@ -246,13 +286,13 @@ export async function purgeSyncedRouteSamples(olderThanDays: number = 3): Promis
   const cutoffTime = Date.now() - olderThanDays * 24 * 60 * 60 * 1000;
   const records = await idbGetAll<RouteSampleRecord>(OFFLINE_ROUTE_STORE);
   if (records) {
-    const toDelete = records.filter(sample => sample.synced && Date.parse(sample.timestamp) < cutoffTime);
+    const toDelete = records.filter(sample => isSampleSynced(sample) && Date.parse(sample.timestamp) < cutoffTime);
     await Promise.all(toDelete.map(sample => idbDelete(OFFLINE_ROUTE_STORE, sample.id)));
   }
 
   const fallbackSamples = readFallbackSamples();
   const nextFallback = fallbackSamples.filter(
-    sample => !(sample.synced && Date.parse(sample.timestamp) < cutoffTime)
+    sample => !(isSampleSynced(sample) && Date.parse(sample.timestamp) < cutoffTime)
   );
   if (nextFallback.length !== fallbackSamples.length) {
     saveFallbackSamples(nextFallback);
@@ -268,6 +308,14 @@ export function resumeActiveRouteTracking(): void {
 export type RouteSyncSnapshot = {
   pendingRouteSampleCount: number;
   latestRouteSampleAt: string | null;
+  pendingRoutes: RouteSyncRouteHealth[];
+};
+
+export type RouteSyncRouteHealth = {
+  trackingID: string;
+  pendingCount: number;
+  latestSampleAt: string | null;
+  active: boolean;
 };
 
 /** Lightweight status for header popover (avoids loading all samples per active route). */
@@ -277,7 +325,31 @@ export async function getRouteSyncSnapshot(): Promise<RouteSyncSnapshot> {
     .map(sample => sample.timestamp)
     .filter(Boolean)
     .sort((a, b) => Date.parse(b) - Date.parse(a))[0] ?? null;
-  return { pendingRouteSampleCount: unsynced.length, latestRouteSampleAt: latest };
+  const activeRouteIds = getActiveRoutes();
+  const activeRouteSet = new Set(activeRouteIds);
+  const pendingByTracking = new Map<string, RouteSyncRouteHealth>();
+  for (const trackingID of activeRouteIds) {
+    pendingByTracking.set(trackingID, { trackingID, pendingCount: 0, latestSampleAt: null, active: true });
+  }
+  for (const sample of unsynced) {
+    const entry = pendingByTracking.get(sample.trackingID) ?? {
+      trackingID: sample.trackingID,
+      pendingCount: 0,
+      latestSampleAt: null,
+      active: activeRouteSet.has(sample.trackingID),
+    };
+    entry.pendingCount += 1;
+    if (!entry.latestSampleAt || Date.parse(sample.timestamp) > Date.parse(entry.latestSampleAt)) {
+      entry.latestSampleAt = sample.timestamp;
+    }
+    pendingByTracking.set(sample.trackingID, entry);
+  }
+  const pendingRoutes = Array.from(pendingByTracking.values())
+    .sort((a, b) => {
+      if (a.pendingCount !== b.pendingCount) return b.pendingCount - a.pendingCount;
+      return Date.parse(b.latestSampleAt ?? '0') - Date.parse(a.latestSampleAt ?? '0');
+    });
+  return { pendingRouteSampleCount: unsynced.length, latestRouteSampleAt: latest, pendingRoutes };
 }
 
 export async function migrateRouteSamplesToIndexedDb(): Promise<void> {
@@ -287,7 +359,7 @@ export async function migrateRouteSamplesToIndexedDb(): Promise<void> {
   const existing = await idbGetAll<RouteSampleRecord>(OFFLINE_ROUTE_STORE);
   if (existing && existing.length > 0) return;
   for (const sample of fallback) {
-    await idbPut(OFFLINE_ROUTE_STORE, sample);
+    await idbPut(OFFLINE_ROUTE_STORE, normalizeRouteSample(sample));
   }
   saveFallbackSamples([]);
   logTelemetry({ level: 'info', name: 'route.samples.migrated', data: { count: fallback.length } });

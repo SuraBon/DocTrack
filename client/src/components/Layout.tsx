@@ -82,6 +82,8 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
           ? 1
           : 0;
   const routeSavingCount = routeButtonCount;
+  const routeHealthRows = routeSyncStatus.pendingRoutes.slice(0, 6);
+  const hiddenRouteHealthCount = Math.max(routeSyncStatus.pendingRoutes.length - routeHealthRows.length, 0);
   const [isRoutePopoverOpen, setIsRoutePopoverOpen] = useState(false);
   const routePopoverRef = useRef<HTMLDivElement>(null);
 
@@ -257,7 +259,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
                   </button>
 
                   {isRoutePopoverOpen && (
-                    <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-2xl border border-slate-200/70 dark:border-white/[0.12] bg-card shadow-xl">
+                    <div className="absolute right-0 top-full z-50 mt-2 w-80 max-w-[calc(100vw-1rem)] rounded-2xl border border-slate-200/70 dark:border-white/[0.12] bg-card shadow-xl">
                       <div className="px-4 py-3 border-b border-slate-200/60 dark:border-white/[0.08]">
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-sm font-black text-foreground">บันทึกเส้นทาง</p>
@@ -293,6 +295,39 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
                         <p className="px-3 pb-3 text-[11px] font-semibold text-red-700 dark:text-red-300">
                           {routeSyncStatus.lastRouteSyncError}
                         </p>
+                      )}
+                      {routeHealthRows.length > 0 && (
+                        <div className="border-t border-slate-200/60 px-3 py-3 dark:border-white/[0.08]">
+                          <div className="mb-2 flex items-center justify-between gap-2">
+                            <p className="text-[11px] font-black text-foreground">งานที่กำลังบันทึก/ค้างซิงค์</p>
+                            <span className="text-[10px] font-bold text-muted-foreground">{routeSyncStatus.pendingRoutes.length} งาน</span>
+                          </div>
+                          <div className="max-h-48 space-y-1.5 overflow-y-auto pr-1">
+                            {routeHealthRows.map(route => (
+                              <div key={route.trackingID} className="rounded-xl bg-surface-container px-2.5 py-2">
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="min-w-0 truncate text-[11px] font-black text-foreground">{route.trackingID}</p>
+                                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-black ${
+                                    route.pendingCount > 0
+                                      ? 'bg-amber-500/15 text-amber-800 dark:text-amber-200'
+                                      : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                                  }`}>
+                                    {route.pendingCount > 0 ? `${route.pendingCount} ค้าง` : 'ทันล่าสุด'}
+                                  </span>
+                                </div>
+                                <div className="mt-1 flex items-center justify-between gap-2 text-[10px] font-semibold text-muted-foreground">
+                                  <span>{route.active ? 'กำลังติดตาม GPS' : 'รอซิงค์ย้อนหลัง'}</span>
+                                  <span>{formatSyncTime(route.latestSampleAt)}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          {hiddenRouteHealthCount > 0 && (
+                            <p className="mt-2 text-[10px] font-semibold text-muted-foreground">
+                              และอีก {hiddenRouteHealthCount} งาน
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}

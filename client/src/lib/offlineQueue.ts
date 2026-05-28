@@ -170,6 +170,7 @@ export async function resetOfflineActionForRetry(id: string): Promise<boolean> {
   await updateOfflineAction({
     ...item,
     status: 'pending',
+    attemptCount: 0,
     nextRetryAt: undefined,
     lastError: undefined,
   });

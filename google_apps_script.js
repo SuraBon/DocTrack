@@ -836,12 +836,23 @@ function hasAnyRole(payload, roles) {
 // ---- 30_entrypoints_routing.gs ----
 function doPost(e) {
   try {
+    const requestId = Utilities.getUuid();
+    const startMs = Date.now();
     const rawBody = e && e.postData && e.postData.contents ? String(e.postData.contents) : "";
     if (!rawBody || rawBody.length > MAX_REQUEST_LENGTH) {
       return createJsonResponse({ success: false, error: "Invalid request size" });
     }
     const payload = JSON.parse(rawBody);
     const action = payload.action;
+    const clientRequestId = payload.requestId ? String(payload.requestId) : requestId;
+    console.info(JSON.stringify({
+      level: 'info',
+      event: 'api.request',
+      requestId: clientRequestId,
+      action: action,
+      employeeId: payload.employeeId || null,
+      trackingID: payload.trackingID || null,
+    }));
     const configuredKey = getApiKey();
     if (!configuredKey) {
       return createJsonResponse({ success: false, error: "API key is not configured on script properties" });
@@ -920,7 +931,18 @@ function doPost(e) {
       result = routeAction(action, payload);
     }
 
-    if (result) return result;
+    if (result) {
+      // Add request context for client-side correlation (best-effort).
+      try {
+        const raw = JSON.parse(result.getContent());
+        raw.requestId = payload.requestId || requestId;
+        raw.serverTime = new Date().toISOString();
+        raw.elapsedMs = Date.now() - startMs;
+        return createJsonResponse(raw);
+      } catch {
+        return result;
+      }
+    }
 
     return createJsonResponse({ success: false, error: "Invalid action" });
   } catch (error) {
@@ -2155,6 +2177,8 @@ function handleSyncRouteSamples(payload) {
     return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง" });
   }
 
+  const reqId = sanitizeText(payload.requestId || "");
+
   const rl = checkWriteRateLimit(payload.employeeId, 'syncRouteSamples');
   if (!rl.allowed) {
     return createJsonResponse({ success: false, error: "ส่งคำขอบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่" });
@@ -2247,9 +2271,55 @@ function handleSyncRouteSamples(payload) {
   }
 
   if (savedCount > 0) {
-    writeAuditLog(payload.employeeId, "SYNC_ROUTE_SAMPLES", payload.trackingID, "Saved route samples: " + savedCount);
+    const details = "Saved route samples: " + savedCount +
+      (skippedCount ? " (skipped: " + skippedCount + ")" : "") +
+      (reqId ? " requestId=" + reqId : "");
+    writeAuditLog(payload.employeeId, "SYNC_ROUTE_SAMPLES", payload.trackingID, details);
   }
   return createJsonResponse({ success: true, savedCount: savedCount, skippedCount: skippedCount });
+}
+
+/**
+ * Time-driven maintenance: delete route samples older than daysToKeep (default 90).
+ * Install trigger: daily, function purgeOldRouteSamples
+ */
+function purgeOldRouteSamples(daysToKeep) {
+  const keepDays = Math.max(parseInt(daysToKeep) || 90, 7);
+  const cutoffMs = Date.now() - keepDays * 24 * 60 * 60 * 1000;
+  let deleted = 0;
+
+  getYearSpreadsheetsForRead().forEach(function (entry) {
+    const sheet = entry.spreadsheet.getSheetByName("RouteSamples");
+    if (!sheet || sheet.getLastRow() <= 1) return;
+    const data = sheet.getDataRange().getValues();
+    for (let i = data.length - 1; i >= 1; i--) {
+      const row = data[i];
+      const ts = row[2];
+      const parsed = ts instanceof Date ? ts.getTime() : Date.parse(String(ts || ""));
+      if (!isNaN(parsed) && parsed < cutoffMs) {
+        sheet.deleteRow(i + 1);
+        deleted++;
+      }
+    }
+  });
+
+  writeAuditLog("SYSTEM", "PURGE_ROUTE_SAMPLES", "", "Deleted rows: " + deleted + " older than " + keepDays + " days");
+  return { success: true, deleted: deleted };
+}
+
+function installPurgeOldRouteSamplesTrigger() {
+  const handler = "purgeOldRouteSamples";
+  const exists = ScriptApp.getProjectTriggers().some(function (trigger) {
+    return trigger.getHandlerFunction && trigger.getHandlerFunction() === handler;
+  });
+  if (!exists) {
+    ScriptApp.newTrigger(handler)
+      .timeBased()
+      .everyDays(1)
+      .atHour(3)
+      .create();
+  }
+  return { success: true, installed: !exists };
 }
 
 function handleSearchParcels(payload) {

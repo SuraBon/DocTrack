@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { getActiveRouteIds, getRouteSyncSnapshot } from '@/lib/routeTracking';
+import { getActiveRouteIds, getRouteSyncSnapshot, type RouteSyncRouteHealth } from '@/lib/routeTracking';
 
 const ROUTE_SYNC_STATUS_EVENT = 'shiptrack-route-sync-status';
 
 export function useRouteSyncStatus() {
   const [pendingRouteSampleCount, setPendingRouteSampleCount] = useState(0);
+  const [pendingRoutes, setPendingRoutes] = useState<RouteSyncRouteHealth[]>([]);
   const [activeRouteCount, setActiveRouteCount] = useState(0);
   const [latestRouteSampleAt, setLatestRouteSampleAt] = useState<string | null>(null);
   const [lastRouteSyncAt, setLastRouteSyncAt] = useState<string | null>(null);
@@ -18,6 +19,7 @@ export function useRouteSyncStatus() {
       void getRouteSyncSnapshot().then(snapshot => {
         if (!active) return;
         setPendingRouteSampleCount(snapshot.pendingRouteSampleCount);
+        setPendingRoutes(snapshot.pendingRoutes);
         setLatestRouteSampleAt(snapshot.latestRouteSampleAt);
       });
     };
@@ -62,6 +64,7 @@ export function useRouteSyncStatus() {
 
   return {
     pendingRouteSampleCount,
+    pendingRoutes,
     activeRouteCount,
     latestRouteSampleAt,
     lastRouteSyncAt,
