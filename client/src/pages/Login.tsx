@@ -161,11 +161,16 @@ export default function Login() {
         <main className="px-5 py-6 sm:px-8 sm:py-8 md:px-10">
           <div className="mb-7">
             <div className="mb-5 flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary text-white shadow-sm">
-                <span className="material-symbols-outlined text-xl" aria-hidden="true">inventory_2</span>
+              <div className="grid h-10 w-10 place-items-center rounded-xl bg-[#091426] p-1.5 shadow-sm">
+                <svg className="h-full w-full" viewBox="0 0 64 64" role="img" aria-label="ShipTrack">
+                  <path d="M 35.0 9.2 A 23 23 0 0 1 53.2 40.8" fill="none" stroke="#5f738c" strokeWidth="4.5" strokeLinecap="butt" />
+                  <path d="M 50.3 46.0 A 23 23 0 0 1 13.7 46.0" fill="none" stroke="#5f738c" strokeWidth="4.5" strokeLinecap="butt" />
+                  <path d="M 10.8 40.8 A 23 23 0 0 1 29.0 9.2" fill="none" stroke="#5f738c" strokeWidth="4.5" strokeLinecap="butt" />
+                  <path d="M 18.5 41.5 L 32 20 L 45.5 41.5" fill="none" stroke="#06b6d4" strokeWidth="4.5" strokeLinejoin="round" strokeLinecap="butt" />
+                </svg>
               </div>
               <div>
-                <p className="font-display text-lg font-black leading-none text-primary">ShipTrack</p>
+                <p className="font-display text-lg font-black leading-none text-primary dark:text-white">ShipTrack</p>
                 <p className="mt-0.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Internal Parcel Tracking</p>
               </div>
             </div>
