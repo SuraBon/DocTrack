@@ -28,6 +28,8 @@ export function Step2PhotoEvidence({
     setGpsOverrideReason,
     setCurrentStep,
     canProceedFromPhoto,
+    locationName,
+    isGeocoding,
   } = useConfirmReceiptContext();
   return (
     <div className="animate-in slide-in-from-right-4 duration-500">
@@ -135,18 +137,28 @@ export function Step2PhotoEvidence({
                 <div className="space-y-0.5">
                   <p className="font-display text-sm font-black text-primary">
                     {effectiveGeoStatus === 'success'
-                      ? 'ระบุตำแหน่งปัจจุบันสำเร็จ'
+                      ? '📍 บันทึกพิกัดตำแหน่งปัจจุบันสำเร็จ'
                       : effectiveGeoStatus === 'loading'
                         ? 'กำลังระบุตำแหน่งปัจจุบัน...'
                         : 'ไม่สามารถระบุตำแหน่งได้'}
                   </p>
                   <p className="text-xs text-on-surface-variant/70 font-semibold leading-normal">
                     {effectiveGeoStatus === 'success'
-                      ? `ความแม่นยำพิกัดประมาณ ~${Math.round(position?.accuracy || 0)} เมตร`
+                      ? `จับพิกัดได้คลาดเคลื่อนน้อยมากประมาณ ~${Math.round(position?.accuracy || 0)} เมตร`
                       : effectiveGeoStatus === 'loading'
-                        ? 'กรุณารอสักครู่ กำลังระบุตำแหน่งพิกัดเพื่อใช้เป็นหลักฐานการจัดส่ง'
+                        ? 'กรุณารอสักครู่ กำลังระบุตำแหน่งพิกัดเพื่อใช้เป็นหลักฐานยืนยันการจัดส่ง'
                         : geoError || 'ไม่สามารถระบุตำแหน่งพิกัดได้'}
                   </p>
+                  {effectiveGeoStatus === 'success' && (
+                    <p className="mt-1 text-xs font-semibold leading-normal text-slate-600">
+                      <span className="font-bold">📍 สถานที่นำส่ง:</span>{' '}
+                      {isGeocoding ? (
+                        <span className="text-slate-400">กำลังค้นหาชื่อสถานที่...</span>
+                      ) : (
+                        locationName || <span className="text-slate-400">ไม่พบชื่อสถานที่ใกล้เคียง</span>
+                      )}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -181,11 +193,11 @@ export function Step2PhotoEvidence({
             {/* If bypassed / error / denied, we need a reason */}
             {needsGpsOverrideReason && (
               <div className="space-y-2 border-t border-outline-variant/10 pt-4 animate-in slide-in-from-top-2 duration-300">
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-error px-1">
-                  กรุณาระบุเหตุผลที่ข้ามขั้นตอนการระบุตำแหน่ง GPS <span className="text-error font-bold">*</span>
+                <label className="block text-[11px] font-black uppercase text-error px-1">
+                  กรุณาระบุเหตุผลสั้น ๆ ที่ไม่สามารถระบุพิกัดตำแหน่งได้ (เช่น อับสัญญาณ หรือ อยู่ใต้ตึก) <span className="text-error font-black">*</span>
                 </label>
                 <textarea
-                  placeholder="เช่น อยู่ในพื้นที่อับสัญญาณ, อยู่ภายในอาคาร/ชั้นใต้ดิน, ปฏิบัติงานนอกสถานที่พิกัด..."
+                  placeholder="พิมพ์เหตุผลที่นี่ เช่น อยู่ในพื้นที่อับสัญญาณ, ทำงานในตึกชั้นใต้ดิน..."
                   value={gpsOverrideReason}
                   onChange={(e) => setGpsOverrideReason(sanitizeTextInput(e.target.value, 300))}
                   className="min-h-[72px] w-full resize-none rounded-2xl border-2 border-error/20 bg-white px-3.5 py-2.5 font-display text-sm outline-none transition-all focus:border-error focus:ring-4 focus:ring-error/5 text-primary placeholder:text-on-surface-variant/40"

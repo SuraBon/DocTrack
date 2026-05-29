@@ -149,7 +149,7 @@ export const MessengerDeliveryCard = ({
                 loading={canStartDelivery ? isStartingDelivery : false}
                 variant="blue"
                 compact
-                className="h-10 flex-none rounded-xl bg-blue-600 px-4 text-xs font-black shadow-md shadow-blue-100 hover:bg-blue-700"
+                className="h-10 flex-none rounded-xl bg-[#e8392a] hover:bg-[#d42e20] px-4 text-xs font-black shadow-md shadow-red-900/20"
               >
                 {actionLabel}
               </DashboardActionButton>
@@ -186,14 +186,14 @@ export const MessengerDeliveryCard = ({
 
                   <div 
                     onClick={() => note && setIsNoteExpanded(!isNoteExpanded)}
-                    className={`flex min-w-0 items-start gap-2.5 rounded-xl bg-orange-50/70 dark:bg-amber-900/20 px-2.5 py-2 transition-all ${note ? 'cursor-pointer hover:bg-orange-100/70 dark:hover:bg-amber-900/30' : 'opacity-40'}`}
+                    className={`flex min-w-0 items-start gap-2.5 rounded-xl bg-orange-50/70 dark:bg-amber-900/15 dark:border dark:border-amber-700/25 px-2.5 py-2 transition-all ${note ? 'cursor-pointer hover:bg-orange-100/70 dark:hover:bg-amber-900/25' : 'opacity-40'}`}
                   >
-                    {renderMaterialIcon('sticky_note_2', 'mt-0.5 text-orange-500 text-base leading-none')}
+                    {renderMaterialIcon('sticky_note_2', 'mt-0.5 text-orange-500 dark:text-amber-400 text-base leading-none')}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between">
-                        <p className="text-[10px] font-bold leading-none text-orange-600">หมายเหตุ</p>
+                        <p className="text-[10px] font-bold leading-none text-orange-600 dark:text-amber-400">หมายเหตุ</p>
                         {translatedNote.length > 25 && (
-                          <span className="text-[8px] text-orange-600 font-bold uppercase">{isNoteExpanded ? 'ย่อ' : 'ดูเพิ่ม'}</span>
+                          <span className="text-[8px] text-orange-600 dark:text-amber-400 font-bold uppercase">{isNoteExpanded ? 'ย่อ' : 'ดูเพิ่ม'}</span>
                         )}
                       </div>
                       <p className={`mt-1 min-w-0 text-xs font-semibold leading-relaxed text-slate-800 dark:text-foreground ${isNoteExpanded ? 'break-words' : 'truncate'}`}>

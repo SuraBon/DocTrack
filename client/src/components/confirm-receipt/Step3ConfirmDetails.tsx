@@ -47,6 +47,10 @@ export function Step3ConfirmDetails({
     setTempReceiverName = () => {},
     tempReceiverBranch = '',
     setTempReceiverBranch = () => {},
+    position,
+    effectiveGeoStatus,
+    locationName,
+    isGeocoding,
   } = useConfirmReceiptContext();
   return (
     <div className="animate-in slide-in-from-right-4 duration-500">
@@ -126,6 +130,28 @@ export function Step3ConfirmDetails({
               </div>
             </div>
           </div>
+
+          {effectiveGeoStatus === 'success' && position && (
+            <div className="rounded-2xl border border-gray-200 bg-slate-50 p-3 animate-in slide-in-from-top-2 duration-300">
+              <div className="flex items-start gap-2.5 w-full">
+                <span className="material-symbols-outlined mt-0.5 text-lg text-slate-700" aria-hidden="true">my_location</span>
+                <div className="min-w-0 w-full text-slate-650">
+                  <p className="text-[10px] font-bold text-slate-400 mb-0.5">พิกัดตำแหน่งนำส่งจริง</p>
+                  <p className="font-mono text-xs font-black leading-tight text-slate-950">
+                    {position.latitude.toFixed(6)}, {position.longitude.toFixed(6)}
+                  </p>
+                  <p className="mt-1 text-xs font-semibold leading-snug text-slate-700">
+                    <span className="font-bold">สถานที่:</span>{' '}
+                    {isGeocoding ? (
+                      <span className="text-slate-400">กำลังดึงชื่อสถานที่...</span>
+                    ) : (
+                      locationName || <span className="text-slate-400">ไม่พบข้อมูลชื่อสถานที่</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {needsGpsOverrideReason && (
             <div className="space-y-2 border-t border-outline-variant/10 pt-4 animate-in slide-in-from-top-2 duration-300">
