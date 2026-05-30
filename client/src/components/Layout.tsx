@@ -152,16 +152,16 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
       <div className="flex min-h-screen flex-col">
         {/* Top bar */}
         <header
-          className="sticky top-0 z-40 border-b border-gray-100 dark:border-white/[0.06] bg-white/95 dark:bg-[#091325]/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85 dark:supports-[backdrop-filter]:bg-[#091325]/85"
+          className="sticky top-0 z-40 border-b border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 shadow-sm backdrop-blur-sm supports-[backdrop-filter]:bg-white/85 dark:supports-[backdrop-filter]:bg-slate-900/85"
         >
           <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="grid h-8 w-8 place-items-center rounded-lg bg-[#091426] p-1 shadow-sm shrink-0">
+              <div className="grid h-8 w-8 place-items-center rounded-lg bg-[#161412] p-1 shadow-sm shrink-0">
                 <svg className="h-full w-full" viewBox="0 0 64 64" role="img" aria-label="ShipTrack">
-                  <path d="M 35.0 9.2 A 23 23 0 0 1 53.2 40.8" fill="none" stroke="#5f738c" strokeWidth="4.5" strokeLinecap="butt" />
-                  <path d="M 50.3 46.0 A 23 23 0 0 1 13.7 46.0" fill="none" stroke="#5f738c" strokeWidth="4.5" strokeLinecap="butt" />
-                  <path d="M 10.8 40.8 A 23 23 0 0 1 29.0 9.2" fill="none" stroke="#5f738c" strokeWidth="4.5" strokeLinecap="butt" />
-                  <path d="M 18.5 41.5 L 32 20 L 45.5 41.5" fill="none" stroke="#06b6d4" strokeWidth="4.5" strokeLinejoin="round" strokeLinecap="butt" />
+                  <path d="M 35.0 9.2 A 23 23 0 0 1 53.2 40.8" fill="none" stroke="#5a4f46" strokeWidth="4.5" strokeLinecap="butt" />
+                  <path d="M 50.3 46.0 A 23 23 0 0 1 13.7 46.0" fill="none" stroke="#5a4f46" strokeWidth="4.5" strokeLinecap="butt" />
+                  <path d="M 10.8 40.8 A 23 23 0 0 1 29.0 9.2" fill="none" stroke="#5a4f46" strokeWidth="4.5" strokeLinecap="butt" />
+                  <path d="M 18.5 41.5 L 32 20 L 45.5 41.5" fill="none" stroke="#e8392a" strokeWidth="4.5" strokeLinejoin="round" strokeLinecap="butt" />
                 </svg>
               </div>
               <div className="min-w-0">
@@ -182,10 +182,10 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
                       href={pagePaths[item.id]}
                       onClick={(event) => handleNav(event, item.id)}
                       aria-current={active ? 'page' : undefined}
-                      className={`inline-flex h-9 shrink-0 items-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors ${
+                      className={`inline-flex h-9 shrink-0 items-center gap-2 rounded-lg px-3 text-sm font-medium transition-all duration-200 ${
                         active
-                          ? 'bg-slate-900 dark:bg-white/10 text-white shadow-sm'
-                          : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-slate-200'
+                          ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md'
+                          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200'
                       }`}
                     >
                       <NavIcon icon={item.icon} active={active} />
@@ -216,14 +216,18 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
                 <button
                   type="button"
                   onClick={toggleTheme}
-                  className="grid h-9 w-9 place-items-center rounded-lg border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/5 text-slate-600 dark:text-slate-300 transition-all hover:bg-slate-50 dark:hover:bg-white/10 active:scale-95"
+                  className={`grid h-9 w-9 place-items-center rounded-lg transition-all active:scale-95 ${
+                    theme === 'light'
+                      ? 'bg-blue-500 text-white shadow-sm hover:bg-blue-600'
+                      : 'border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700'
+                  }`}
                   title={theme === "light" ? "โหมดกลางคืน" : "โหมดสว่าง"}
                   aria-label="เปลี่ยนธีม"
                 >
                   {theme === "light" ? (
-                    <Moon className="h-4.5 w-4.5" aria-hidden="true" />
+                    <Moon className="h-4 w-4" aria-hidden="true" />
                   ) : (
-                    <Sun className="h-4.5 w-4.5" aria-hidden="true" />
+                    <Sun className="h-4 w-4" aria-hidden="true" />
                   )}
                 </button>
               )}
@@ -232,7 +236,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
                   <button
                     type="button"
                     onClick={openProfile}
-                    className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-white shadow-sm transition-all hover:opacity-90 active:scale-95"
+                    className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 text-white shadow-sm transition-all hover:from-blue-600 hover:to-cyan-600 active:scale-95"
                     title="โปรไฟล์"
                     aria-label="โปรไฟล์"
                   >
@@ -241,7 +245,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
                   <button
                     type="button"
                     onClick={logout}
-                    className="grid h-9 w-9 place-items-center rounded-lg border border-red-500/30 bg-red-500/10 text-red-600 transition-all hover:bg-red-500/20 hover:text-red-500 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20 active:scale-95"
+                    className="grid h-9 w-9 place-items-center rounded-lg border border-red-400/30 bg-red-500/10 text-red-600 transition-all hover:bg-red-500/20 hover:text-red-700 dark:border-red-500/40 dark:bg-red-500/15 dark:text-red-400 dark:hover:bg-red-500/25 dark:hover:text-red-300 active:scale-95"
                     title="ออกจากระบบ"
                     aria-label="ออกจากระบบ"
                   >
@@ -271,17 +275,17 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
       </div>
 
       {navItems.length > 1 && !hideBottomNav && (
-        <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-100 dark:border-white/[0.06] bg-white/95 dark:bg-[#091325]/95 px-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] dark:shadow-[0_-8px_24px_rgba(0,0,0,0.3)] backdrop-blur md:hidden">
+        <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-100 dark:border-[hsl(30_6%_26%)] bg-white/95 dark:bg-[hsl(30_4%_9%)]/97 px-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] dark:shadow-[0_-8px_24px_rgba(0,0,0,0.4)] backdrop-blur md:hidden">
           {canCollapseMobileNav && isMobileNavCollapsed ? (
-            <div className="mx-auto flex h-11 max-w-md items-center justify-between gap-3 rounded-2xl bg-slate-50 dark:bg-white/5 px-3">
-              <div className="flex min-w-0 items-center gap-2 text-slate-700 dark:text-slate-200">
+            <div className="mx-auto flex h-11 max-w-md items-center justify-between gap-3 rounded-2xl bg-slate-50 dark:bg-[hsl(30_4%_14%)] px-3">
+              <div className="flex min-w-0 items-center gap-2 text-slate-700 dark:text-foreground">
                 {currentNavItem && <NavIcon icon={currentNavItem.icon} active />}
                 <span className="truncate text-sm font-black">{currentNavItem?.label ?? currentPage}</span>
               </div>
               <button
                 type="button"
                 onClick={() => setIsMobileNavCollapsed(false)}
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-slate-500 dark:text-slate-400 transition-colors hover:bg-white dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-slate-200"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-slate-500 dark:text-[hsl(35_8%_55%)] transition-colors hover:bg-white dark:hover:bg-[hsl(30_4%_18%)] hover:text-slate-900 dark:hover:text-foreground"
                 aria-label="ขยายเมนู"
                 title="ขยายเมนู"
               >
@@ -311,10 +315,10 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
                       href={pagePaths[item.id]}
                       onClick={(event) => handleNav(event, item.id)}
                       aria-current={active ? 'page' : undefined}
-                      className={`flex h-14 min-w-[72px] flex-1 shrink-0 snap-start flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-semibold transition-colors ${
+                      className={`flex h-14 min-w-[72px] flex-1 shrink-0 snap-start flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-semibold transition-all duration-200 ${
                         active
-                          ? 'bg-slate-900 dark:bg-white/10 text-white'
-                          : 'text-muted-foreground hover:bg-slate-50 dark:hover:bg-white/5 hover:text-foreground'
+                          ? 'bg-gradient-to-b from-blue-500 to-cyan-500 text-white shadow-md'
+                          : 'text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-foreground'
                       }`}
                     >
                       <NavIcon icon={item.icon} active={active} />

@@ -209,7 +209,7 @@ export default function Track({ embedded = false }: { embedded?: boolean }) {
 
   const handlePaste = async () => {
     if (!navigator.clipboard || !navigator.clipboard.readText) {
-      toast.error('เบราว์เซอร์นี้ไม่รองรับการวางข้อความอัตโนมัติ (กรุณาใช้ปุ่มลัด Ctrl+V หรือกดค้างเพื่อวาง)');
+      toast.error('ไม่สามารถวางอัตโนมัติได้ในขณะนี้ กรุณากดค้างที่ช่องกรอกแล้วเลือก "วาง" หรือพิมพ์รหัสพัสดุเอง');
       return;
     }
     try {
@@ -220,7 +220,7 @@ export default function Track({ embedded = false }: { embedded?: boolean }) {
         toast.success('วางหมายเลขติดตามเรียบร้อยแล้ว');
       }
     } catch {
-      toast.error('ไม่สามารถวางข้อมูลได้ (กรุณาอนุญาตให้แอปพลิเคชันเข้าถึงคลิปบอร์ด หรือกด Ctrl+V แทน)');
+      toast.error('ไม่สามารถเข้าถึงคลิปบอร์ดได้ กรุณากดแตะค้างที่ช่องกรอกแล้วเลือก "วาง" (Paste) หรือพิมพ์ด้วยตนเอง');
     }
   };
 

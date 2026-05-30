@@ -528,7 +528,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
       {isMessengerDashboard && null}
 
       {!isMessengerDashboard && (() => {
-        const isFirstLoad = loading && !lastUpdatedAt;
+        const isStatsLoading = loading || !summary;
         return (
           <>
             <div className="grid grid-cols-2 gap-2 sm:hidden">
@@ -549,8 +549,8 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
                       <DashboardIcon icon={s.icon} className={`h-5 w-5 ${s.iconText}`} />
                     </div>
                     <div className="min-w-0 flex-1">
-                      {isFirstLoad ? (
-                        <Skeleton className="h-5 w-10 rounded-lg" />
+                      {isStatsLoading ? (
+                        <Skeleton className="h-5 w-10 rounded-lg animate-pulse" />
                       ) : (
                         <p className="text-xl font-black leading-none text-primary">{s.count}</p>
                       )}
@@ -566,7 +566,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
                   count={s.count}
                   active={statusFilter === s.filter}
                   onClick={() => setStatusFilter(s.filter)}
-                  loading={isFirstLoad}
+                  loading={isStatsLoading}
                 />
               ))}
             </div>

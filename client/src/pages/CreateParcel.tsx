@@ -207,7 +207,6 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <div className="app-desktop-split">
         <div className="space-y-4">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* Sender Section */}
@@ -429,130 +428,26 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
 
         </div>
 
-        <aside className="hidden md:block">
-          <div className="sticky top-20 space-y-3">
-            <div className="app-panel overflow-hidden">
-              <div className="bg-slate-900 dark:bg-surface-container-lowest px-4 py-3 text-white dark:text-foreground">
-                <p className="text-sm font-semibold">สรุปรายการส่ง</p>
-                <p className="text-[11px] text-white/55 dark:text-muted-foreground">ตรวจต้นทาง ปลายทาง และหลักฐานก่อนสร้างรายการ</p>
-              </div>
-              <div className="space-y-3 p-4">
-                <div className="rounded-xl bg-slate-50 dark:bg-surface-container p-3">
-                  <div className="flex items-center gap-3">
-                    <span className="h-2 w-2 rounded-full bg-blue-500 shadow-[0_0_0_3px_rgba(59,130,246,0.18)]" />
-                    <div className="min-w-0">
-                      <p className="truncate text-xs font-semibold text-slate-700 dark:text-foreground">{formData.senderName || 'ผู้ส่ง'}</p>
-                      <p className="truncate text-[11px] text-slate-500 dark:text-muted-foreground">{resolveSelectValue(formData.senderBranch) || 'แผนก/สาขาต้นทาง'}</p>
-                    </div>
-                  </div>
-                  <div className="my-2 ml-1 h-4 border-l border-slate-200 dark:border-outline-variant" />
-                  <div className="flex items-center gap-3">
-                    <span className="h-2 w-2 rounded-full bg-red-400 shadow-[0_0_0_3px_rgba(248,113,113,0.18)]" />
-                    <div className="min-w-0">
-                      <p className="truncate text-xs font-semibold text-slate-700 dark:text-foreground">{formData.receiverName || 'ผู้รับ/ปลายทาง'}</p>
-                      <p className="truncate text-[11px] text-slate-500 dark:text-muted-foreground">{resolveSelectValue(formData.receiverBranch) || 'แผนก/สาขาหรือสถานที่ปลายทาง'}</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="grid gap-2 text-xs">
-                  <div className="flex items-start gap-2 rounded-xl bg-gray-50 dark:bg-surface-container p-3">
-                    <span className="material-symbols-outlined text-base text-gray-400 dark:text-muted-foreground" aria-hidden="true">inventory_2</span>
-                    <p className="min-w-0 break-words text-gray-600 dark:text-muted-foreground">
-                      <span className="font-semibold text-gray-800 dark:text-foreground">สิ่งที่ส่ง:</span> {formData.description || '-'}
-                    </p>
-                  </div>
-                  <div className="flex items-start gap-2 rounded-xl bg-orange-50/70 dark:bg-amber-900/25 p-3">
-                    <span className="material-symbols-outlined text-base text-orange-400 dark:text-amber-400" aria-hidden="true">sticky_note_2</span>
-                    <p className="min-w-0 break-words text-gray-600 dark:text-muted-foreground">
-                      <span className="font-semibold text-orange-600 dark:text-amber-400">หมายเหตุ:</span> {formData.note || '-'}
-                    </p>
-                  </div>
-                  <div className={`flex items-center gap-2 rounded-xl p-3 ${
-                    position
-                      ? 'bg-emerald-50 dark:bg-emerald-900/25 text-emerald-800 dark:text-emerald-300'
-                      : 'bg-gray-50 dark:bg-surface-container text-gray-500 dark:text-muted-foreground'
-                  }`}>
-                    <span className="material-symbols-outlined text-base" aria-hidden="true">{position ? 'my_location' : 'location_searching'}</span>
-                    <span className="font-semibold">{position ? 'บันทึกตำแหน่งจุดรับแล้ว' : 'รอตำแหน่งจุดรับ'}</span>
-                  </div>
-                  <div className={`flex items-center gap-2 rounded-xl p-3 ${
-                    proofPhotoPreview
-                      ? 'bg-blue-50 dark:bg-blue-900/25 text-blue-800 dark:text-blue-300'
-                      : 'bg-gray-50 dark:bg-surface-container text-gray-500 dark:text-muted-foreground'
-                  }`}>
-                    <span className="material-symbols-outlined text-base" aria-hidden="true">{proofPhotoPreview ? 'image' : 'add_a_photo'}</span>
-                    <span className="font-semibold">{proofPhotoPreview ? 'แนบรูปสิ่งที่ส่งแล้ว' : 'ยังไม่ได้แนบรูป'}</span>
-                  </div>
-                </div>
-              </div>
+        {/* สรุปย่อต้นทาง-ปลายทางสำหรับช่วยกลุ่มผู้ใช้ทั่วไป/Low-tech ตรวจสอบความถูกต้อง */}
+        {Boolean(formData.senderBranch || formData.receiverBranch || formData.receiverName || formData.description) && (
+          <div className="app-card border border-amber-200/50 bg-amber-50/30 p-4 text-xs md:hidden animate-in slide-in-from-bottom-2 duration-300">
+            <div className="flex items-center gap-1.5 font-bold text-amber-900 mb-1.5">
+              <span className="material-symbols-outlined text-[16px]" aria-hidden="true">fact_check</span>
+              <span>ตรวจสอบข้อมูลรายการส่งสั้น ๆ:</span>
+            </div>
+            <div className="space-y-1.5 text-slate-700 font-semibold leading-relaxed">
+              <p>
+                🏢 <span className="text-slate-400">ส่งจาก:</span> <span className="font-black text-slate-900">{resolveSelectValue(formData.senderBranch) || '---'}</span> {formData.senderName && `(${formData.senderName})`}
+              </p>
+              <p>
+                📍 <span className="text-slate-400">ปลายทาง:</span> <span className="font-black text-slate-900">{resolveSelectValue(formData.receiverBranch) || '---'}</span> {formData.receiverName && `(${formData.receiverName})`}
+              </p>
+              <p>
+                📦 <span className="text-slate-400">สิ่งที่ส่ง:</span> <span className="font-black text-slate-900">{formData.description || '---'}</span>
+              </p>
             </div>
           </div>
-        </aside>
-        </div>
-
-        {/* Mobile Summary Section */}
-        <div className="app-card overflow-hidden md:hidden mx-3 mb-2">
-          <details className="group">
-            <summary className="flex cursor-pointer select-none items-center justify-between bg-slate-900 dark:bg-surface-container-lowest px-4 py-3 text-white dark:text-foreground">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-lg" aria-hidden="true">visibility</span>
-                <p className="text-sm font-semibold">สรุปรายการส่ง (แตะเพื่อแสดง/ซ่อน)</p>
-              </div>
-              <span className="material-symbols-outlined transition-transform group-open:rotate-180" aria-hidden="true">expand_more</span>
-            </summary>
-            <div className="space-y-3 p-4 bg-slate-50 dark:bg-surface-container border-t border-slate-200 dark:border-outline-variant">
-              <div className="rounded-xl bg-white dark:bg-card p-3 shadow-xs">
-                <div className="flex items-center gap-3">
-                  <span className="h-2 w-2 rounded-full bg-blue-500 shadow-[0_0_0_3px_rgba(59,130,246,0.18)]" />
-                  <div className="min-w-0">
-                    <p className="truncate text-xs font-semibold text-slate-700 dark:text-foreground">{formData.senderName || '-'}</p>
-                    <p className="truncate text-[11px] text-slate-500 dark:text-muted-foreground">{resolveSelectValue(formData.senderBranch) || '-'}</p>
-                  </div>
-                </div>
-                <div className="my-2 ml-1 h-4 border-l border-slate-200 dark:border-outline-variant" />
-                <div className="flex items-center gap-3">
-                  <span className="h-2 w-2 rounded-full bg-red-400 shadow-[0_0_0_3px_rgba(248,113,113,0.18)]" />
-                  <div className="min-w-0">
-                    <p className="truncate text-xs font-semibold text-slate-700 dark:text-foreground">{formData.receiverName || '-'}</p>
-                    <p className="truncate text-[11px] text-slate-500 dark:text-muted-foreground">{resolveSelectValue(formData.receiverBranch) || '-'}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="grid gap-2 text-xs">
-                <div className="flex items-start gap-2 rounded-xl bg-white dark:bg-card p-3 shadow-xs">
-                  <span className="material-symbols-outlined text-base text-gray-400 dark:text-muted-foreground" aria-hidden="true">inventory_2</span>
-                  <p className="min-w-0 break-words text-gray-600 dark:text-muted-foreground">
-                    <span className="font-semibold text-gray-800 dark:text-foreground">สิ่งที่ส่ง:</span> {formData.description || '-'}
-                  </p>
-                </div>
-                {formData.note && (
-                  <div className="flex items-start gap-2 rounded-xl bg-white dark:bg-card p-3 shadow-xs">
-                    <span className="material-symbols-outlined text-base text-orange-400 dark:text-amber-400" aria-hidden="true">sticky_note_2</span>
-                    <p className="min-w-0 break-words text-gray-600 dark:text-muted-foreground">
-                      <span className="font-semibold text-orange-600 dark:text-amber-400">หมายเหตุ:</span> {formData.note}
-                    </p>
-                  </div>
-                )}
-                <div className={`flex items-center gap-2 rounded-xl p-3 ${
-                  position
-                    ? 'bg-emerald-50 dark:bg-emerald-900/25 text-emerald-800 dark:text-emerald-300'
-                    : 'bg-gray-50 dark:bg-surface-container text-gray-500 dark:text-muted-foreground'
-                }`}>
-                  <span className="material-symbols-outlined text-base" aria-hidden="true">{position ? 'my_location' : 'location_searching'}</span>
-                  <span className="font-semibold">{position ? 'บันทึกตำแหน่งจุดรับแล้ว' : 'รอตำแหน่งจุดรับ'}</span>
-                </div>
-                <div className={`flex items-center gap-2 rounded-xl p-3 ${
-                  proofPhotoPreview
-                    ? 'bg-blue-50 dark:bg-blue-900/25 text-blue-800 dark:text-blue-300'
-                    : 'bg-gray-50 dark:bg-surface-container text-gray-500 dark:text-muted-foreground'
-                }`}>
-                  <span className="material-symbols-outlined text-base" aria-hidden="true">{proofPhotoPreview ? 'image' : 'add_a_photo'}</span>
-                  <span className="font-semibold">{proofPhotoPreview ? 'แนบรูปสิ่งที่ส่งแล้ว' : 'ยังไม่ได้แนบรูป'}</span>
-                </div>
-              </div>
-            </div>
-          </details>
-        </div>
+        )}
 
         <div className="app-bottom-action">
           <div className="mx-auto flex max-w-[390px] md:max-w-none md:justify-end">

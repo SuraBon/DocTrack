@@ -33,10 +33,10 @@ import {
 } from 'lucide-react';
 
 export const STATS = [
-  { key: 'total',     filter: 'ทั้งหมด',     label: 'ทั้งหมด',  icon: 'inventory_2',     iconBg: 'bg-slate-100',    iconText: 'text-primary' },
-  { key: 'pending',   filter: 'รอจัดส่ง',    label: 'รอจัดส่ง', icon: 'package_open', iconBg: 'bg-amber-50',    iconText: 'text-amber-600' },
-  { key: 'transit',   filter: 'กำลังจัดส่ง', label: 'กำลังจัดส่ง', icon: 'local_shipping', iconBg: 'bg-blue-50',     iconText: 'text-blue-600' },
-  { key: 'delivered', filter: 'ส่งสำเร็จ',   label: 'ส่งสำเร็จ', icon: 'check_circle',       iconBg: 'bg-emerald-50',  iconText: 'text-emerald-600' },
+  { key: 'total',     filter: 'ทั้งหมด',     label: 'ทั้งหมด',  icon: 'inventory_2',     iconBg: 'bg-slate-100 dark:bg-surface-container',    iconText: 'text-primary dark:text-foreground' },
+  { key: 'pending',   filter: 'รอจัดส่ง',    label: 'รอจัดส่ง', icon: 'package_open', iconBg: 'bg-amber-50 dark:bg-amber-900/25',    iconText: 'text-amber-600 dark:text-amber-400' },
+  { key: 'transit',   filter: 'กำลังจัดส่ง', label: 'กำลังจัดส่ง', icon: 'local_shipping', iconBg: 'bg-blue-50 dark:bg-blue-900/25',     iconText: 'text-blue-600 dark:text-blue-400' },
+  { key: 'delivered', filter: 'ส่งสำเร็จ',   label: 'ส่งสำเร็จ', icon: 'check_circle',       iconBg: 'bg-emerald-50 dark:bg-emerald-900/25',  iconText: 'text-emerald-600 dark:text-emerald-400' },
 ] as const;
 
 export const STALE_DAYS = 2;
@@ -184,7 +184,7 @@ export const MessengerRouteSummary = ({ parcel, compact = false }: { parcel: Par
           </p>
         </div>
       </div>
-      <div className="flex min-w-0 items-start gap-2.5 rounded-xl bg-red-50/70 dark:bg-surface-container-lowest px-3 py-2.5">
+      <div className="flex min-w-0 items-start gap-2.5 rounded-xl bg-red-50/70 dark:bg-red-900/15 dark:border dark:border-red-700/25 px-3 py-2.5">
         <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-red-500 shadow-[0_0_0_4px_rgba(248,113,113,0.14)]" />
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-black leading-none text-red-500 dark:text-red-400">ต้องไปส่ง</p>
@@ -284,7 +284,7 @@ export const StaleBadge = ({ parcel }: { parcel: Parcel }) => {
   if (!isParcelStale(parcel)) return null;
   const ageDays = getParcelAgeDays(parcel);
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-black text-amber-800">
+    <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 dark:border-amber-700/40 bg-amber-50 dark:bg-amber-900/25 px-2 py-1 text-[10px] font-black text-amber-800 dark:text-amber-300">
       <span className="material-symbols-outlined text-[13px]" aria-hidden="true">priority_high</span>
       ค้างนาน {ageDays} วัน
     </span>
@@ -296,10 +296,10 @@ type SectionTone = 'default' | 'amber' | 'emerald' | 'blue';
 
 const actionVariantClass: Record<DashboardActionVariant, string> = {
   primary: 'bg-primary text-white shadow-sm hover:bg-primary/95',
-  secondary: 'border border-outline-variant/35 bg-white text-primary hover:border-primary/35 hover:bg-primary/5',
-  blue: 'bg-blue-600 text-white shadow-sm hover:bg-blue-700',
-  warning: 'border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100',
-  danger: 'border border-error/20 bg-error/8 text-error hover:bg-error hover:text-white',
+  secondary: 'border border-outline-variant/35 bg-white dark:bg-surface-container text-primary dark:text-foreground hover:border-primary/35 hover:bg-primary/5 dark:hover:bg-surface-container-low',
+  blue: 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md hover:from-blue-600 hover:to-blue-700',
+  warning: 'border border-amber-200 dark:border-amber-700/40 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/35',
+  danger: 'border border-red-200 dark:border-red-700/40 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/35',
   ghost: 'bg-surface-container-lowest text-primary ring-1 ring-outline-variant/10 hover:bg-surface-container',
 };
 
@@ -406,8 +406,8 @@ export const AssignmentBadge = ({
 }) => (
   <div className={`flex flex-col gap-2 rounded-xl border px-3 py-2.5 text-xs font-bold sm:flex-row sm:items-center sm:justify-between ${
     isMine
-      ? 'border-emerald-100 bg-emerald-50 text-emerald-800'
-      : 'border-blue-100 bg-blue-50 text-blue-800'
+      ? 'border-emerald-200 dark:border-emerald-700/40 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-300'
+      : 'border-blue-200 dark:border-blue-700/40 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300'
   }`}>
     <span className="inline-flex min-w-0 items-center gap-2">
       <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white/85">
@@ -477,7 +477,7 @@ export const CardActions = ({
         <button
           type="button"
           onClick={onDelete}
-          className={`inline-flex items-center justify-center gap-2 rounded-xl border border-red-100 bg-red-50 px-3 font-semibold text-red-600 shadow-sm transition-all hover:bg-red-100 active:scale-[0.98] ${
+          className={`inline-flex items-center justify-center gap-2 rounded-xl border border-red-100 dark:border-red-700/40 bg-red-50 dark:bg-red-900/20 px-3 font-semibold text-red-600 dark:text-red-300 shadow-sm transition-all hover:bg-red-100 dark:hover:bg-red-900/35 active:scale-[0.98] ${
             compactDetail ? 'h-10 text-xs' : 'h-11 text-sm'
           }`}
           aria-label="ลบรายการ"
@@ -503,10 +503,10 @@ export const DeliveryInfoRow = ({
   tone?: 'slate' | 'blue' | 'emerald' | 'orange';
 }) => {
   const toneClasses = {
-    slate: 'bg-slate-50 text-slate-700',
-    blue: 'bg-blue-50 text-blue-700',
-    emerald: 'bg-emerald-50 text-emerald-700',
-    orange: 'bg-orange-50 text-orange-700',
+    slate: 'bg-slate-50 dark:bg-surface-container text-slate-700 dark:text-muted-foreground',
+    blue: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300',
+    emerald: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300',
+    orange: 'bg-orange-50 dark:bg-amber-900/20 text-orange-700 dark:text-amber-300',
   };
 
   return (

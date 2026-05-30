@@ -52,6 +52,8 @@ export function useConfirmReceiptForm({
 
   const { position, status: geoStatus, errorMessage: geoError, requestLocation, reset: resetGeo } = useGeolocation();
   const [isGpsBypassed, setIsGpsBypassed] = useState(false);
+  const [locationName, setLocationName] = useState<string>('');
+  const [isGeocoding, setIsGeocoding] = useState<boolean>(false);
 
   const [isForwarding, setIsForwarding] = useState(false);
   const [forwardSender, setForwardSender] = useState('');
@@ -96,6 +98,8 @@ export function useConfirmReceiptForm({
     setCheckedParcel(null);
     setIsDelivered(false);
     resetGeo();
+    setLocationName('');
+    setIsGeocoding(false);
     setIsOfflineFallback(false);
     setTempReceiverName('');
     setTempReceiverBranch('');
@@ -124,6 +128,51 @@ export function useConfirmReceiptForm({
       requestLocation();
     }
   }, [currentStep, geoStatus, requestLocation]);
+
+  // Reverse Geocoding Effect (Nominatim API)
+  useEffect(() => {
+    if (geoStatus !== 'success' || !position) {
+      setLocationName('');
+      return;
+    }
+
+    let isMounted = true;
+    const fetchLocationName = async () => {
+      setIsGeocoding(true);
+      try {
+        const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.latitude}&lon=${position.longitude}&accept-language=th`;
+        const res = await fetch(url, {
+          headers: {
+            'User-Agent': 'Doc-Track-PWA/1.0'
+          }
+        });
+        if (!res.ok) throw new Error('Geocoding network error');
+        const data = await res.json();
+        if (isMounted) {
+          if (data && data.display_name) {
+            setLocationName(data.display_name);
+          } else {
+            setLocationName('ไม่สามารถระบุสถานที่ได้');
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching reverse geocode:', err);
+        if (isMounted) {
+          setLocationName('ล้มเหลวในการดึงสถานที่');
+        }
+      } finally {
+        if (isMounted) {
+          setIsGeocoding(false);
+        }
+      }
+    };
+
+    void fetchLocationName();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [geoStatus, position?.latitude, position?.longitude]);
 
   useEffect(() => {
     if (!isLoading) return;
@@ -345,6 +394,7 @@ export function useConfirmReceiptForm({
       const finalNote = [
         actionPayload.note,
         ...buildGpsEvidenceNote({ status: geoStatus, position, overrideReason: safeGpsOverrideReason }),
+        locationName ? `[พิกัดจริง: ${locationName}]` : '',
       ].filter(Boolean).join(' ');
 
       const response = await confirmReceipt(
@@ -392,6 +442,8 @@ export function useConfirmReceiptForm({
     geoError,
     requestLocation,
     resetGeo,
+    locationName,
+    isGeocoding,
     isGpsBypassed,
     setIsGpsBypassed,
     isForwarding,

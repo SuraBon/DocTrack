@@ -69,6 +69,11 @@ export function TrackSearchForm({
           </button>
         </form>
 
+        <p className="mt-2 text-xs font-semibold text-slate-500/80 leading-normal flex items-center gap-1.5 px-0.5 animate-in fade-in duration-300">
+          <span className="material-symbols-outlined text-sm text-slate-400" aria-hidden="true">info</span>
+          <span>คำแนะนำ: สามารถพิมพ์ค้นหาด้วยหมายเลขพัสดุ (เช่น TRK...), ชื่อผู้รับ หรือชื่อสาขาปลายทางได้</span>
+        </p>
+
         {recentSearches.length > 0 && (
           <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
             <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
