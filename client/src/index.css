@@ -917,6 +917,13 @@ html {
     border-top-color: rgba(255, 255, 255, 0.05);
   }
 
+  @media (min-width: 768px) {
+    .dark .app-bottom-action {
+      background-color: transparent !important;
+      border-top-color: transparent !important;
+    }
+  }
+
   /* Dialog headers that use bg-slate-950 / bg-slate-900 */
   .dark .bg-slate-950 {
     background-color: #020617 !important;
