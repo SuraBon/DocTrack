@@ -245,7 +245,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
                   <button
                     type="button"
                     onClick={logout}
-                    className="grid h-9 w-9 place-items-center rounded-lg border border-red-400/30 bg-red-500/10 text-red-600 transition-all hover:bg-red-500/20 hover:text-red-700 dark:border-red-500/40 dark:bg-red-500/15 dark:text-red-400 dark:hover:bg-red-500/25 dark:hover:text-red-300 active:scale-95"
+                    className="grid h-9 w-9 place-items-center rounded-lg border border-destructive/30 bg-destructive/10 text-destructive transition-all hover:bg-destructive/20 hover:text-destructive dark:border-destructive/30 dark:bg-destructive/15 dark:text-destructive dark:hover:bg-destructive/25 dark:hover:text-destructive active:scale-95"
                     title="ออกจากระบบ"
                     aria-label="ออกจากระบบ"
                   >
