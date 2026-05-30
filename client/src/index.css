@@ -239,6 +239,33 @@
 .dark .bg-gray-100 {
   background-color: #334155 !important;
 }
+html, body {
+  min-width: 0;
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+}
+
+img, picture, video, canvas, svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+.bg-white {
+  background-color: var(--card) !important;
+}
+.bg-gray-50 {
+  background-color: var(--surface-container) !important;
+}
+.bg-gray-100 {
+  background-color: var(--surface-container-low) !important;
+}
+.border-gray-100 {
+  border-color: var(--outline-variant) !important;
+}
+.border-gray-200 {
+  border-color: var(--outline-variant) !important;
+}
 
 .dark .bg-slate-50 {
   background-color: #1e293b !important;

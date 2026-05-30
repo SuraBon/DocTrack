@@ -147,12 +147,12 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
   };
 
   return (
-    <div className="min-h-screen bg-background font-body text-on-background">
+    <div className="min-h-screen min-w-0 overflow-x-hidden bg-background font-body text-on-background">
       {/* ── Main content ── */}
       <div className="flex min-h-screen flex-col">
         {/* Top bar */}
         <header
-          className="sticky top-0 z-40 border-b border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 shadow-sm backdrop-blur-sm supports-[backdrop-filter]:bg-white/85 dark:supports-[backdrop-filter]:bg-slate-900/85"
+          className="sticky top-0 z-40 border-b border-slate-200 dark:border-slate-700 bg-background/95 dark:bg-slate-900/95 shadow-sm backdrop-blur-sm supports-[backdrop-filter]:bg-background/85 dark:supports-[backdrop-filter]:bg-slate-900/85"
         >
           <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-2.5 min-w-0">
@@ -275,7 +275,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
       </div>
 
       {navItems.length > 1 && !hideBottomNav && (
-        <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-100 dark:border-[hsl(30_6%_26%)] bg-white/95 dark:bg-[hsl(30_4%_9%)]/97 px-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] dark:shadow-[0_-8px_24px_rgba(0,0,0,0.4)] backdrop-blur md:hidden">
+        <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-100 dark:border-[hsl(30_6%_26%)] bg-background/95 dark:bg-[hsl(30_4%_9%)]/97 px-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] dark:shadow-[0_-8px_24px_rgba(0,0,0,0.4)] backdrop-blur md:hidden">
           {canCollapseMobileNav && isMobileNavCollapsed ? (
             <div className="mx-auto flex h-11 max-w-md items-center justify-between gap-3 rounded-2xl bg-slate-50 dark:bg-[hsl(30_4%_14%)] px-3">
               <div className="flex min-w-0 items-center gap-2 text-slate-700 dark:text-foreground">
