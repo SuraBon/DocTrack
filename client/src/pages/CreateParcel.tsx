@@ -224,7 +224,7 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
             </div>
             <div className="flex flex-col gap-4 p-4 sm:p-5">
               <div className="flex flex-col gap-1.5">
-                <label className="px-1 text-sm font-medium text-foreground">ชื่อผู้ส่ง *</label>
+                <label className="px-1 text-sm font-medium text-foreground">ชื่อผู้ส่ง</label>
                 <div className="relative">
                   <input
                     name="senderName"
@@ -236,7 +236,7 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
                 </div>
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="px-1 text-sm font-medium text-foreground">แผนก/สาขาผู้ส่ง *</label>
+                <label className="px-1 text-sm font-medium text-foreground">แผนก/สาขาผู้ส่ง</label>
                 <NativeSelect
                   value={formData.senderBranch}
                   onChange={v => setFormData(p => ({ ...p, senderBranch: v }))}
@@ -294,7 +294,7 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
             </div>
             <div className="flex flex-col gap-4 p-4 sm:p-5">
               <div className="flex flex-col gap-1.5">
-                <label className="px-1 text-sm font-medium text-foreground">ผู้รับหรือสถานที่ปลายทาง *</label>
+                <label className="px-1 text-sm font-medium text-foreground">ผู้รับหรือสถานที่ปลายทาง</label>
                 <div className="relative">
                   <input
                     name="receiverName"
@@ -306,7 +306,7 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
                 </div>
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="px-1 text-sm font-medium text-foreground">แผนก/สาขา หรือสถานที่ปลายทาง *</label>
+                <label className="px-1 text-sm font-medium text-foreground">แผนก/สาขา หรือสถานที่ปลายทาง</label>
                 <NativeSelect
                   value={formData.receiverBranch}
                   onChange={v => setFormData(p => ({ ...p, receiverBranch: v }))}
@@ -316,7 +316,7 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="px-1 text-sm font-medium text-foreground">หมายเหตุปลายทาง (ถ้ามี)</label>
+                <label className="px-1 text-sm font-medium text-foreground">หมายเหตุปลายทาง</label>
                 <textarea
                   name="note"
                   value={formData.note}
@@ -345,7 +345,7 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
           <div className="grid grid-cols-1 gap-4 p-4 sm:p-5 lg:grid-cols-[1fr_1.15fr]">
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="px-1 text-sm font-medium text-foreground">รายละเอียดสิ่งที่ส่ง *</label>
+                <label className="px-1 text-sm font-medium text-foreground">รายละเอียดสิ่งที่ส่ง</label>
                 <div className="relative">
                   <input
                     name="description"
@@ -358,7 +358,7 @@ export default function CreateParcel({ embedded = false }: { embedded?: boolean 
               </div>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="px-1 text-sm font-medium text-foreground">รูปสิ่งที่ส่ง *</label>
+              <label className="px-1 text-sm font-medium text-foreground">รูปสิ่งที่ส่ง</label>
               <input
                 ref={proofInputRef}
                 type="file"
