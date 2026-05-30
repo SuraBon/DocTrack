@@ -156,12 +156,12 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage }
         >
           <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="grid h-8 w-8 place-items-center rounded-lg bg-[#161412] p-1 shadow-sm shrink-0">
+              <div className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 p-1 shadow-md shrink-0">
                 <svg className="h-full w-full" viewBox="0 0 64 64" role="img" aria-label="ShipTrack">
-                  <path d="M 35.0 9.2 A 23 23 0 0 1 53.2 40.8" fill="none" stroke="#5a4f46" strokeWidth="4.5" strokeLinecap="butt" />
-                  <path d="M 50.3 46.0 A 23 23 0 0 1 13.7 46.0" fill="none" stroke="#5a4f46" strokeWidth="4.5" strokeLinecap="butt" />
-                  <path d="M 10.8 40.8 A 23 23 0 0 1 29.0 9.2" fill="none" stroke="#5a4f46" strokeWidth="4.5" strokeLinecap="butt" />
-                  <path d="M 18.5 41.5 L 32 20 L 45.5 41.5" fill="none" stroke="#e8392a" strokeWidth="4.5" strokeLinejoin="round" strokeLinecap="butt" />
+                  <path d="M 35.0 9.2 A 23 23 0 0 1 53.2 40.8" fill="none" stroke="#ffffff" strokeWidth="4.5" strokeLinecap="butt" opacity="0.7" />
+                  <path d="M 50.3 46.0 A 23 23 0 0 1 13.7 46.0" fill="none" stroke="#ffffff" strokeWidth="4.5" strokeLinecap="butt" opacity="0.7" />
+                  <path d="M 10.8 40.8 A 23 23 0 0 1 29.0 9.2" fill="none" stroke="#ffffff" strokeWidth="4.5" strokeLinecap="butt" opacity="0.7" />
+                  <path d="M 18.5 41.5 L 32 20 L 45.5 41.5" fill="none" stroke="#ffffff" strokeWidth="4.5" strokeLinejoin="round" strokeLinecap="butt" />
                 </svg>
               </div>
               <div className="min-w-0">
