@@ -108,7 +108,7 @@ const IDEMPOTENCY_TTL_SECONDS = 21600; // 6 hours
 
 function getIdempotencyCacheKey(action, payload) {
   if (IDEMPOTENT_ACTIONS.indexOf(action) === -1) return "";
-  const rawKey = sanitizeText(payload.idempotencyKey || "");
+  const rawKey = sanitizeText(payload.idempotencyKey || payload.clientRequestId || "");
   if (!rawKey || rawKey.length > 180) return "";
   const actor = normalizeEmployeeId(payload.employeeId || payload.clientId || "guest");
   const digest = Utilities.base64EncodeWebSafe(

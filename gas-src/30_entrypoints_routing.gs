@@ -9,6 +9,7 @@ function doPost(e) {
     const payload = JSON.parse(rawBody);
     const action = payload.action;
     const clientRequestId = payload.requestId ? String(payload.requestId) : requestId;
+    payload.clientRequestId = payload.requestId ? String(payload.requestId) : "";
     console.info(JSON.stringify({
       level: 'info',
       event: 'api.request',
@@ -75,10 +76,12 @@ function doPost(e) {
     }
 
     const writeActions = ['createParcel', 'confirmReceipt', 'batchConfirmReceipt', 'startDelivery', 'batchStartDelivery', 'releaseDelivery', 'login', 'setupPin', 'createUser', 'updateUserRole', 'updateUser', 'disableUser', 'deleteUser', 'createBranch', 'deleteBranch', 'renameBranch', 'deleteParcel', 'editParcel', 'updateProfile'];
+    const lockActions = ['createParcel', 'confirmReceipt', 'batchConfirmReceipt', 'startDelivery', 'batchStartDelivery', 'releaseDelivery', 'createUser', 'updateUserRole', 'updateUser', 'disableUser', 'deleteUser', 'createBranch', 'deleteBranch', 'renameBranch', 'deleteParcel', 'editParcel', 'updateProfile', 'setupPin'];
     const isWrite = writeActions.includes(action);
+    const needsLock = lockActions.includes(action);
 
     let result;
-    if (isWrite) {
+    if (isWrite && needsLock) {
       const lock = LockService.getScriptLock();
       let locked = false;
       try {
@@ -93,6 +96,8 @@ function doPost(e) {
       } finally {
         if (locked) lock.releaseLock();
       }
+    } else if (isWrite) {
+      result = routeAction(action, payload);
     } else {
       result = routeAction(action, payload);
     }

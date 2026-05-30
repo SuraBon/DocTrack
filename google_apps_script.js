@@ -1,4 +1,6 @@
-// ---- 00_config_schema.gs ----
+// Generated Google Apps Script bundle. Do not edit directly.
+
+// --- 00_config_schema.gs ---
 const SHEET_NAME = "Parcels";
 const API_KEY_PROPERTY = "API_KEY";
 const ADMIN_INITIAL_PIN_PROPERTY = "ADMIN_INITIAL_PIN";
@@ -64,7 +66,7 @@ const DEFAULT_BRANCHES = [
 ];
 const AUTO_PICKUP_RADIUS_METERS = 150;
 
-// ---- 10_storage_utils.gs ----
+// --- 10_storage_utils.gs ---
 function getSpreadsheet() {
   try {
     return SpreadsheetApp.getActiveSpreadsheet();
@@ -389,7 +391,7 @@ function getEventSheetForSpreadsheet(ss) {
 
 var apiKeyCache = null;
 
-// ---- 20_auth_users.gs ----
+// --- 20_auth_users.gs ---
 function getApiKey() {
   if (apiKeyCache !== null) {
     return apiKeyCache;
@@ -810,7 +812,7 @@ function hasAnyRole(payload, roles) {
   return roles.indexOf(normalizeRole(payload.role)) !== -1;
 }
 
-// ---- 30_entrypoints_routing.gs ----
+// --- 30_entrypoints_routing.gs ---
 function doPost(e) {
   try {
     const requestId = Utilities.getUuid();
@@ -822,6 +824,7 @@ function doPost(e) {
     const payload = JSON.parse(rawBody);
     const action = payload.action;
     const clientRequestId = payload.requestId ? String(payload.requestId) : requestId;
+    payload.clientRequestId = payload.requestId ? String(payload.requestId) : "";
     console.info(JSON.stringify({
       level: 'info',
       event: 'api.request',
@@ -888,10 +891,12 @@ function doPost(e) {
     }
 
     const writeActions = ['createParcel', 'confirmReceipt', 'batchConfirmReceipt', 'startDelivery', 'batchStartDelivery', 'releaseDelivery', 'login', 'setupPin', 'createUser', 'updateUserRole', 'updateUser', 'disableUser', 'deleteUser', 'createBranch', 'deleteBranch', 'renameBranch', 'deleteParcel', 'editParcel', 'updateProfile'];
+    const lockActions = ['createParcel', 'confirmReceipt', 'batchConfirmReceipt', 'startDelivery', 'batchStartDelivery', 'releaseDelivery', 'createUser', 'updateUserRole', 'updateUser', 'disableUser', 'deleteUser', 'createBranch', 'deleteBranch', 'renameBranch', 'deleteParcel', 'editParcel', 'updateProfile', 'setupPin'];
     const isWrite = writeActions.includes(action);
+    const needsLock = lockActions.includes(action);
 
     let result;
-    if (isWrite) {
+    if (isWrite && needsLock) {
       const lock = LockService.getScriptLock();
       let locked = false;
       try {
@@ -906,6 +911,8 @@ function doPost(e) {
       } finally {
         if (locked) lock.releaseLock();
       }
+    } else if (isWrite) {
+      result = routeAction(action, payload);
     } else {
       result = routeAction(action, payload);
     }
@@ -969,7 +976,7 @@ function doGet() {
   return createJsonResponse({ success: true });
 }
 
-// ---- 40_parcels_delivery.gs ----
+// --- 40_parcels_delivery.gs ---
 function handleCreateParcel(payload) {
   if (!hasAnyRole(payload, ['ADMIN', 'MESSENGER', 'GUEST'])) {
     return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง" });
@@ -1229,7 +1236,7 @@ function getActiveDeliveryAssignmentFromEvents(events) {
   return active;
 }
 
-// ---- 50_logs.gs ----
+// --- 50_logs.gs ---
 function normalizeLogLimit(value) {
   return Math.min(Math.max(parseInt(value) || 50, 1), 100);
 }
@@ -1333,7 +1340,7 @@ function handleGetParcelActivityLogs(payload) {
   return createJsonResponse({ success: true, activities: page.rows, totalCount: page.totalCount, hasMore: page.hasMore });
 }
 
-// ---- 51_parcel_reads.gs ----
+// --- 51_parcel_reads.gs ---
 function handleGetParcels(payload) {
   const limit = Math.min(Math.max(parseInt(payload.limit) || 50, 1), 100);
   const offset = Math.max(parseInt(payload.offset) || 0, 0);
@@ -1485,7 +1492,7 @@ function handleExportSummary(payload) {
   });
 }
 
-// ---- 52_delivery_handlers.gs ----
+// --- 52_delivery_handlers.gs ---
 var _batchEventsMapBySpreadsheetId = null;
 
 function handleConfirmReceipt(payload) {
@@ -2092,7 +2099,7 @@ function handleReleaseDelivery(payload) {
   return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง" });
 }
 
-// ---- 53_route_search.gs ----
+// --- 53_route_search.gs ---
 function handleSearchParcels(payload) {
   const query = sanitizeText(payload.query || "");
   if (!query) {
@@ -2181,7 +2188,7 @@ function handleSearchParcels(payload) {
   return createJsonResponse({ success: true, parcels: parcels });
 }
 
-// ---- 60_auth_handlers.gs ----
+// --- 60_auth_handlers.gs ---
 function setupApiKey(value) {
   if (!value) {
     throw new Error("Missing API key value");
@@ -2292,7 +2299,7 @@ const IDEMPOTENCY_TTL_SECONDS = 21600; // 6 hours
 
 function getIdempotencyCacheKey(action, payload) {
   if (IDEMPOTENT_ACTIONS.indexOf(action) === -1) return "";
-  const rawKey = sanitizeText(payload.idempotencyKey || "");
+  const rawKey = sanitizeText(payload.idempotencyKey || payload.clientRequestId || "");
   if (!rawKey || rawKey.length > 180) return "";
   const actor = normalizeEmployeeId(payload.employeeId || payload.clientId || "guest");
   const digest = Utilities.base64EncodeWebSafe(
@@ -2481,7 +2488,7 @@ function handleSetupPin(payload) {
   return createJsonResponse({ success: false, error: "ไม่พบรหัสพนักงานนี้ในระบบ กรุณาให้ผู้ดูแลระบบเพิ่มบัญชีก่อน" });
 }
 
-// ---- 70_admin_handlers.gs ----
+// --- 70_admin_handlers.gs ---
 function handleGetUsers(payload) {
   if (normalizeRole(payload.role) !== 'ADMIN') {
     return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง (เฉพาะผู้ดูแลระบบ)" });
@@ -3005,7 +3012,7 @@ function handleUpdateProfile(payload) {
   return createJsonResponse({ success: false, error: "ไม่พบผู้ใช้งาน" });
 }
 
-// ---- 99_options.gs ----
+// --- 99_options.gs ---
 function doOptions(e) {
   return ContentService.createTextOutput("")
     .setMimeType(ContentService.MimeType.TEXT);
