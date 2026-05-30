@@ -110,8 +110,6 @@ function handleCreateParcel(payload) {
     return createJsonResponse({ success: false, error: "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง" });
   }
 }
-  return createJsonResponse({ success: true, trackingId: trackingId });
-}
 
 function getParcelEventsMap() {
   const eventsByTrackingId = {};
