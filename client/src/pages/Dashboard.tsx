@@ -133,7 +133,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
         const res = await getParcels(statusFilter, limit, offset);
         if (res.success && Array.isArray(res.parcels)) {
           allParcels = [...allParcels, ...res.parcels];
-          hasMoreData = res.hasMore && res.parcels.length > 0;
+          hasMoreData = !!res.hasMore && res.parcels.length > 0;
           offset += res.parcels.length;
         } else {
           throw new Error(res.error || 'เกิดข้อผิดพลาดในการดึงข้อมูลจากระบบ');
