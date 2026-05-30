@@ -194,7 +194,7 @@ export default function Timeline({ events, className = '', compact = false }: Ti
 
     return (
       <div className={`relative ${className}`}>
-        <div className="space-y-1">
+        <div className="space-y-4">
           {displayEvents.map((event, index) => {
             const { day, time } = formatTimelineDateParts(event.timestamp);
             const isLatest = index === 0;
@@ -207,94 +207,93 @@ export default function Timeline({ events, className = '', compact = false }: Ti
             const shouldShowActualLocation = actualLocation && actualLocation !== locationText;
 
             return (
-              <div key={event.id} className="grid grid-cols-[52px_28px_minmax(0,1fr)] gap-2.5">
-                <div className={`pt-2 text-right leading-none ${isLatest ? 'text-slate-900 dark:text-foreground' : 'text-slate-400 dark:text-muted-foreground'}`}>
+              <div key={event.id} className="grid grid-cols-[70px_28px_minmax(0,1fr)] gap-3">
+                <div className={`flex flex-col items-end text-right text-[11px] leading-tight ${isLatest ? 'text-slate-900 dark:text-foreground' : 'text-slate-500 dark:text-muted-foreground'}`}>
                   {day ? (
                     <>
-                      <p className="text-[10px] font-black">{day}</p>
-                      <p className="mt-1 text-[9px] font-semibold">{time}</p>
+                      <span className="font-black uppercase tracking-[0.12em]">{day}</span>
+                      <span className="mt-1 text-[10px] font-semibold text-slate-500 dark:text-muted-foreground">{time}</span>
                     </>
                   ) : (
-                    <p className="text-[9px] font-bold leading-tight text-slate-300 dark:text-muted-foreground/50">ไม่ระบุเวลา</p>
+                    <span className="text-[10px] font-semibold text-slate-400 dark:text-muted-foreground/70">ไม่ระบุเวลา</span>
                   )}
                 </div>
                 <div className="relative flex justify-center">
                   {hasNext && (
-                    <span className={`absolute bottom-[-4px] top-[25px] w-0.5 rounded-full ${tone.line}`} />
+                    <span className={`absolute top-0 left-1/2 h-full w-px -translate-x-1/2 rounded-full ${tone.line}`} />
                   )}
-                  <span className={`relative z-10 mt-1 grid h-6 w-6 place-items-center rounded-full border-2 text-[10px] font-black ${tone.dot}`}>
+                  <span className={`relative z-10 grid h-9 w-9 place-items-center rounded-full border-2 text-sm font-black ${tone.dot}`}>
                     {event.title.includes('ส่งสำเร็จ') || (event.status === 'completed' && !isLatest) ? '✓' : stepNumber}
                   </span>
                 </div>
-                <div className="min-w-0 pb-3">
-                  <div className={`rounded-xl border px-3 py-2.5 transition-all ${tone.card}`}>
-                    <div className="flex min-w-0 items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className={`rounded-full px-2 py-0.5 text-[8px] font-black leading-none ${tone.badge}`}>
-                            {statusLabel}
-                          </span>
-                          <p className={`text-sm font-black leading-tight ${tone.title}`}>
-                            {event.title}
-                          </p>
-                        </div>
-                        {event.description && (
-                          <p className={`${isLatest ? 'line-clamp-3' : 'line-clamp-2'} mt-1.5 break-words text-[11px] font-semibold leading-snug text-slate-500 dark:text-muted-foreground`}>
-                            {event.description}
-                          </p>
-                        )}
+                <div className={`rounded-[22px] border px-4 py-4 ${tone.card} shadow-sm`}> 
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${tone.badge}`}>
+                          {statusLabel}
+                        </span>
+                        <h4 className="text-sm font-black tracking-tight text-slate-900 dark:text-foreground">
+                          {event.title}
+                        </h4>
                       </div>
-                      {event.imageUrl && (
-                        <ImagePopup
-                          url={event.imageUrl}
-                          title="รูปหลักฐาน"
-                          triggerVariant="icon"
-                          className="h-10 w-10 rounded-xl bg-white dark:bg-surface-container text-slate-900 dark:text-foreground shadow-sm ring-1 ring-blue-100 dark:ring-outline-variant hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-300"
-                        />
+                      {event.description && (
+                        <p className="mt-3 text-[12px] leading-snug text-slate-500 dark:text-muted-foreground">
+                          {event.description}
+                        </p>
                       )}
                     </div>
-
-                    <div className={`${isLatest ? 'mt-2 border-t border-white/70 dark:border-outline-variant/30 pt-1.5' : 'mt-2'} flex flex-wrap items-center gap-x-3 gap-y-1`}>
-                      {event.timestamp && (
-                        <span className="inline-flex items-center gap-1 text-[9px] font-bold text-slate-400 dark:text-muted-foreground">
-                          <span className="material-symbols-outlined text-[12px]" aria-hidden="true">schedule</span>
-                          {formatThaiDateTime(event.timestamp)}
-                        </span>
-                      )}
-                      {locationText && (
-                        <span className="inline-flex min-w-0 items-center gap-1 text-[9px] font-bold text-slate-400 dark:text-muted-foreground">
-                          <span className="material-symbols-outlined text-[12px]" aria-hidden="true">place</span>
-                          <span className="truncate">{locationText}</span>
-                        </span>
-                      )}
-                    </div>
-                    {shouldShowActualLocation && (
-                      <div className="mt-1.5 flex items-start gap-1 text-[9px] font-semibold text-slate-500 dark:text-muted-foreground" title={actualLocation}>
-                        <span className="material-symbols-outlined text-[12px] mt-0.5 shrink-0" aria-hidden="true">explore</span>
-                        <span className="break-words leading-tight">พิกัดจริง: {actualLocation}</span>
-                      </div>
-                    )}
-
-                    {event.deliveryMatchStatus && (
-                      <div className="mt-1.5">
-                        <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[9px] font-bold ${
-                          event.deliveryMatchStatus === 'DELIVERED_ELSEWHERE'
-                            ? 'border-amber-100 bg-amber-50 text-amber-800'
-                            : 'border-green-100 bg-green-50 text-green-700'
-                        }`}>
-                          <span className="material-symbols-outlined text-[12px]" aria-hidden="true">
-                            {event.deliveryMatchStatus === 'DELIVERED_ELSEWHERE' ? 'move_location' : 'task_alt'}
-                          </span>
-                          {event.deliveryMatchStatus === 'DELIVERED_ELSEWHERE' ? 'ส่งคนละจุด' : 'ส่งตรงปลายทาง'}
-                        </span>
-                        {event.deliveryMismatchReason && (
-                          <p className="mt-2 rounded-xl bg-surface-container-lowest px-3 py-2 text-xs font-semibold leading-snug text-on-surface-variant/70">
-                            เหตุผล: {event.deliveryMismatchReason}
-                          </p>
-                        )}
-                      </div>
+                    {event.imageUrl && (
+                      <ImagePopup
+                        url={event.imageUrl}
+                        title="รูปหลักฐาน"
+                        triggerVariant="icon"
+                        className="h-10 w-10 rounded-xl bg-surface-container text-foreground shadow-sm ring-1 ring-outline-variant/60 hover:bg-surface-container-high"
+                      />
                     )}
                   </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2 text-[10px] font-bold text-slate-500 dark:text-muted-foreground">
+                    {event.timestamp && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-surface px-2 py-1 text-[10px] font-semibold text-slate-600 dark:bg-surface-container dark:text-muted-foreground">
+                        <span className="material-symbols-outlined text-[12px]" aria-hidden="true">schedule</span>
+                        {formatThaiDateTime(event.timestamp)}
+                      </span>
+                    )}
+                    {locationText && (
+                      <span className="inline-flex min-w-0 items-center gap-1 rounded-full bg-surface px-2 py-1 text-[10px] font-semibold text-slate-600 dark:bg-surface-container dark:text-muted-foreground">
+                        <span className="material-symbols-outlined text-[12px]" aria-hidden="true">place</span>
+                        <span className="truncate">{locationText}</span>
+                      </span>
+                    )}
+                  </div>
+
+                  {shouldShowActualLocation && (
+                    <div className="mt-3 flex items-start gap-1.5 rounded-2xl bg-surface-container px-3 py-2 text-[10px] font-semibold text-slate-500 dark:bg-surface-container-high dark:text-muted-foreground">
+                      <span className="material-symbols-outlined text-[12px] mt-0.5" aria-hidden="true">explore</span>
+                      <span className="break-words leading-tight">พิกัดจริง: {actualLocation}</span>
+                    </div>
+                  )}
+
+                  {event.deliveryMatchStatus && (
+                    <div className="mt-3 space-y-2">
+                      <span className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[10px] font-black ${
+                        event.deliveryMatchStatus === 'DELIVERED_ELSEWHERE'
+                          ? 'border-amber-200 bg-amber-50 text-amber-800'
+                          : 'border-green-200 bg-emerald-50 text-emerald-700'
+                      }`}>
+                        <span className="material-symbols-outlined text-[12px]" aria-hidden="true">
+                          {event.deliveryMatchStatus === 'DELIVERED_ELSEWHERE' ? 'move_location' : 'task_alt'}
+                        </span>
+                        {event.deliveryMatchStatus === 'DELIVERED_ELSEWHERE' ? 'ส่งคนละจุด' : 'ส่งตรงปลายทาง'}
+                      </span>
+                      {event.deliveryMismatchReason && (
+                        <p className="rounded-2xl bg-surface-container-lowest px-3 py-2 text-xs font-semibold leading-snug text-on-surface-variant/70">
+                          เหตุผล: {event.deliveryMismatchReason}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             );
