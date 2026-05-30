@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { convertParcelsToCSV, downloadCSV } from '@/lib/csvHelper';
-import { getSystemHealth } from '@/lib/parcelService';
+import { getSystemHealth, getParcels } from '@/lib/parcelService';
 import type { SystemHealth } from '@/lib/parcel-service/types';
 import AppLoading from '@/components/AppLoading';
 import {
@@ -69,6 +69,7 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [adminSort, setAdminSort] = useState<AdminSortMode>('newest');
+  const [isExporting, setIsExporting] = useState(false);
   
   const isFetchingRef = useRef(false);
   const hasSetInitialView = useRef(false);
@@ -118,20 +119,56 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
     }
   }, []);
 
-  const handleExportCSV = useCallback(() => {
-    if (!filteredParcels || filteredParcels.length === 0) {
-      toast.error('ไม่มีข้อมูลสำหรับการส่งออกรายงาน');
-      return;
-    }
+  const handleExportCSV = useCallback(async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    const toastId = toast.loading('กำลังดึงข้อมูลและเตรียมไฟล์รายงาน...');
     try {
-      const csv = convertParcelsToCSV(filteredParcels);
+      let allParcels: Parcel[] = [];
+      let offset = 0;
+      const limit = 100;
+      let hasMoreData = true;
+
+      while (hasMoreData) {
+        const res = await getParcels(statusFilter, limit, offset);
+        if (res.success && Array.isArray(res.parcels)) {
+          allParcels = [...allParcels, ...res.parcels];
+          hasMoreData = !!res.hasMore && res.parcels.length > 0;
+          offset += res.parcels.length;
+        } else {
+          throw new Error(res.error || 'เกิดข้อผิดพลาดในการดึงข้อมูลจากระบบ');
+        }
+      }
+
+      let finalParcels = allParcels;
+      if (debouncedSearch) {
+        const q = debouncedSearch.toLowerCase();
+        finalParcels = finalParcels.filter(p =>
+          p.TrackingID.toLowerCase().includes(q) ||
+          p['ผู้ส่ง'].toLowerCase().includes(q) ||
+          p['ผู้รับ'].toLowerCase().includes(q) ||
+          p['สาขาผู้รับ'].toLowerCase().includes(q)
+        );
+      }
+
+      if (finalParcels.length === 0) {
+        toast.dismiss(toastId);
+        toast.error('ไม่มีข้อมูลที่ตรงกับตัวกรองสำหรับการส่งออกรายงาน');
+        return;
+      }
+
+      const csv = convertParcelsToCSV(finalParcels);
       downloadCSV(csv, `shiptrack-parcels-${new Date().toISOString().slice(0, 10)}.csv`);
-      toast.success('ดาวน์โหลดรายงานรูปแบบ CSV สำเร็จเรียบร้อยแล้ว');
+      toast.dismiss(toastId);
+      toast.success(`ดาวน์โหลดรายงานจำนวน ${finalParcels.length} รายการสำเร็จเรียบร้อยแล้ว`);
     } catch (err) {
       console.error(err);
-      toast.error('เกิดข้อผิดพลาด ไม่สามารถส่งออกรายงานได้');
+      toast.dismiss(toastId);
+      toast.error(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด ไม่สามารถส่งออกรายงานได้');
+    } finally {
+      setIsExporting(false);
     }
-  }, [filteredParcels]);
+  }, [isExporting, statusFilter, debouncedSearch]);
 
   // Actions custom hook to keep components clean
   const {
@@ -658,9 +695,14 @@ export default function Dashboard({ isConfigured }: DashboardProps) {
             <button
               type="button"
               onClick={handleExportCSV}
+              disabled={isExporting}
               className="app-secondary-button h-9 px-3 text-xs"
             >
-              <Download className="h-3.5 w-3.5" aria-hidden="true" />
+              {isExporting ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+              ) : (
+                <Download className="h-3.5 w-3.5" aria-hidden="true" />
+              )}
               ดาวน์โหลด CSV
             </button>
             {hasFilters && (
