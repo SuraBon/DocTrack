@@ -3,15 +3,17 @@ function handleCreateParcel(payload) {
     return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง" });
   }
 
+  // Validate required fields
+  if (!payload.senderName || !payload.senderBranch || !payload.receiverName || !payload.receiverBranch || !payload.description) {
+    return createJsonResponse({ success: false, error: "กรุณากรอกข้อมูลให้ครบถ้วน" });
+  }
+
   // Rate limit: ป้องกัน spam สร้างพัสดุ
   const clientId = sanitizeText(payload.clientId || "");
   const actorId = payload.employeeId || (clientId ? "guest:" + clientId : "guest");
   const rl = checkWriteRateLimit(actorId, 'createParcel');
   if (!rl.allowed) {
     return createJsonResponse({ success: false, error: "ส่งคำขอบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่" });
-  }
-  if (!payload.senderName || !payload.senderBranch || !payload.receiverName || !payload.receiverBranch || !payload.description) {
-    return createJsonResponse({ success: false, error: "กรุณากรอกข้อมูลให้ครบถ้วน" });
   }
 
   // Sanitize inputs
@@ -35,69 +37,79 @@ function handleCreateParcel(payload) {
   if (receiverBranch.length > 100) return createJsonResponse({ success: false, error: "ชื่อสาขาผู้รับยาวเกินไป" });
   if (description.length > 200) return createJsonResponse({ success: false, error: "รายละเอียดสิ่งที่ส่งยาวเกินไป" });
   if (note.length > MAX_NOTE_LENGTH) return createJsonResponse({ success: false, error: "หมายเหตุยาวเกินไป" });
+  
   const imageValidation = validateImagePayload(payload.photoUrl);
   if (!imageValidation.ok) {
     return createJsonResponse({ success: false, error: imageValidation.error });
   }
 
-  // NOTE: Tracking ID is generated INSIDE the lock (called from writeActions block)
-  // to prevent race conditions with concurrent requests.
-  const date = new Date();
-  const sheet = getParcelSheet(date, true);
-  const yearSpreadsheet = getYearSpreadsheet(getYearFromDate(date), true);
-
-  // Generate ID inside lock — uses full millisecond timestamp to avoid duplicates
-  const dateStr = Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyyMMdd");
-  const trackingId = "TRK" + dateStr + String(date.getTime()).slice(-4) + Math.floor(Math.random() * 100).toString().padStart(2, '0');
-
-  const createdDate = formatThaiDateForSheet(date);
-  const createdEventDate = formatThaiDateForSheet(date);
-  let finalPhotoUrl = imageValidation.value;
   try {
-    finalPhotoUrl = saveImagePayloadToDrive(finalPhotoUrl, trackingId);
-  } catch (e) {
-    return createJsonResponse({ success: false, error: "ไม่สามารถบันทึกรูปภาพได้ กรุณาลองใหม่" });
-  }
+    // NOTE: Tracking ID is generated INSIDE the lock (called from writeActions block)
+    // to prevent race conditions with concurrent requests.
+    const date = new Date();
+    const sheet = getParcelSheet(date, true);
+    const yearSpreadsheet = getYearSpreadsheet(getYearFromDate(date), true);
 
-  sheet.appendRow([
-    trackingId,
-    createdDate,
-    senderName,
-    normalizeBranchName(senderBranch),
-    receiverName,
-    normalizeBranchName(receiverBranch),
-    description,
-    note,
-    "รอจัดส่ง",
-    finalPhotoUrl || "",
-    "",
-    "",
-    payload.employeeId || (clientId ? "guest:" + clientId : "guest"),
-    originLatitude,
-    originLongitude
-  ]);
+    // Generate ID inside lock — uses full millisecond timestamp to avoid duplicates
+    const dateStr = Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyyMMdd");
+    const trackingId = "TRK" + dateStr + String(date.getTime()).slice(-4) + Math.floor(Math.random() * 100).toString().padStart(2, '0');
 
-  const eventSheet = getEventSheetForSpreadsheet(yearSpreadsheet);
-  if (eventSheet) {
-    const eventId = "EVT" + Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyyMMddHHmmssSSS") + Math.floor(Math.random() * 1000);
-    eventSheet.appendRow([
-      eventId,
+    const createdDate = formatThaiDateForSheet(date);
+    const createdEventDate = formatThaiDateForSheet(date);
+    let finalPhotoUrl = imageValidation.value;
+    
+    try {
+      finalPhotoUrl = saveImagePayloadToDrive(finalPhotoUrl, trackingId);
+    } catch (imgErr) {
+      console.error("Image save error: " + (imgErr && imgErr.stack ? imgErr.stack : imgErr));
+      return createJsonResponse({ success: false, error: "ไม่สามารถบันทึกรูปภาพได้ กรุณาลองใหม่" });
+    }
+
+    sheet.appendRow([
       trackingId,
-      createdEventDate,
-      "CREATED",
-      normalizeBranchName(senderBranch),
-      normalizeBranchName(receiverBranch),
+      createdDate,
       senderName,
+      normalizeBranchName(senderBranch),
+      receiverName,
+      normalizeBranchName(receiverBranch),
+      description,
+      note,
+      "รอจัดส่ง",
       finalPhotoUrl || "",
-      originLatitude,
-      originLongitude,
-      note || escapeSheetValue("รับเข้าระบบ"),
       "",
-      ""
+      "",
+      payload.employeeId || (clientId ? "guest:" + clientId : "guest"),
+      originLatitude,
+      originLongitude
     ]);
-  }
 
-  writeAuditLog(payload.employeeId, "CREATE_PARCEL", trackingId, senderName + " → " + receiverName);
+    const eventSheet = getEventSheetForSpreadsheet(yearSpreadsheet);
+    if (eventSheet) {
+      const eventId = "EVT" + Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyyMMddHHmmssSSS") + Math.floor(Math.random() * 1000);
+      eventSheet.appendRow([
+        eventId,
+        trackingId,
+        createdEventDate,
+        "CREATED",
+        normalizeBranchName(senderBranch),
+        normalizeBranchName(receiverBranch),
+        senderName,
+        finalPhotoUrl || "",
+        originLatitude,
+        originLongitude,
+        note || escapeSheetValue("รับเข้าระบบ"),
+        "",
+        ""
+      ]);
+    }
+
+    writeAuditLog(payload.employeeId, "CREATE_PARCEL", trackingId, senderName + " → " + receiverName);
+    return createJsonResponse({ success: true, trackingId: trackingId });
+  } catch (err) {
+    console.error("handleCreateParcel error: " + (err && err.stack ? err.stack : err));
+    return createJsonResponse({ success: false, error: "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง" });
+  }
+}
   return createJsonResponse({ success: true, trackingId: trackingId });
 }
 

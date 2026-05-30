@@ -19,6 +19,32 @@ const SAFE_PASSWORD_REGEX = /^[A-Za-z0-9!@#$%^&*()_\-+=.?]{4,100}$/;
 const VALID_EVENT_TYPES = ["FORWARD", "PROXY", "DELIVERED"];
 const VALID_DELIVERY_MATCH_STATUSES = ["MATCHED_DECLARED_DESTINATION", "DELIVERED_ELSEWHERE"];
 
+// ── API Action Lists ──────────────────────────────────────────────────────────
+// Protected actions require authentication token
+const PROTECTED_ACTIONS = [
+  'confirmReceipt', 'batchConfirmReceipt', 'startDelivery', 'batchStartDelivery',
+  'releaseDelivery', 'getParcels', 'exportSummary', 'getUsers', 'createUser',
+  'updateUserRole', 'updateUser', 'disableUser', 'deleteUser', 'createBranch',
+  'deleteBranch', 'renameBranch', 'deleteParcel', 'editParcel', 'updateProfile',
+  'getAuditLogs', 'getParcelActivityLogs', 'getSystemHealth'
+];
+
+// Write actions modify data and require idempotency handling
+const WRITE_ACTIONS = [
+  'createParcel', 'confirmReceipt', 'batchConfirmReceipt', 'startDelivery',
+  'batchStartDelivery', 'releaseDelivery', 'login', 'setupPin', 'createUser',
+  'updateUserRole', 'updateUser', 'disableUser', 'deleteUser', 'createBranch',
+  'deleteBranch', 'renameBranch', 'deleteParcel', 'editParcel', 'updateProfile'
+];
+
+// Lock actions require distributed lock to prevent race conditions
+const LOCK_ACTIONS = [
+  'createParcel', 'confirmReceipt', 'batchConfirmReceipt', 'startDelivery',
+  'batchStartDelivery', 'releaseDelivery', 'createUser', 'updateUserRole',
+  'updateUser', 'disableUser', 'deleteUser', 'createBranch', 'deleteBranch',
+  'renameBranch', 'deleteParcel', 'editParcel', 'updateProfile', 'setupPin'
+];
+
 const SHEET_URL = "https://docs.google.com/spreadsheets/d/1EiIWLpHupOzkrh_Oft74U21XTeAc2KSah8H1t0ufNoQ/edit?gid=454662424#gid=454662424";
 const SHIPTRACK_FOLDER_ID = "19OGCWa52JD6nFSBYcesfx51i7KjuAOT-";
 const YEAR_SPREADSHEETS_PROPERTY = "YEAR_SPREADSHEETS";
@@ -818,10 +844,27 @@ function doPost(e) {
     const requestId = Utilities.getUuid();
     const startMs = Date.now();
     const rawBody = e && e.postData && e.postData.contents ? String(e.postData.contents) : "";
-    if (!rawBody || rawBody.length > MAX_REQUEST_LENGTH) {
-      return createJsonResponse({ success: false, error: "Invalid request size" });
+    
+    // Validate request size early
+    if (!rawBody) {
+      return createJsonResponse({ success: false, error: "Request body is empty" });
     }
-    const payload = JSON.parse(rawBody);
+    if (rawBody.length > MAX_REQUEST_LENGTH) {
+      return createJsonResponse({ success: false, error: "Request exceeds maximum size limit" });
+    }
+    
+    // Parse request body with error handling
+    let payload;
+    try {
+      payload = JSON.parse(rawBody);
+    } catch (parseErr) {
+      return createJsonResponse({ success: false, error: "Invalid JSON in request body" });
+    }
+    
+    // Validate payload is an object
+    if (!payload || typeof payload !== "object") {
+      return createJsonResponse({ success: false, error: "Request must be a JSON object" });
+    }
     const action = payload.action;
     const clientRequestId = payload.requestId ? String(payload.requestId) : requestId;
     payload.clientRequestId = payload.requestId ? String(payload.requestId) : "";
@@ -837,12 +880,13 @@ function doPost(e) {
     if (!configuredKey) {
       return createJsonResponse({ success: false, error: "API key is not configured on script properties" });
     }
-    if (payload.apiKey !== configuredKey) {
+    
+    // Secure API key comparison using constant-time comparison
+    if (!secureCompareStrings(payload.apiKey, configuredKey)) {
       return createJsonResponse({ success: false, error: "Unauthorized" });
     }
 
     // --- Token Signature Verification ---
-    const protectedActions = ['confirmReceipt', 'batchConfirmReceipt', 'startDelivery', 'batchStartDelivery', 'releaseDelivery', 'getParcels', 'exportSummary', 'getUsers', 'createUser', 'updateUserRole', 'updateUser', 'disableUser', 'deleteUser', 'createBranch', 'deleteBranch', 'renameBranch', 'deleteParcel', 'editParcel', 'updateProfile', 'getAuditLogs', 'getParcelActivityLogs', 'getSystemHealth'];
     if (payload.token) {
       const parts = String(payload.token).split('|');
       if (parts.length === 5) {
@@ -884,15 +928,14 @@ function doPost(e) {
         return createJsonResponse({ success: false, error: "Malformed token" });
       }
     } else {
-      if (protectedActions.includes(action)) {
+      if (PROTECTED_ACTIONS.indexOf(action) !== -1) {
         return createJsonResponse({ success: false, error: "Authentication required (Missing Token)" });
       }
       payload.role = 'GUEST';
     }
 
-    const writeActions = ['createParcel', 'confirmReceipt', 'batchConfirmReceipt', 'startDelivery', 'batchStartDelivery', 'releaseDelivery', 'login', 'setupPin', 'createUser', 'updateUserRole', 'updateUser', 'disableUser', 'deleteUser', 'createBranch', 'deleteBranch', 'renameBranch', 'deleteParcel', 'editParcel', 'updateProfile'];
-    const lockActions = ['createParcel', 'confirmReceipt', 'batchConfirmReceipt', 'startDelivery', 'batchStartDelivery', 'releaseDelivery', 'createUser', 'updateUserRole', 'updateUser', 'disableUser', 'deleteUser', 'createBranch', 'deleteBranch', 'renameBranch', 'deleteParcel', 'editParcel', 'updateProfile', 'setupPin'];
-    const isWrite = writeActions.includes(action);
+    const isWrite = WRITE_ACTIONS.indexOf(action) !== -1;
+    const needsLock = LOCK_ACTIONS.indexOf(action) !== -1;
     const needsLock = lockActions.includes(action);
 
     let result;
@@ -902,14 +945,23 @@ function doPost(e) {
       try {
         locked = lock.tryLock(30000);
         if (!locked) {
-          return createJsonResponse({ success: false, error: "ระบบไม่ว่าง กรุณาลองใหม่อีกครั้ง (Lock timeout)" });
+          return createJsonResponse({ success: false, error: "System is busy, please retry" });
         }
         const cachedResult = getCachedIdempotentResponse(action, payload);
         if (cachedResult) return cachedResult;
         result = routeAction(action, payload);
         storeIdempotentResponse(action, payload, result);
+      } catch (lockErr) {
+        console.error("Lock error: " + (lockErr && lockErr.stack ? lockErr.stack : lockErr));
+        return createJsonResponse({ success: false, error: "Failed to acquire lock, please retry" });
       } finally {
-        if (locked) lock.releaseLock();
+        if (locked) {
+          try {
+            lock.releaseLock();
+          } catch (releaseErr) {
+            console.error("Lock release error: " + (releaseErr && releaseErr.stack ? releaseErr.stack : releaseErr));
+          }
+        }
       }
     } else if (isWrite) {
       result = routeAction(action, payload);
@@ -982,15 +1034,17 @@ function handleCreateParcel(payload) {
     return createJsonResponse({ success: false, error: "ไม่มีสิทธิ์เข้าถึง" });
   }
 
+  // Validate required fields
+  if (!payload.senderName || !payload.senderBranch || !payload.receiverName || !payload.receiverBranch || !payload.description) {
+    return createJsonResponse({ success: false, error: "กรุณากรอกข้อมูลให้ครบถ้วน" });
+  }
+
   // Rate limit: ป้องกัน spam สร้างพัสดุ
   const clientId = sanitizeText(payload.clientId || "");
   const actorId = payload.employeeId || (clientId ? "guest:" + clientId : "guest");
   const rl = checkWriteRateLimit(actorId, 'createParcel');
   if (!rl.allowed) {
     return createJsonResponse({ success: false, error: "ส่งคำขอบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่" });
-  }
-  if (!payload.senderName || !payload.senderBranch || !payload.receiverName || !payload.receiverBranch || !payload.description) {
-    return createJsonResponse({ success: false, error: "กรุณากรอกข้อมูลให้ครบถ้วน" });
   }
 
   // Sanitize inputs
@@ -1014,69 +1068,79 @@ function handleCreateParcel(payload) {
   if (receiverBranch.length > 100) return createJsonResponse({ success: false, error: "ชื่อสาขาผู้รับยาวเกินไป" });
   if (description.length > 200) return createJsonResponse({ success: false, error: "รายละเอียดสิ่งที่ส่งยาวเกินไป" });
   if (note.length > MAX_NOTE_LENGTH) return createJsonResponse({ success: false, error: "หมายเหตุยาวเกินไป" });
+  
   const imageValidation = validateImagePayload(payload.photoUrl);
   if (!imageValidation.ok) {
     return createJsonResponse({ success: false, error: imageValidation.error });
   }
 
-  // NOTE: Tracking ID is generated INSIDE the lock (called from writeActions block)
-  // to prevent race conditions with concurrent requests.
-  const date = new Date();
-  const sheet = getParcelSheet(date, true);
-  const yearSpreadsheet = getYearSpreadsheet(getYearFromDate(date), true);
-
-  // Generate ID inside lock — uses full millisecond timestamp to avoid duplicates
-  const dateStr = Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyyMMdd");
-  const trackingId = "TRK" + dateStr + String(date.getTime()).slice(-4) + Math.floor(Math.random() * 100).toString().padStart(2, '0');
-
-  const createdDate = formatThaiDateForSheet(date);
-  const createdEventDate = formatThaiDateForSheet(date);
-  let finalPhotoUrl = imageValidation.value;
   try {
-    finalPhotoUrl = saveImagePayloadToDrive(finalPhotoUrl, trackingId);
-  } catch (e) {
-    return createJsonResponse({ success: false, error: "ไม่สามารถบันทึกรูปภาพได้ กรุณาลองใหม่" });
-  }
+    // NOTE: Tracking ID is generated INSIDE the lock (called from writeActions block)
+    // to prevent race conditions with concurrent requests.
+    const date = new Date();
+    const sheet = getParcelSheet(date, true);
+    const yearSpreadsheet = getYearSpreadsheet(getYearFromDate(date), true);
 
-  sheet.appendRow([
-    trackingId,
-    createdDate,
-    senderName,
-    normalizeBranchName(senderBranch),
-    receiverName,
-    normalizeBranchName(receiverBranch),
-    description,
-    note,
-    "รอจัดส่ง",
-    finalPhotoUrl || "",
-    "",
-    "",
-    payload.employeeId || (clientId ? "guest:" + clientId : "guest"),
-    originLatitude,
-    originLongitude
-  ]);
+    // Generate ID inside lock — uses full millisecond timestamp to avoid duplicates
+    const dateStr = Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyyMMdd");
+    const trackingId = "TRK" + dateStr + String(date.getTime()).slice(-4) + Math.floor(Math.random() * 100).toString().padStart(2, '0');
 
-  const eventSheet = getEventSheetForSpreadsheet(yearSpreadsheet);
-  if (eventSheet) {
-    const eventId = "EVT" + Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyyMMddHHmmssSSS") + Math.floor(Math.random() * 1000);
-    eventSheet.appendRow([
-      eventId,
+    const createdDate = formatThaiDateForSheet(date);
+    const createdEventDate = formatThaiDateForSheet(date);
+    let finalPhotoUrl = imageValidation.value;
+    
+    try {
+      finalPhotoUrl = saveImagePayloadToDrive(finalPhotoUrl, trackingId);
+    } catch (imgErr) {
+      console.error("Image save error: " + (imgErr && imgErr.stack ? imgErr.stack : imgErr));
+      return createJsonResponse({ success: false, error: "ไม่สามารถบันทึกรูปภาพได้ กรุณาลองใหม่" });
+    }
+
+    sheet.appendRow([
       trackingId,
-      createdEventDate,
-      "CREATED",
-      normalizeBranchName(senderBranch),
-      normalizeBranchName(receiverBranch),
+      createdDate,
       senderName,
+      normalizeBranchName(senderBranch),
+      receiverName,
+      normalizeBranchName(receiverBranch),
+      description,
+      note,
+      "รอจัดส่ง",
       finalPhotoUrl || "",
-      originLatitude,
-      originLongitude,
-      note || escapeSheetValue("รับเข้าระบบ"),
       "",
-      ""
+      "",
+      payload.employeeId || (clientId ? "guest:" + clientId : "guest"),
+      originLatitude,
+      originLongitude
     ]);
-  }
 
-  writeAuditLog(payload.employeeId, "CREATE_PARCEL", trackingId, senderName + " → " + receiverName);
+    const eventSheet = getEventSheetForSpreadsheet(yearSpreadsheet);
+    if (eventSheet) {
+      const eventId = "EVT" + Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyyMMddHHmmssSSS") + Math.floor(Math.random() * 1000);
+      eventSheet.appendRow([
+        eventId,
+        trackingId,
+        createdEventDate,
+        "CREATED",
+        normalizeBranchName(senderBranch),
+        normalizeBranchName(receiverBranch),
+        senderName,
+        finalPhotoUrl || "",
+        originLatitude,
+        originLongitude,
+        note || escapeSheetValue("รับเข้าระบบ"),
+        "",
+        ""
+      ]);
+    }
+
+    writeAuditLog(payload.employeeId, "CREATE_PARCEL", trackingId, senderName + " → " + receiverName);
+    return createJsonResponse({ success: true, trackingId: trackingId });
+  } catch (err) {
+    console.error("handleCreateParcel error: " + (err && err.stack ? err.stack : err));
+    return createJsonResponse({ success: false, error: "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง" });
+  }
+}
   return createJsonResponse({ success: true, trackingId: trackingId });
 }
 
@@ -2193,7 +2257,13 @@ function setupApiKey(value) {
   if (!value) {
     throw new Error("Missing API key value");
   }
-  PropertiesService.getScriptProperties().setProperty(API_KEY_PROPERTY, String(value).trim());
+  const trimmedKey = String(value).trim();
+  if (trimmedKey.length < 32) {
+    throw new Error("API key must be at least 32 characters long");
+  }
+  PropertiesService.getScriptProperties().setProperty(API_KEY_PROPERTY, trimmedKey);
+  // Clear cache after updating
+  apiKeyCache = null;
 }
 
 function setupInitialAdminPin(value) {
@@ -2203,6 +2273,27 @@ function setupInitialAdminPin(value) {
   }
   PropertiesService.getScriptProperties().setProperty(ADMIN_INITIAL_PIN_PROPERTY, pin);
   return { success: true };
+}
+
+// ── Security Utilities ────────────────────────────────────────────────────────
+/**
+ * Constant-time string comparison to prevent timing attacks.
+ * Compares two strings and returns true if they match, false otherwise.
+ */
+function secureCompareStrings(provided, expected) {
+  if (!provided || !expected) return false;
+  
+  const providedStr = String(provided || "");
+  const expectedStr = String(expected || "");
+  
+  // Ensure both strings are non-empty and of equal length
+  if (providedStr.length !== expectedStr.length) return false;
+  
+  let match = 0;
+  for (let i = 0; i < providedStr.length; i++) {
+    match |= providedStr.charCodeAt(i) ^ expectedStr.charCodeAt(i);
+  }
+  return match === 0;
 }
 
 function createJsonResponse(data) {
@@ -2387,7 +2478,10 @@ function clearLoginAttempts(employeeId) {
 function handleLogin(payload) {
   const employeeId = normalizeEmployeeId(payload.employeeId);
   const pin = sanitizePassword(payload.pin);
+  
+  // Validate inputs
   if (!employeeId) return createJsonResponse({ success: false, error: "กรุณาระบุรหัสพนักงาน" });
+  if (!pin) return createJsonResponse({ success: false, error: "กรุณาระบุรหัสผ่าน" });
 
   // Validate employeeId format (A-Z, 0-9 only, max 50 chars)
   if (!validateEmployeeId(employeeId)) {
@@ -2401,48 +2495,53 @@ function handleLogin(payload) {
     return createJsonResponse({ success: false, error: "บัญชีถูกล็อคชั่วคราว กรุณาลองใหม่ใน " + rateLimit.minutesLeft + " นาที" });
   }
 
-  const sheet = getUsersSheet();
-  const data = sheet.getDataRange().getValues();
+  try {
+    const sheet = getUsersSheet();
+    const data = sheet.getDataRange().getValues();
 
-  for (let i = 1; i < data.length; i++) {
-    if (normalizeEmployeeId(data[i][0]) === employeeId) {
-      const storedPin = String(data[i][3] || "").trim();
-      const role = normalizeRole(data[i][2] || "GUEST");
-      const status = String(data[i][5] || "ACTIVE").trim().toUpperCase() || "ACTIVE";
-      if (status === "DISABLED") {
-        return createJsonResponse({ success: false, error: "บัญชีนี้ถูกปิดใช้งาน" });
-      }
-      if (role === "GUEST") {
-        return createJsonResponse({ success: false, error: "บัญชีนี้ไม่มีสิทธิ์เข้าสู่ระบบพนักงาน" });
-      }
-      const name = String(data[i][1]).trim();
+    for (let i = 1; i < data.length; i++) {
+      if (normalizeEmployeeId(data[i][0]) === employeeId) {
+        const storedPin = String(data[i][3] || "").trim();
+        const role = normalizeRole(data[i][2] || "GUEST");
+        const status = String(data[i][5] || "ACTIVE").trim().toUpperCase() || "ACTIVE";
+        if (status === "DISABLED") {
+          return createJsonResponse({ success: false, error: "บัญชีนี้ถูกปิดใช้งาน" });
+        }
+        if (role === "GUEST") {
+          return createJsonResponse({ success: false, error: "บัญชีนี้ไม่มีสิทธิ์เข้าสู่ระบบพนักงาน" });
+        }
+        const name = String(data[i][1]).trim();
 
-      if (!storedPin) {
-        return createJsonResponse({ success: true, needsSetup: true, role, name });
-      }
+        if (!storedPin) {
+          return createJsonResponse({ success: true, needsSetup: true, role, name });
+        }
 
-      const passwordCheck = verifyPasswordRecord(storedPin, pin);
-      if (!passwordCheck.ok) {
-        recordFailedLogin(employeeId);
-        const remaining = rateLimit.remaining - 1;
-        const msg = remaining > 0
-          ? "รหัสผ่านไม่ถูกต้อง (เหลือ " + remaining + " ครั้ง)"
-          : "รหัสผ่านไม่ถูกต้อง บัญชีจะถูกล็อค";
-        return createJsonResponse({ success: false, error: msg });
-      }
+        const passwordCheck = verifyPasswordRecord(storedPin, pin);
+        if (!passwordCheck.ok) {
+          recordFailedLogin(employeeId);
+          const remaining = rateLimit.remaining - 1;
+          const msg = remaining > 0
+            ? "รหัสผ่านไม่ถูกต้อง (เหลือ " + remaining + " ครั้ง)"
+            : "รหัสผ่านไม่ถูกต้อง บัญชีจะถูกล็อค";
+          return createJsonResponse({ success: false, error: msg });
+        }
 
-      if (passwordCheck.needsMigration) {
-        sheet.getRange(i + 1, 4).setValue(encodePassword(pin));
+        if (passwordCheck.needsMigration) {
+          sheet.getRange(i + 1, 4).setValue(encodePassword(pin));
+        }
+        clearLoginAttempts(employeeId);
+        const issuedAt = Date.now();
+        const token = generateToken(employeeId, role, getApiKey(), issuedAt);
+        return createJsonResponse({ success: true, user: { employeeId, name, role, token, issuedAt } });
       }
-      clearLoginAttempts(employeeId);
-      const issuedAt = Date.now();
-      const token = generateToken(employeeId, role, getApiKey(), issuedAt);
-      return createJsonResponse({ success: true, user: { employeeId, name, role, token, issuedAt } });
     }
-  }
 
-  // User not found — do NOT auto-create; require registration via setupPin
-  return createJsonResponse({ success: false, error: "ไม่พบรหัสพนักงานนี้ในระบบ กรุณาให้ผู้ดูแลระบบเพิ่มบัญชีก่อน" });
+    // User not found — do NOT auto-create; require registration via setupPin
+    return createJsonResponse({ success: false, error: "ไม่พบรหัสพนักงานนี้ในระบบ กรุณาให้ผู้ดูแลระบบเพิ่มบัญชีก่อน" });
+  } catch (err) {
+    console.error("handleLogin error: " + (err && err.stack ? err.stack : err));
+    return createJsonResponse({ success: false, error: "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง" });
+  }
 }
 
 function handleSetupPin(payload) {
@@ -2455,37 +2554,42 @@ function handleSetupPin(payload) {
   if (!validatePassword(pin) || pin.length > 20) return createJsonResponse({ success: false, error: "รหัสผ่านต้องมี 4-20 ตัวอักษร และห้ามขึ้นต้นด้วย = + - หรือ @" });
   if (name && name.length > 100) return createJsonResponse({ success: false, error: "ชื่อยาวเกินไป" });
 
-  const sheet = getUsersSheet();
-  const data = sheet.getDataRange().getValues();
+  try {
+    const sheet = getUsersSheet();
+    const data = sheet.getDataRange().getValues();
 
-  for (let i = 1; i < data.length; i++) {
-    if (normalizeEmployeeId(data[i][0]) === employeeId) {
-      const storedPin = String(data[i][3] || "").trim();
-      const status = String(data[i][5] || "ACTIVE").trim().toUpperCase() || "ACTIVE";
-      if (status === "DISABLED") {
-        return createJsonResponse({ success: false, error: "บัญชีนี้ถูกปิดใช้งาน" });
-      }
-      if (storedPin) {
-        return createJsonResponse({ success: false, error: "รหัสพนักงานนี้มีผู้ใช้งานแล้ว" });
-      }
-      if (name) sheet.getRange(i + 1, 2).setValue(name);
-      sheet.getRange(i + 1, 4).setValue(encodePassword(pin));
-      sheet.getRange(i + 1, 6).setValue("ACTIVE");
-      sheet.getRange(i + 1, 7).setValue(formatThaiDateForSheet(new Date()));
+    for (let i = 1; i < data.length; i++) {
+      if (normalizeEmployeeId(data[i][0]) === employeeId) {
+        const storedPin = String(data[i][3] || "").trim();
+        const status = String(data[i][5] || "ACTIVE").trim().toUpperCase() || "ACTIVE";
+        if (status === "DISABLED") {
+          return createJsonResponse({ success: false, error: "บัญชีนี้ถูกปิดใช้งาน" });
+        }
+        if (storedPin) {
+          return createJsonResponse({ success: false, error: "รหัสพนักงานนี้มีผู้ใช้งานแล้ว" });
+        }
+        if (name) sheet.getRange(i + 1, 2).setValue(name);
+        sheet.getRange(i + 1, 4).setValue(encodePassword(pin));
+        sheet.getRange(i + 1, 6).setValue("ACTIVE");
+        sheet.getRange(i + 1, 7).setValue(formatThaiDateForSheet(new Date()));
 
-      const role = normalizeRole(data[i][2] || "GUEST");
-      if (role === "GUEST") {
-        return createJsonResponse({ success: false, error: "บัญชีนี้ไม่มีสิทธิ์ตั้งค่าการเข้าใช้งานพนักงาน" });
-      }
-      const finalName = name || String(data[i][1]).trim();
+        const role = normalizeRole(data[i][2] || "GUEST");
+        if (role === "GUEST") {
+          return createJsonResponse({ success: false, error: "บัญชีนี้ไม่มีสิทธิ์ตั้งค่าการเข้าใช้งานพนักงาน" });
+        }
+        const finalName = name || String(data[i][1]).trim();
 
-      const issuedAt = Date.now();
-      const token = generateToken(employeeId, role, getApiKey(), issuedAt);
-      return createJsonResponse({ success: true, user: { employeeId, name: finalName, role, token, issuedAt } });
+        const issuedAt = Date.now();
+        const token = generateToken(employeeId, role, getApiKey(), issuedAt);
+        return createJsonResponse({ success: true, user: { employeeId, name: finalName, role, token, issuedAt } });
+      }
     }
-  }
 
-  return createJsonResponse({ success: false, error: "ไม่พบรหัสพนักงานนี้ในระบบ กรุณาให้ผู้ดูแลระบบเพิ่มบัญชีก่อน" });
+    return createJsonResponse({ success: false, error: "ไม่พบรหัสพนักงานนี้ในระบบ กรุณาให้ผู้ดูแลระบบเพิ่มบัญชีก่อน" });
+  } catch (err) {
+    console.error("handleSetupPin error: " + (err && err.stack ? err.stack : err));
+    return createJsonResponse({ success: false, error: "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง" });
+  }
 }
 
 // --- 70_admin_handlers.gs ---

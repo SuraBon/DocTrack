@@ -2,7 +2,13 @@ function setupApiKey(value) {
   if (!value) {
     throw new Error("Missing API key value");
   }
-  PropertiesService.getScriptProperties().setProperty(API_KEY_PROPERTY, String(value).trim());
+  const trimmedKey = String(value).trim();
+  if (trimmedKey.length < 32) {
+    throw new Error("API key must be at least 32 characters long");
+  }
+  PropertiesService.getScriptProperties().setProperty(API_KEY_PROPERTY, trimmedKey);
+  // Clear cache after updating
+  apiKeyCache = null;
 }
 
 function setupInitialAdminPin(value) {
@@ -12,6 +18,27 @@ function setupInitialAdminPin(value) {
   }
   PropertiesService.getScriptProperties().setProperty(ADMIN_INITIAL_PIN_PROPERTY, pin);
   return { success: true };
+}
+
+// ── Security Utilities ────────────────────────────────────────────────────────
+/**
+ * Constant-time string comparison to prevent timing attacks.
+ * Compares two strings and returns true if they match, false otherwise.
+ */
+function secureCompareStrings(provided, expected) {
+  if (!provided || !expected) return false;
+  
+  const providedStr = String(provided || "");
+  const expectedStr = String(expected || "");
+  
+  // Ensure both strings are non-empty and of equal length
+  if (providedStr.length !== expectedStr.length) return false;
+  
+  let match = 0;
+  for (let i = 0; i < providedStr.length; i++) {
+    match |= providedStr.charCodeAt(i) ^ expectedStr.charCodeAt(i);
+  }
+  return match === 0;
 }
 
 function createJsonResponse(data) {
@@ -196,7 +223,10 @@ function clearLoginAttempts(employeeId) {
 function handleLogin(payload) {
   const employeeId = normalizeEmployeeId(payload.employeeId);
   const pin = sanitizePassword(payload.pin);
+  
+  // Validate inputs
   if (!employeeId) return createJsonResponse({ success: false, error: "กรุณาระบุรหัสพนักงาน" });
+  if (!pin) return createJsonResponse({ success: false, error: "กรุณาระบุรหัสผ่าน" });
 
   // Validate employeeId format (A-Z, 0-9 only, max 50 chars)
   if (!validateEmployeeId(employeeId)) {
@@ -210,48 +240,53 @@ function handleLogin(payload) {
     return createJsonResponse({ success: false, error: "บัญชีถูกล็อคชั่วคราว กรุณาลองใหม่ใน " + rateLimit.minutesLeft + " นาที" });
   }
 
-  const sheet = getUsersSheet();
-  const data = sheet.getDataRange().getValues();
+  try {
+    const sheet = getUsersSheet();
+    const data = sheet.getDataRange().getValues();
 
-  for (let i = 1; i < data.length; i++) {
-    if (normalizeEmployeeId(data[i][0]) === employeeId) {
-      const storedPin = String(data[i][3] || "").trim();
-      const role = normalizeRole(data[i][2] || "GUEST");
-      const status = String(data[i][5] || "ACTIVE").trim().toUpperCase() || "ACTIVE";
-      if (status === "DISABLED") {
-        return createJsonResponse({ success: false, error: "บัญชีนี้ถูกปิดใช้งาน" });
-      }
-      if (role === "GUEST") {
-        return createJsonResponse({ success: false, error: "บัญชีนี้ไม่มีสิทธิ์เข้าสู่ระบบพนักงาน" });
-      }
-      const name = String(data[i][1]).trim();
+    for (let i = 1; i < data.length; i++) {
+      if (normalizeEmployeeId(data[i][0]) === employeeId) {
+        const storedPin = String(data[i][3] || "").trim();
+        const role = normalizeRole(data[i][2] || "GUEST");
+        const status = String(data[i][5] || "ACTIVE").trim().toUpperCase() || "ACTIVE";
+        if (status === "DISABLED") {
+          return createJsonResponse({ success: false, error: "บัญชีนี้ถูกปิดใช้งาน" });
+        }
+        if (role === "GUEST") {
+          return createJsonResponse({ success: false, error: "บัญชีนี้ไม่มีสิทธิ์เข้าสู่ระบบพนักงาน" });
+        }
+        const name = String(data[i][1]).trim();
 
-      if (!storedPin) {
-        return createJsonResponse({ success: true, needsSetup: true, role, name });
-      }
+        if (!storedPin) {
+          return createJsonResponse({ success: true, needsSetup: true, role, name });
+        }
 
-      const passwordCheck = verifyPasswordRecord(storedPin, pin);
-      if (!passwordCheck.ok) {
-        recordFailedLogin(employeeId);
-        const remaining = rateLimit.remaining - 1;
-        const msg = remaining > 0
-          ? "รหัสผ่านไม่ถูกต้อง (เหลือ " + remaining + " ครั้ง)"
-          : "รหัสผ่านไม่ถูกต้อง บัญชีจะถูกล็อค";
-        return createJsonResponse({ success: false, error: msg });
-      }
+        const passwordCheck = verifyPasswordRecord(storedPin, pin);
+        if (!passwordCheck.ok) {
+          recordFailedLogin(employeeId);
+          const remaining = rateLimit.remaining - 1;
+          const msg = remaining > 0
+            ? "รหัสผ่านไม่ถูกต้อง (เหลือ " + remaining + " ครั้ง)"
+            : "รหัสผ่านไม่ถูกต้อง บัญชีจะถูกล็อค";
+          return createJsonResponse({ success: false, error: msg });
+        }
 
-      if (passwordCheck.needsMigration) {
-        sheet.getRange(i + 1, 4).setValue(encodePassword(pin));
+        if (passwordCheck.needsMigration) {
+          sheet.getRange(i + 1, 4).setValue(encodePassword(pin));
+        }
+        clearLoginAttempts(employeeId);
+        const issuedAt = Date.now();
+        const token = generateToken(employeeId, role, getApiKey(), issuedAt);
+        return createJsonResponse({ success: true, user: { employeeId, name, role, token, issuedAt } });
       }
-      clearLoginAttempts(employeeId);
-      const issuedAt = Date.now();
-      const token = generateToken(employeeId, role, getApiKey(), issuedAt);
-      return createJsonResponse({ success: true, user: { employeeId, name, role, token, issuedAt } });
     }
-  }
 
-  // User not found — do NOT auto-create; require registration via setupPin
-  return createJsonResponse({ success: false, error: "ไม่พบรหัสพนักงานนี้ในระบบ กรุณาให้ผู้ดูแลระบบเพิ่มบัญชีก่อน" });
+    // User not found — do NOT auto-create; require registration via setupPin
+    return createJsonResponse({ success: false, error: "ไม่พบรหัสพนักงานนี้ในระบบ กรุณาให้ผู้ดูแลระบบเพิ่มบัญชีก่อน" });
+  } catch (err) {
+    console.error("handleLogin error: " + (err && err.stack ? err.stack : err));
+    return createJsonResponse({ success: false, error: "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง" });
+  }
 }
 
 function handleSetupPin(payload) {
@@ -264,35 +299,40 @@ function handleSetupPin(payload) {
   if (!validatePassword(pin) || pin.length > 20) return createJsonResponse({ success: false, error: "รหัสผ่านต้องมี 4-20 ตัวอักษร และห้ามขึ้นต้นด้วย = + - หรือ @" });
   if (name && name.length > 100) return createJsonResponse({ success: false, error: "ชื่อยาวเกินไป" });
 
-  const sheet = getUsersSheet();
-  const data = sheet.getDataRange().getValues();
+  try {
+    const sheet = getUsersSheet();
+    const data = sheet.getDataRange().getValues();
 
-  for (let i = 1; i < data.length; i++) {
-    if (normalizeEmployeeId(data[i][0]) === employeeId) {
-      const storedPin = String(data[i][3] || "").trim();
-      const status = String(data[i][5] || "ACTIVE").trim().toUpperCase() || "ACTIVE";
-      if (status === "DISABLED") {
-        return createJsonResponse({ success: false, error: "บัญชีนี้ถูกปิดใช้งาน" });
-      }
-      if (storedPin) {
-        return createJsonResponse({ success: false, error: "รหัสพนักงานนี้มีผู้ใช้งานแล้ว" });
-      }
-      if (name) sheet.getRange(i + 1, 2).setValue(name);
-      sheet.getRange(i + 1, 4).setValue(encodePassword(pin));
-      sheet.getRange(i + 1, 6).setValue("ACTIVE");
-      sheet.getRange(i + 1, 7).setValue(formatThaiDateForSheet(new Date()));
+    for (let i = 1; i < data.length; i++) {
+      if (normalizeEmployeeId(data[i][0]) === employeeId) {
+        const storedPin = String(data[i][3] || "").trim();
+        const status = String(data[i][5] || "ACTIVE").trim().toUpperCase() || "ACTIVE";
+        if (status === "DISABLED") {
+          return createJsonResponse({ success: false, error: "บัญชีนี้ถูกปิดใช้งาน" });
+        }
+        if (storedPin) {
+          return createJsonResponse({ success: false, error: "รหัสพนักงานนี้มีผู้ใช้งานแล้ว" });
+        }
+        if (name) sheet.getRange(i + 1, 2).setValue(name);
+        sheet.getRange(i + 1, 4).setValue(encodePassword(pin));
+        sheet.getRange(i + 1, 6).setValue("ACTIVE");
+        sheet.getRange(i + 1, 7).setValue(formatThaiDateForSheet(new Date()));
 
-      const role = normalizeRole(data[i][2] || "GUEST");
-      if (role === "GUEST") {
-        return createJsonResponse({ success: false, error: "บัญชีนี้ไม่มีสิทธิ์ตั้งค่าการเข้าใช้งานพนักงาน" });
-      }
-      const finalName = name || String(data[i][1]).trim();
+        const role = normalizeRole(data[i][2] || "GUEST");
+        if (role === "GUEST") {
+          return createJsonResponse({ success: false, error: "บัญชีนี้ไม่มีสิทธิ์ตั้งค่าการเข้าใช้งานพนักงาน" });
+        }
+        const finalName = name || String(data[i][1]).trim();
 
-      const issuedAt = Date.now();
-      const token = generateToken(employeeId, role, getApiKey(), issuedAt);
-      return createJsonResponse({ success: true, user: { employeeId, name: finalName, role, token, issuedAt } });
+        const issuedAt = Date.now();
+        const token = generateToken(employeeId, role, getApiKey(), issuedAt);
+        return createJsonResponse({ success: true, user: { employeeId, name: finalName, role, token, issuedAt } });
+      }
     }
-  }
 
-  return createJsonResponse({ success: false, error: "ไม่พบรหัสพนักงานนี้ในระบบ กรุณาให้ผู้ดูแลระบบเพิ่มบัญชีก่อน" });
+    return createJsonResponse({ success: false, error: "ไม่พบรหัสพนักงานนี้ในระบบ กรุณาให้ผู้ดูแลระบบเพิ่มบัญชีก่อน" });
+  } catch (err) {
+    console.error("handleSetupPin error: " + (err && err.stack ? err.stack : err));
+    return createJsonResponse({ success: false, error: "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง" });
+  }
 }

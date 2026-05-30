@@ -3,10 +3,27 @@ function doPost(e) {
     const requestId = Utilities.getUuid();
     const startMs = Date.now();
     const rawBody = e && e.postData && e.postData.contents ? String(e.postData.contents) : "";
-    if (!rawBody || rawBody.length > MAX_REQUEST_LENGTH) {
-      return createJsonResponse({ success: false, error: "Invalid request size" });
+    
+    // Validate request size early
+    if (!rawBody) {
+      return createJsonResponse({ success: false, error: "Request body is empty" });
     }
-    const payload = JSON.parse(rawBody);
+    if (rawBody.length > MAX_REQUEST_LENGTH) {
+      return createJsonResponse({ success: false, error: "Request exceeds maximum size limit" });
+    }
+    
+    // Parse request body with error handling
+    let payload;
+    try {
+      payload = JSON.parse(rawBody);
+    } catch (parseErr) {
+      return createJsonResponse({ success: false, error: "Invalid JSON in request body" });
+    }
+    
+    // Validate payload is an object
+    if (!payload || typeof payload !== "object") {
+      return createJsonResponse({ success: false, error: "Request must be a JSON object" });
+    }
     const action = payload.action;
     const clientRequestId = payload.requestId ? String(payload.requestId) : requestId;
     payload.clientRequestId = payload.requestId ? String(payload.requestId) : "";
@@ -22,12 +39,13 @@ function doPost(e) {
     if (!configuredKey) {
       return createJsonResponse({ success: false, error: "API key is not configured on script properties" });
     }
-    if (payload.apiKey !== configuredKey) {
+    
+    // Secure API key comparison using constant-time comparison
+    if (!secureCompareStrings(payload.apiKey, configuredKey)) {
       return createJsonResponse({ success: false, error: "Unauthorized" });
     }
 
     // --- Token Signature Verification ---
-    const protectedActions = ['confirmReceipt', 'batchConfirmReceipt', 'startDelivery', 'batchStartDelivery', 'releaseDelivery', 'getParcels', 'exportSummary', 'getUsers', 'createUser', 'updateUserRole', 'updateUser', 'disableUser', 'deleteUser', 'createBranch', 'deleteBranch', 'renameBranch', 'deleteParcel', 'editParcel', 'updateProfile', 'getAuditLogs', 'getParcelActivityLogs', 'getSystemHealth'];
     if (payload.token) {
       const parts = String(payload.token).split('|');
       if (parts.length === 5) {
@@ -69,15 +87,14 @@ function doPost(e) {
         return createJsonResponse({ success: false, error: "Malformed token" });
       }
     } else {
-      if (protectedActions.includes(action)) {
+      if (PROTECTED_ACTIONS.indexOf(action) !== -1) {
         return createJsonResponse({ success: false, error: "Authentication required (Missing Token)" });
       }
       payload.role = 'GUEST';
     }
 
-    const writeActions = ['createParcel', 'confirmReceipt', 'batchConfirmReceipt', 'startDelivery', 'batchStartDelivery', 'releaseDelivery', 'login', 'setupPin', 'createUser', 'updateUserRole', 'updateUser', 'disableUser', 'deleteUser', 'createBranch', 'deleteBranch', 'renameBranch', 'deleteParcel', 'editParcel', 'updateProfile'];
-    const lockActions = ['createParcel', 'confirmReceipt', 'batchConfirmReceipt', 'startDelivery', 'batchStartDelivery', 'releaseDelivery', 'createUser', 'updateUserRole', 'updateUser', 'disableUser', 'deleteUser', 'createBranch', 'deleteBranch', 'renameBranch', 'deleteParcel', 'editParcel', 'updateProfile', 'setupPin'];
-    const isWrite = writeActions.includes(action);
+    const isWrite = WRITE_ACTIONS.indexOf(action) !== -1;
+    const needsLock = LOCK_ACTIONS.indexOf(action) !== -1;
     const needsLock = lockActions.includes(action);
 
     let result;
@@ -87,14 +104,23 @@ function doPost(e) {
       try {
         locked = lock.tryLock(30000);
         if (!locked) {
-          return createJsonResponse({ success: false, error: "ระบบไม่ว่าง กรุณาลองใหม่อีกครั้ง (Lock timeout)" });
+          return createJsonResponse({ success: false, error: "System is busy, please retry" });
         }
         const cachedResult = getCachedIdempotentResponse(action, payload);
         if (cachedResult) return cachedResult;
         result = routeAction(action, payload);
         storeIdempotentResponse(action, payload, result);
+      } catch (lockErr) {
+        console.error("Lock error: " + (lockErr && lockErr.stack ? lockErr.stack : lockErr));
+        return createJsonResponse({ success: false, error: "Failed to acquire lock, please retry" });
       } finally {
-        if (locked) lock.releaseLock();
+        if (locked) {
+          try {
+            lock.releaseLock();
+          } catch (releaseErr) {
+            console.error("Lock release error: " + (releaseErr && releaseErr.stack ? releaseErr.stack : releaseErr));
+          }
+        }
       }
     } else if (isWrite) {
       result = routeAction(action, payload);

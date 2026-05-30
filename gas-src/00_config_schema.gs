@@ -16,6 +16,32 @@ const SAFE_PASSWORD_REGEX = /^[A-Za-z0-9!@#$%^&*()_\-+=.?]{4,100}$/;
 const VALID_EVENT_TYPES = ["FORWARD", "PROXY", "DELIVERED"];
 const VALID_DELIVERY_MATCH_STATUSES = ["MATCHED_DECLARED_DESTINATION", "DELIVERED_ELSEWHERE"];
 
+// ── API Action Lists ──────────────────────────────────────────────────────────
+// Protected actions require authentication token
+const PROTECTED_ACTIONS = [
+  'confirmReceipt', 'batchConfirmReceipt', 'startDelivery', 'batchStartDelivery',
+  'releaseDelivery', 'getParcels', 'exportSummary', 'getUsers', 'createUser',
+  'updateUserRole', 'updateUser', 'disableUser', 'deleteUser', 'createBranch',
+  'deleteBranch', 'renameBranch', 'deleteParcel', 'editParcel', 'updateProfile',
+  'getAuditLogs', 'getParcelActivityLogs', 'getSystemHealth'
+];
+
+// Write actions modify data and require idempotency handling
+const WRITE_ACTIONS = [
+  'createParcel', 'confirmReceipt', 'batchConfirmReceipt', 'startDelivery',
+  'batchStartDelivery', 'releaseDelivery', 'login', 'setupPin', 'createUser',
+  'updateUserRole', 'updateUser', 'disableUser', 'deleteUser', 'createBranch',
+  'deleteBranch', 'renameBranch', 'deleteParcel', 'editParcel', 'updateProfile'
+];
+
+// Lock actions require distributed lock to prevent race conditions
+const LOCK_ACTIONS = [
+  'createParcel', 'confirmReceipt', 'batchConfirmReceipt', 'startDelivery',
+  'batchStartDelivery', 'releaseDelivery', 'createUser', 'updateUserRole',
+  'updateUser', 'disableUser', 'deleteUser', 'createBranch', 'deleteBranch',
+  'renameBranch', 'deleteParcel', 'editParcel', 'updateProfile', 'setupPin'
+];
+
 const SHEET_URL = "https://docs.google.com/spreadsheets/d/1EiIWLpHupOzkrh_Oft74U21XTeAc2KSah8H1t0ufNoQ/edit?gid=454662424#gid=454662424";
 const SHIPTRACK_FOLDER_ID = "19OGCWa52JD6nFSBYcesfx51i7KjuAOT-";
 const YEAR_SPREADSHEETS_PROPERTY = "YEAR_SPREADSHEETS";
