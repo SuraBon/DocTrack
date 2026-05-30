@@ -97,7 +97,7 @@ export function OfflineQueueDialog({ isOpen, onClose, queue }: OfflineQueueDialo
 
   return (
     <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
-      <DialogContent className="max-w-md rounded-2xl border border-outline-variant bg-white p-6 shadow-xl">
+      <DialogContent className="max-w-md rounded-2xl border border-outline-variant bg-card p-6 shadow-xl">
         <DialogHeader className="pb-2">
           <DialogTitle className="flex items-center gap-2 font-display text-lg font-black text-primary">
             <span className="material-symbols-outlined text-amber-500">sync_problem</span>

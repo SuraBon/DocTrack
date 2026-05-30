@@ -44,8 +44,8 @@ export function ProfileDialog({
 }: ProfileDialogProps) {
   return (
     <Dialog open={isProfileOpen} onOpenChange={setIsProfileOpen}>
-      <DialogContent showCloseButton={false} className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-md flex-col overflow-hidden rounded-[1.5rem] border border-gray-100 bg-white p-0 shadow-xl sm:max-h-[calc(100dvh-2rem)]">
-        <DialogHeader className="relative bg-slate-950 px-5 py-5 text-white">
+      <DialogContent showCloseButton={false} className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-md flex-col overflow-hidden rounded-[1.5rem] border border-outline-variant bg-card p-0 shadow-xl sm:max-h-[calc(100dvh-2rem)]">
+        <DialogHeader className="relative bg-primary px-5 py-5 text-white">
           <button
             type="button"
             onClick={() => setIsProfileOpen(false)}
@@ -77,7 +77,7 @@ export function ProfileDialog({
               value={profileForm.name}
               onChange={e => setProfileForm(f => ({ ...f, name: e.target.value }))}
               disabled={profileLoading}
-              className="h-11 w-full rounded-lg border border-outline-variant bg-white px-3 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:opacity-50"
+              className="h-11 w-full rounded-lg border border-outline-variant bg-surface px-3 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:opacity-50"
               placeholder="ชื่อ-นามสกุล"
             />
           </div>
@@ -88,7 +88,7 @@ export function ProfileDialog({
                 type="button"
                 onClick={() => setShowPasswordFields(true)}
                 disabled={profileLoading}
-                className="flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-outline-variant bg-white text-sm font-semibold text-primary transition-all hover:bg-surface-container disabled:opacity-50"
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-outline-variant bg-surface text-sm font-semibold text-primary transition-all hover:bg-surface-container disabled:opacity-50"
               >
                 <LockKeyhole className="h-4 w-4" aria-hidden="true" />
                 เปลี่ยนรหัสผ่าน
@@ -118,7 +118,7 @@ export function ProfileDialog({
                       value={profileForm.currentPassword}
                       onChange={e => setProfileForm(f => ({ ...f, currentPassword: e.target.value }))}
                       disabled={profileLoading}
-                      className="h-11 w-full rounded-lg border border-outline-variant bg-white pl-3 pr-11 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:opacity-50"
+                      className="h-11 w-full rounded-lg border border-outline-variant bg-surface pl-3 pr-11 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:opacity-50"
                       placeholder="••••••••"
                     />
                     <button
@@ -139,7 +139,7 @@ export function ProfileDialog({
                       value={profileForm.newPassword}
                       onChange={e => setProfileForm(f => ({ ...f, newPassword: e.target.value }))}
                       disabled={profileLoading}
-                      className="h-11 w-full rounded-lg border border-outline-variant bg-white pl-3 pr-11 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:opacity-50"
+                      className="h-11 w-full rounded-lg border border-outline-variant bg-surface pl-3 pr-11 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:opacity-50"
                       placeholder="อย่างน้อย 4 ตัวอักษร"
                     />
                     <button
@@ -160,7 +160,7 @@ export function ProfileDialog({
                       value={profileForm.confirmPassword}
                       onChange={e => setProfileForm(f => ({ ...f, confirmPassword: e.target.value }))}
                       disabled={profileLoading}
-                      className="h-11 w-full rounded-lg border border-outline-variant bg-white pl-3 pr-11 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:opacity-50"
+                      className="h-11 w-full rounded-lg border border-outline-variant bg-surface pl-3 pr-11 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:opacity-50"
                       placeholder="••••••••"
                     />
                     <button
@@ -178,7 +178,7 @@ export function ProfileDialog({
           </div>
           </div>
 
-          <div className="flex shrink-0 gap-3 border-t border-outline-variant/15 bg-white px-6 py-4">
+          <div className="flex shrink-0 gap-3 border-t border-outline-variant/15 bg-surface px-6 py-4">
             <button
               type="button"
               onClick={() => setIsProfileOpen(false)}

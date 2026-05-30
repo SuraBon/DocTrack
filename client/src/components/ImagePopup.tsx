@@ -79,9 +79,9 @@ export default function ImagePopup({ url, title = 'รูปหลักฐา�
           </button>
         )}
       </DialogTrigger>
-      <DialogContent className="w-[calc(100vw-1rem)] max-h-[88vh] overflow-hidden rounded-[1.5rem] border border-gray-100 bg-white p-0 shadow-xl sm:max-w-5xl" showCloseButton={false}>
+      <DialogContent className="w-[calc(100vw-1rem)] max-h-[88vh] overflow-hidden rounded-[1.5rem] border border-outline-variant bg-card p-0 shadow-xl sm:max-w-5xl" showCloseButton={false}>
         <div className="flex max-h-[88vh] flex-col">
-          <div className="relative bg-slate-950 px-5 py-5 text-white">
+          <div className="relative bg-primary px-5 py-5 text-white">
             <button
               type="button"
               onClick={() => setOpen(false)}
@@ -93,8 +93,8 @@ export default function ImagePopup({ url, title = 'รูปหลักฐา�
             <DialogTitle className="pr-12 font-display text-xl font-black leading-tight text-white">{title}</DialogTitle>
             <p className="mt-1 text-xs font-semibold text-slate-300">กดปิดเพื่อกลับไปยังรายการ</p>
           </div>
-          <div className="bg-white p-4">
-          <div className="relative flex h-[62vh] max-h-[680px] min-h-[320px] w-full items-center justify-center overflow-hidden rounded-2xl border border-gray-100 bg-slate-50 shadow-sm">
+          <div className="bg-surface p-4">
+          <div className="relative flex h-[62vh] max-h-[680px] min-h-[320px] w-full items-center justify-center overflow-hidden rounded-2xl border border-outline-variant bg-surface-container shadow-sm">
             {!iframeLoaded && !previewFailed && (
               <div className="absolute z-0 flex max-w-xs flex-col items-center justify-center p-8 text-center text-on-surface-variant/30">
                 <span className="material-symbols-outlined mb-4 text-6xl animate-pulse" aria-hidden="true">cloud_download</span>
